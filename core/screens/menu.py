@@ -1,4 +1,4 @@
-from user.KeyMapping import K_CLOSE, K_UP, K_DOWN, K_MENU_PRESS
+from user.KeyMapping import K_CLOSE, K_MOVE_UP, K_MOVE_DOWN, K_MENU_PRESS
 
 from core.rendering.Textures import *
 from core.rendering.Textures import EssentialTextureStorage as Ets
@@ -62,19 +62,19 @@ def render():
             return 'Quit'
 
         if event.type == pygame.KEYDOWN:
-            if event.key in K_CLOSE and not first:
+            if event.key == K_CLOSE and not first:
                 close_menu()
                 return 'INIT_game'
 
-            elif event.key in K_UP and 0 < selected_button:
+            elif event.key == K_MOVE_UP and 0 < selected_button:
                 selected_button -= 1
                 Button.hover(selected_button, selected_button + 1)
 
-            elif event.key in K_DOWN and selected_button < buttons_count:
+            elif event.key == K_MOVE_DOWN and selected_button < buttons_count:
                 selected_button += 1
                 Button.hover(selected_button, selected_button - 1)
 
-            elif event.key in K_MENU_PRESS:
+            elif event.key == K_MENU_PRESS:
                 buttons[selected_button].pressed()
 
     decoration.draw_all()
@@ -84,7 +84,7 @@ def render():
     decoration.update()
 
 
-class MainFrame(Gl.GLObjectGUI):
+class MainFrame(Gl.GLObjectBase):
     textures = [Ets['GUI/menu_frame'], ]
 
     def __init__(self):
@@ -92,7 +92,7 @@ class MainFrame(Gl.GLObjectGUI):
 
 
 # ---- Buttons ----
-class ButtonText(Gl.GLObjectGUI):
+class ButtonText(Gl.GLObjectBase):
     textures = [Ets[x] for x in [
         'text:Новая игра', 'text:Загрузить игру', 'text:Сохранить игру', 'text:Настройки', 'text:Выйти'
     ]]
@@ -106,7 +106,7 @@ class ButtonText(Gl.GLObjectGUI):
         self.rect.setSize(*ButtonText.textures[number].size)
 
 
-class Button(Gl.GLObjectGUI):
+class Button(Gl.GLObjectBase):
     # 0 - Non Selected Button, 1 - Selected
     textures = [Ets['GUI/button_menu_default'], Ets['GUI/button_menu_selected']]
 

@@ -4,7 +4,7 @@ from OpenGL.GL import *
 from OpenGL.GLU import *
 import numpy as np
 
-from core.Constants import WINDOW_RESOLUTION, TEXTURE_PACK
+from core.Constants import WINDOW_RESOLUTION, TEXTURE_PACK, DEFAULT_FOV_W, DEFAULT_FOV_H, FULL_SCREEN
 from SupFuntions import load_image
 
 baseEdgesTex = np.array([(GL_ZERO, GL_ONE), (GL_ONE, GL_ONE), (GL_ONE, GL_ZERO), (GL_ZERO, GL_ZERO)], dtype=np.int16)
@@ -12,7 +12,11 @@ baseEdgesObj = np.array([(GL_ZERO, GL_ZERO), (GL_ONE, GL_ZERO), (GL_ONE, GL_ONE)
 
 
 def init_display(size=WINDOW_RESOLUTION):
-    pygame.display.set_mode(size, flags=pygame.OPENGL | pygame.DOUBLEBUF | pygame.HWSURFACE | pygame.SRCALPHA)
+    if not FULL_SCREEN:
+        pygame.display.set_mode(size, flags=pygame.OPENGL | pygame.DOUBLEBUF | pygame.HWSURFACE | pygame.SRCALPHA)
+    else:
+        pygame.display.set_mode(size, flags=pygame.OPENGL | pygame.DOUBLEBUF | pygame.HWSURFACE | pygame.SRCALPHA | pygame.FULLSCREEN)
+
     clear_display()
 
     glMatrixMode(GL_PROJECTION)
@@ -31,7 +35,7 @@ def clear_display():
 
 
 class Rect:
-    __slots__ = ['values', ]
+    __slots__ = ['values']
 
     def __init__(self, *args):
         self.values = np.array([*args], dtype=np.int32)
@@ -42,6 +46,7 @@ class Rect:
     def copy(self):
         return Rect(*self.values)
 
+    # center
     def getCenter(self):
         return self.values[0] + self.values[2] // 2, self.values[1] + self.values[3] // 2
 
@@ -49,11 +54,23 @@ class Rect:
         self.values[0] = center[0] - self.values[2] // 2
         self.values[1] = center[1] - self.values[3] // 2
 
+    # pos
+    def getPos(self):
+        return self.values[:2]
+
     def setY(self, y):
         self.values[1] = y
 
     def setX(self, x):
         self.values[0] = x
+    
+    def setPos(self, pos):
+        self.setX(pos[0])
+        self.setY(pos[1])
+
+    # size
+    def getSize(self):
+        return self.values[2:4]
 
     def setSize(self, w, h):
         self.values[2] = w
@@ -72,6 +89,11 @@ class GLObjectGroup(pygame.sprite.Group):
         if self.do_draw:
             for obj in self.sprites():
                 obj.draw()
+
+    def empty(self):
+        super().empty()
+        for obj in self.sprites():
+            obj.kill()
 
 
 class GlTexture:
@@ -153,7 +175,7 @@ class GlTexture:
         del self
 
 
-class GLObjectGUI(pygame.sprite.Sprite):
+class GLObjectBase(pygame.sprite.Sprite):
     textures: [GlTexture, ] = None
     texture = 0
     vertexesTex: np.array = None
@@ -169,8 +191,8 @@ class GLObjectGUI(pygame.sprite.Sprite):
         self.setTexture(self.texture)
 
         self.vertexesObj = [[i * rect[2], j * rect[3]] for i, j in baseEdgesObj]
-
         self.vertexesObj = np.array(self.vertexesObj, dtype=np.int32)
+
         self.rotation = rotation
 
     def __init_subclass__(cls, **kwargs):
@@ -209,7 +231,20 @@ class GLObjectGUI(pygame.sprite.Sprite):
             return
 
         self.rotation = rotation
-        self.vertexesTex = [self.vertexesTex[x - 1 + 2 * (x % 2 == 0)] for x in range(4)]
+        self.vertexesTex = [self.vertexesTex[j - 1 + 2 * (j % 2 == 0)] for j in range(4)]
+
+    def move(self, pos):
+        self.rect.setX(pos[0])
+        self.rect.setY(pos[1])
+
+    def move_by(self, vector):
+        pos = self.rect.getPos()
+        pos[0] += vector[0]
+        pos[1] += vector[1]
+
+    def delete(self):
+        print(f'deleted obj: {self}')
+        self.kill()
 
 
 class GLObjectComposite(pygame.sprite.Sprite):
@@ -277,5 +312,17 @@ def draw_end():
 
 def camera_apply(rect):
     global ortho_params
-    ortho_params = np.array([rect[0], rect[0] + rect[2],
-                             rect[1], rect[1] + rect[3]], dtype='float32')
+    ortho_params = np.array([rect[0], rect[0] + rect[2], rect[1], rect[1] + rect[3]], dtype='int16')
+
+
+def focus_camera_to(x, y, fov=None):
+    global ortho_params
+
+    if fov:
+        width = (WINDOW_RESOLUTION[0] * fov) // 2
+        height = (WINDOW_RESOLUTION[1] * fov) // 2
+    else:
+        width = DEFAULT_FOV_W
+        height = DEFAULT_FOV_H
+
+    ortho_params = np.array([x - width, x + width, y - height, y + height], dtype='int16')
