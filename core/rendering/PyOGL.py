@@ -7,11 +7,16 @@ import numpy as np
 from core.Constants import WINDOW_RESOLUTION, TEXTURE_PACK, DEFAULT_FOV_W, DEFAULT_FOV_H, FULL_SCREEN
 from SupFuntions import load_image
 
+from core.rendering.Shaders import create_shader
+shader_program = None
+
 baseEdgesTex = np.array([(GL_ZERO, GL_ONE), (GL_ONE, GL_ONE), (GL_ONE, GL_ZERO), (GL_ZERO, GL_ZERO)], dtype=np.int16)
 baseEdgesObj = np.array([(GL_ZERO, GL_ZERO), (GL_ONE, GL_ZERO), (GL_ONE, GL_ONE), (GL_ZERO, GL_ONE)], dtype=np.int16)
 
 
 def init_display(size=WINDOW_RESOLUTION):
+    global shader_program
+
     if not FULL_SCREEN:
         pygame.display.set_mode(size, flags=pygame.OPENGL | pygame.DOUBLEBUF | pygame.HWSURFACE | pygame.SRCALPHA)
     else:
@@ -27,6 +32,10 @@ def init_display(size=WINDOW_RESOLUTION):
     glEnable(GL_TEXTURE_2D)
     glEnable(GL_BLEND)
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+
+    #  Creating shader program that will be used for all rendering
+    shader_program = create_shader('vertex.glsl', 'fragment.glsl')
+    # shader_program.use()
 
 
 def clear_display():
@@ -151,7 +160,6 @@ class GlTexture:
         #  verObj, verTex - грани объекта и текстуры на это объекте
 
         draw_begin()
-
         glTranslate(pos[0], pos[1], GL_ZERO)
 
         #  ---
@@ -246,6 +254,9 @@ class GLObjectBase(pygame.sprite.Sprite):
         print(f'deleted obj: {self}')
         self.kill()
 
+    def getPos(self):
+        return self.rect[:2]
+
 
 class GLObjectComposite(pygame.sprite.Sprite):
     def __init__(self, group, *objects):
@@ -264,7 +275,7 @@ class GLObjectComposite(pygame.sprite.Sprite):
             obj.setRotation(rotation)
 
 
-#  Камерв
+#  Поле зрения. Camera
 ortho_params = ()
 
 
@@ -310,6 +321,7 @@ def draw_end():
     glDisable(GL_BLEND)
 
 
+# camera
 def camera_apply(rect):
     global ortho_params
     ortho_params = np.array([rect[0], rect[0] + rect[2], rect[1], rect[1] + rect[3]], dtype='int16')
@@ -326,3 +338,17 @@ def focus_camera_to(x, y, fov=None):
         height = DEFAULT_FOV_H
 
     ortho_params = np.array([x - width, x + width, y - height, y + height], dtype='int16')
+
+
+# draw
+def draw_line(start, end, color):
+    draw_begin()
+
+    glBegin(GL_LINES)
+
+    glVertex2f(*start)
+    glVertex2f(*end)
+
+    glEnd()
+
+    draw_end()

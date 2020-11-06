@@ -8,7 +8,7 @@ version = '0.0.1'
 clock: pg.time.Clock = None
 
 
-def main():
+def _main():
     global clock
 
     pg.init()
@@ -44,7 +44,7 @@ def game_loop():
 if __name__ == '__main__':
     GL.init_display(WINDOW_RESOLUTION)
 
-    main()
+    _main()
 
     import core.screens.menu as rmenu
     import core.screens.game as rgame

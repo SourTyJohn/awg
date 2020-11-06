@@ -77,11 +77,11 @@ def render():
             elif event.key == K_MENU_PRESS:
                 buttons[selected_button].pressed()
 
-    decoration.draw_all()
-    buttons_group.draw_all()
+    # decoration.draw_all()
+    # buttons_group.draw_all()
 
-    buttons_group.update(event)
-    decoration.update()
+    # buttons_group.update(event)
+    # decoration.update()
 
 
 class MainFrame(Gl.GLObjectBase):

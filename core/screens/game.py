@@ -1,5 +1,5 @@
 from core.physic.Physics import GLObjectGroup, applyPhysics, Vector2f
-from core.rendering.PyOGL import focus_camera_to
+from core.rendering.PyOGL import focus_camera_to, draw_line
 from core.objects.GameObjects import *
 from user.KeyMapping import *
 import pygame
