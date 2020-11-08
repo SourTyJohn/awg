@@ -33,6 +33,5 @@ VOLUME = 1
 BOUNCE = 0.2
 
 AIR_FRICTION = 1
-
 G = 2
 GRAVITY_VECTOR = Vector2f.xy(0, -G)

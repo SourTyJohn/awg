@@ -7,7 +7,7 @@ import numpy as np
 from core.Constants import WINDOW_RESOLUTION, TEXTURE_PACK, DEFAULT_FOV_W, DEFAULT_FOV_H, FULL_SCREEN
 from SupFuntions import load_image
 
-from core.rendering.Shaders import create_shader
+# from core.rendering.Shaders import create_shader
 shader_program = None
 
 baseEdgesTex = np.array([(GL_ZERO, GL_ONE), (GL_ONE, GL_ONE), (GL_ONE, GL_ZERO), (GL_ZERO, GL_ZERO)], dtype=np.int16)
@@ -20,7 +20,8 @@ def init_display(size=WINDOW_RESOLUTION):
     if not FULL_SCREEN:
         pygame.display.set_mode(size, flags=pygame.OPENGL | pygame.DOUBLEBUF | pygame.HWSURFACE | pygame.SRCALPHA)
     else:
-        pygame.display.set_mode(size, flags=pygame.OPENGL | pygame.DOUBLEBUF | pygame.HWSURFACE | pygame.SRCALPHA | pygame.FULLSCREEN)
+        pygame.display.set_mode(
+            size, flags=pygame.OPENGL | pygame.DOUBLEBUF | pygame.HWSURFACE | pygame.SRCALPHA | pygame.FULLSCREEN)
 
     clear_display()
 
@@ -34,7 +35,7 @@ def init_display(size=WINDOW_RESOLUTION):
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
 
     #  Creating shader program that will be used for all rendering
-    shader_program = create_shader('vertex.glsl', 'fragment.glsl')
+    # shader_program = create_shader('vertex.glsl', 'fragment.glsl')
     # shader_program.use()
 
 
@@ -67,11 +68,11 @@ class Rect:
     def getPos(self):
         return self.values[:2]
 
-    def setY(self, y):
-        self.values[1] = y
+    def setY(self, y_v):
+        self.values[1] = y_v
 
-    def setX(self, x):
-        self.values[0] = x
+    def setX(self, x_v):
+        self.values[0] = x_v
     
     def setPos(self, pos):
         self.setX(pos[0])
@@ -156,7 +157,7 @@ class GlTexture:
         return np.array([(self.size[0] * i, self.size[1] * j) for i, j in baseEdgesObj], dtype=np.int32)
 
     """actor - параметр, нужный только для анимаций"""
-    def draw(self, pos, ver_obj, ver_tex, actor=None, color=None):
+    def draw(self, pos, ver_obj, ver_tex, color, actor=None, ):
         #  verObj, verTex - грани объекта и текстуры на это объекте
 
         draw_begin()
@@ -165,6 +166,7 @@ class GlTexture:
         #  ---
         glBindTexture(GL_TEXTURE_2D, self.key)
         glEnable(GL_TEXTURE_2D)
+        glColor4f(*color)
 
         glBegin(GL_QUADS)
         for i in range(4):
@@ -191,7 +193,9 @@ class GLObjectBase(pygame.sprite.Sprite):
     center = None
     size = None
 
-    def __init__(self, group, rect: list, rotation=0, tex_offset=(0, 0)):
+    color: np.array
+
+    def __init__(self, group, rect: list, rotation=0, tex_offset=(0, 0), color=None):
         super().__init__(group)
 
         self.rect = Rect(*rect)
@@ -203,6 +207,10 @@ class GLObjectBase(pygame.sprite.Sprite):
 
         self.rotation = rotation
 
+        if color is None:
+            color = [1, 1, 1, 1]
+        self.setColor(*color)
+
     def __init_subclass__(cls, **kwargs):
         if cls.size and cls.center:
             cls.rect = Rect(0, 0, *cls.size)
@@ -213,8 +221,7 @@ class GLObjectBase(pygame.sprite.Sprite):
         self.rect.setCenter(to.rect.getCenter()[:])
 
     def draw(self, color=None):
-        self.__class__.textures[self.texture].\
-            draw(self.rect, self.vertexesObj, self.vertexesTex, color=color)
+        self.__class__.textures[self.texture].draw(self.rect, self.vertexesObj, self.vertexesTex, self.color)
 
     def changeOffset(self, offset):
         no_offset = [[i - self.tex_offset[0], j - self.tex_offset[1]] for i, j in baseEdgesTex]
@@ -240,6 +247,9 @@ class GLObjectBase(pygame.sprite.Sprite):
 
         self.rotation = rotation
         self.vertexesTex = [self.vertexesTex[j - 1 + 2 * (j % 2 == 0)] for j in range(4)]
+
+    def setColor(self, *args):
+        self.color = np.array([*args], dtype=np.float16)
 
     def move(self, pos):
         self.rect.setX(pos[0])
@@ -327,7 +337,7 @@ def camera_apply(rect):
     ortho_params = np.array([rect[0], rect[0] + rect[2], rect[1], rect[1] + rect[3]], dtype='int16')
 
 
-def focus_camera_to(x, y, fov=None):
+def focus_camera_to(x_v, y, fov=None):
     global ortho_params
 
     if fov:
@@ -337,18 +347,22 @@ def focus_camera_to(x, y, fov=None):
         width = DEFAULT_FOV_W
         height = DEFAULT_FOV_H
 
-    ortho_params = np.array([x - width, x + width, y - height, y + height], dtype='int16')
+    ortho_params = np.array([x_v - width, x_v + width, y - height, y + height], dtype='int16')
 
 
 # draw
 def draw_line(start, end, color):
     draw_begin()
+    glColor4f(*color)
 
     glBegin(GL_LINES)
-
     glVertex2f(*start)
     glVertex2f(*end)
-
     glEnd()
 
     draw_end()
+
+
+# def draw_texture(key, pos, ver_obj, ver_tex, color):
+#     pass
+#     # в sublime text'е сохранил

@@ -1,8 +1,10 @@
 from core.physic.Physics import GLObjectGroup, applyPhysics, Vector2f
-from core.rendering.PyOGL import focus_camera_to, draw_line
-from core.objects.GameObjects import *
+from core.rendering.PyOGL import focus_camera_to
+from core.Objects.GameObjects import *
 from user.KeyMapping import *
+
 import pygame
+from timeit import default_timer as timer
 
 
 background_gr = GLObjectGroup()
@@ -26,15 +28,21 @@ holding_keys = {
 }
 
 
+physic_end_time = timer()
+
+
 def render():
+    global physic_end_time
+
     exit_code = user_events()
     if exit_code:
         return exit_code
-
     update_hero_movement()
-    applyPhysics(1)
-    update_and_draw()
 
+    applyPhysics(delta_time=timer() - physic_end_time)
+    physic_end_time = timer()
+
+    update_and_draw()
     focus_camera_to(*hero.rect.getPos())
 
 

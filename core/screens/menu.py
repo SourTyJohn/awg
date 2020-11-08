@@ -2,6 +2,7 @@ from user.KeyMapping import K_CLOSE, K_MOVE_UP, K_MOVE_DOWN, K_MENU_PRESS
 
 from core.rendering.Textures import *
 from core.rendering.Textures import EssentialTextureStorage as Ets
+# from core.rendering.PyOGL import draw_texture
 
 
 decoration = Gl.GLObjectGroup()
@@ -77,11 +78,15 @@ def render():
             elif event.key == K_MENU_PRESS:
                 buttons[selected_button].pressed()
 
-    # decoration.draw_all()
-    # buttons_group.draw_all()
+    decoration.draw_all()
+    buttons_group.draw_all()
 
-    # buttons_group.update(event)
-    # decoration.update()
+    # h: MainFrame
+    # draw_texture(MainFrame.textures[0].key, np.array([0, 0], dtype=np.float32),
+    # h.vertexesObj, h.vertexesTex, (1, 1, 1, 1))
+
+    buttons_group.update(event)
+    decoration.update()
 
 
 class MainFrame(Gl.GLObjectBase):

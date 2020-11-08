@@ -49,6 +49,9 @@ class MainHero(Character):
     def draw(self, color=None):
         super().draw()
 
+    def addVelocity(self, vector):
+        super().addVelocity(vector)
+
 
 class WoodenCrate(GameObjectDynamic):
     textures = [Ets['LevelOne/r_tile_grey_1'], ]

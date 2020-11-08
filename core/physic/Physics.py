@@ -2,7 +2,9 @@
 from core.physic.Vector import Vector2f, LimitedVector2f
 from core.rendering.PyOGL import *
 from core.physic.Collision import collideResolutionFull
+
 from core.Constants import GRAVITY_VECTOR, AIR_FRICTION
+
 
 
 dynamicObjects = []
@@ -124,11 +126,16 @@ def applyPhysics(delta_time):
 
 def checkCollision():
     checked = set()
+    check = checked.add
+
+    all_objects = dynamicObjects + fixedObjects
+
     for obj1 in dynamicObjects:
 
-        checked.add(obj1)
+        check(obj1)
+        coll = obj1.collision
 
-        for obj2 in dynamicObjects + fixedObjects:
+        for obj2 in all_objects:
+
             if obj2 not in checked:
-
-                obj1.collision(obj2)
+                coll(obj2)
