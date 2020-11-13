@@ -1,5 +1,5 @@
 from pygame import transform
-from SupFuntions import load_image
+from utils.files import load_image
 
 
 # texture_packs = {}  # pack_name: [texture, texture...]
@@ -10,7 +10,7 @@ class Texture:
         self.name, self.pack = name, pack
         self.repeat = self.name[0] == 'r'
 
-        self.image = load_image(f'{pack}/{name}')[1]
+        self.image = load_image(name, pack=pack)[1]
         self.size = self.image.get_size()
         self.image = transform.scale(self.image, [x // 2 for x in self.size])
 
@@ -24,11 +24,5 @@ class Texture:
         return f'{self.pack}/{self.name}'
 
 
-textures = {'Devs/devs_1': Texture('Devs', 'devs_1.png'), }  # pack/name: texture,
+textures = {'Devs/r_devs_1': Texture('base_pack', 'Devs/r_devs_1.png'), }  # pack/name: texture,
 packs = set()
-
-
-# def load_texPack(full_name):
-#     textures = os.listdir(full_name)
-#     name = os.path.basename(full_name)
-#     texture_packs[name] = [Texture(name, tex) for tex in textures]

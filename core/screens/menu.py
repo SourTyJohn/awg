@@ -89,8 +89,12 @@ def render():
     decoration.update()
 
 
+def update(dt):
+    pass
+
+
 class MainFrame(Gl.GLObjectBase):
-    textures = [Ets['GUI/menu_frame'], ]
+    TEXTURES = [Ets['GUI/menu_frame'], ]
 
     def __init__(self):
         super().__init__(decoration, WINDOW_RECT)
@@ -98,7 +102,7 @@ class MainFrame(Gl.GLObjectBase):
 
 # ---- Buttons ----
 class ButtonText(Gl.GLObjectBase):
-    textures = [Ets[x] for x in [
+    TEXTURES = [Ets[x] for x in [
         'text:Новая игра', 'text:Загрузить игру', 'text:Сохранить игру', 'text:Настройки', 'text:Выйти'
     ]]
 
@@ -107,13 +111,13 @@ class ButtonText(Gl.GLObjectBase):
 
         super().__init__(text_group, Button.rect.copy())
 
-        self.vertexesObj = ButtonText.textures[number].makeVertexes()
-        self.rect.setSize(*ButtonText.textures[number].size)
+        self.vertexesObj = ButtonText.TEXTURES[number].makeVertexes()
+        self.rect.setSize(*ButtonText.TEXTURES[number].size)
 
 
 class Button(Gl.GLObjectBase):
     # 0 - Non Selected Button, 1 - Selected
-    textures = [Ets['GUI/button_menu_default'], Ets['GUI/button_menu_selected']]
+    TEXTURES = [Ets['GUI/button_menu_default'], Ets['GUI/button_menu_selected']]
 
     size = [720, 80]
     center = WINDOW_MIDDLE[:]

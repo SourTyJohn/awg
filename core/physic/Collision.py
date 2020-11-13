@@ -21,7 +21,7 @@ def collideCheck(r1, r2):
     return False
 
 
-def collideResolutionVector(r1, r2, d):
+def collideResolutionVector(d):
     minn, minn_side = None, 'None'
     """minn - penetration value, minn_side - penetration side"""
 
@@ -33,15 +33,15 @@ def collideResolutionVector(r1, r2, d):
 
     """resolution vector"""
     vector = [0, 0]
-    if not minn_side % 2:
-        vector[minn_side // 2] = minn
-    else:
+    if minn_side % 2:
         vector[minn_side // 2] = -minn
+    else:
+        vector[minn_side // 2] = minn
 
     return vector
 
 
-def collideResolutionFull(r1: list, obj1, r2: list, obj2):
+def collideResolutionFull(r1: list, obj1, r2: list, obj2, dt):
     """
     collide resolution with Minkowski difference
 
@@ -56,23 +56,34 @@ def collideResolutionFull(r1: list, obj1, r2: list, obj2):
         return
 
     # penetration vector
-    vector = Vector2f.xy(*collideResolutionVector(r1, r2, difference))
+    vector = Vector2f.xy(*collideResolutionVector(difference))
 
     if obj2.typeof() == 0:  # if obj2 is Fixed Object
-        collideResolutionObject(obj1, vector, 1)
+        collideResolutionObject(obj1, vector, 1, obj2, dt)
 
     else:
         delta = obj1.mass / obj2.mass
 
-        collideResolutionObject(obj1, vector, (1 / delta))
-        collideResolutionObject(obj2, -vector, delta)
+        # impulse_all = obj1.mass * obj1.velocity.get_length() + obj2.mass * obj2.velocity.get_length()
+        # impulse_unit = impulse_all / (obj1.mass + obj2.mass)
+        #
+        # impulse1 = impulse_unit * obj2.mass / obj1.mass
+        # impulse2 = impulse_unit * obj1.mass / obj2.mass
+
+        collideResolutionObject(obj1, vector, delta, obj2, dt)
+        collideResolutionObject(obj2, -vector, 1 / delta, obj1, dt)
 
 
-def collideResolutionObject(obj, vector, delta):
+def collideResolutionObject(obj, vector, delta, obj2, dt):
     obj.move_by(vector)
+    vel = obj.velocity
 
     if vector[1]:
-        obj.velocity.set_y(-obj.velocity[1] * delta * BOUNCE)
+        if vector[1] > 0:
+            obj.fell()
+        vel.set_y(-vel[1] * delta * BOUNCE)
 
     if vector[0]:
-        obj.velocity.set_x(-obj.velocity[0] * delta * BOUNCE)
+        vel.set_x(-vel[0] * delta * BOUNCE)
+
+    obj.friction_apply(dt, k=obj2.friction)

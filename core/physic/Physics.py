@@ -5,8 +5,6 @@ from core.physic.Collision import collideResolutionFull
 
 from core.Constants import GRAVITY_VECTOR, AIR_FRICTION
 
-
-
 dynamicObjects = []
 fixedObjects = []
 
@@ -26,7 +24,7 @@ class GameObjectFixed(GLObjectBase):
     hitbox: Hitbox = None
     size: list = None
 
-    friction: float = None
+    friction: float = 0
     bouncy: float = None
 
     def __init__(self, group, pos, size='default', rotation=1, tex_offset=(0, 0), texture=0, hitbox='default'):
@@ -91,21 +89,24 @@ class GameObjectDynamic(GameObjectFixed):
     # physic
     def physic(self, dt):  # dt - delta time from last call
         self._gravitation(dt=dt)
-        self._friction(dt=dt, k=AIR_FRICTION)
+        self.friction_apply(dt=dt, k=AIR_FRICTION)
         self._doMove(dt=dt)
 
     def _gravitation(self, dt, g=GRAVITY_VECTOR):
-        self.velocity.add(g)
+        self.velocity.add(g * dt)
 
-    def _friction(self, dt, k):
-        self.velocity.friction(k)
+    def friction_apply(self, dt, k):
+        self.velocity.friction(k * dt)
 
-    def collision(self, other):
-        collideResolutionFull(self.getHitboxRect(), self, other.getHitboxRect(), other)
+    def collision(self, other, dt):
+        collideResolutionFull(self.getHitboxRect(), self, other.getHitboxRect(), other, dt)
+
+    def fell(self):  # Called when object hitting the obstacle after falling
+        pass
 
     # movement
     def _doMove(self, dt):
-        self.move_by(self.velocity)
+        self.move_by(self.velocity * dt)
 
     def addVelocity(self, vector):
         if type(vector) != Vector2f:
@@ -117,14 +118,14 @@ class GameObjectDynamic(GameObjectFixed):
 
 
 # Main physics loop
-def applyPhysics(delta_time):
+def applyPhysics(hero, times=1):
+    hero.update(times)
     for obj in dynamicObjects:
-        obj.physic(delta_time)
+        obj.physic(times)
+    checkCollision(times)
 
-    checkCollision()
 
-
-def checkCollision():
+def checkCollision(delta_time):
     checked = set()
     check = checked.add
 
@@ -138,4 +139,4 @@ def checkCollision():
         for obj2 in all_objects:
 
             if obj2 not in checked:
-                coll(obj2)
+                coll(obj2, delta_time)

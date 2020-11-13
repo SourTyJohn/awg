@@ -1,8 +1,8 @@
 import pygame as pg
-import SupFuntions as Sf
+import utils.files as files
 from _MapTools.LoadSaveLevels import load, save
 from easygui import fileopenbox
-from os.path import basename, dirname
+from os.path import basename, dirname, join
 
 
 # Main preparations
@@ -59,7 +59,7 @@ show_textures = 1
 
 # Quill Data. [rect/focus, rect types: solid/back/front]
 quill = ['rect', 'solid']
-current_texture = textures['Devs/devs_1']
+current_texture = textures['Devs/r_devs_1']
 
 
 class Cursor(pg.sprite.Sprite):
@@ -357,9 +357,12 @@ class ButtonsFunctions:
     def add_texture(cls):
         global current_texture
 
-        file_path = fileopenbox(title='select texture', default=Sf.get_full_path('data/Textures'), filetypes=["*.png"])
-        pack = basename(dirname(file_path))
-        texture = basename(file_path)
+        file_path = fileopenbox(title='select texture', default=files.get_full_path('data/Textures'), filetypes=["*.png"])
+
+        pack = basename(dirname(dirname(file_path)))
+        texture = join(basename(dirname(file_path)), basename(file_path))
+
+        print(pack, texture)
 
         name, current_texture = addTexture(pack, texture)
 
@@ -375,7 +378,7 @@ def addTexture(pack, texture):
 
 
 class _EditorButton(pg.sprite.Sprite):
-    image = Sf.load_image('GUI/button_menu_default.png')[1]
+    image = files.load_image('GUI/button_menu_default.png', pack='base_pack')[1]
     size = [86, 16]
     image = pg.transform.scale(image, size)
     font = pg.font.SysFont('Arial Black', 12)

@@ -1,11 +1,12 @@
 import pygame as pg
 import core.rendering.PyOGL as GL
-from core.Constants import WINDOW_RESOLUTION, GAME_FPS, TITLE
+from core.Constants import WINDOW_RESOLUTION, FPS_LOCK, TITLE
+from timeit import default_timer as timer
 
 
-version = '0.0.1'
+version = '0.2.1'
 
-clock: pg.time.Clock = None
+clock: pg.time.Clock
 
 
 def _main():
@@ -15,6 +16,7 @@ def _main():
     pg.display.set_caption(TITLE)
     pg.mixer.init(channels=3)
     pg.mouse.set_visible(False)
+    pg.event.set_allowed([pg.QUIT, pg.KEYDOWN, pg.KEYUP])
     clock = pg.time.Clock()
 
 
@@ -24,10 +26,15 @@ screen_type = 'menu'
 
 def game_loop():
     global running, screen_type
+    start_time = timer()
 
     GL.clear_display()
 
-    exit_code = screens[screen_type].render()
+    scr = screens[screen_type]
+    exit_code = scr.render()
+
+    clock.tick(FPS_LOCK)
+    scr.update(timer() - start_time)
 
     if exit_code in ('menu', 'game'):
         if exit_code != screen_type:
@@ -37,7 +44,6 @@ def game_loop():
     elif exit_code == 'Quit':
         running = False
 
-    clock.tick(GAME_FPS)
     pg.display.flip()
 
 

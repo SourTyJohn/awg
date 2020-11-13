@@ -2,9 +2,9 @@ from core.physic.Physics import GLObjectGroup, applyPhysics, Vector2f
 from core.rendering.PyOGL import focus_camera_to
 from core.Objects.GameObjects import *
 from user.KeyMapping import *
+from core.Constants import PHYSIC_UPDATE_FREQUENCY
 
 import pygame
-from timeit import default_timer as timer
 
 
 background_gr = GLObjectGroup()
@@ -28,22 +28,34 @@ holding_keys = {
 }
 
 
-physic_end_time = timer()
-
-
 def render():
     global physic_end_time
+    focus_camera_to(*hero.rect.getPos())
 
     exit_code = user_events()
     if exit_code:
         return exit_code
-    update_hero_movement()
 
-    applyPhysics(delta_time=timer() - physic_end_time)
-    physic_end_time = timer()
+    draw_groups()
 
-    update_and_draw()
-    focus_camera_to(*hero.rect.getPos())
+
+def update(dt):
+    if dt > PHYSIC_UPDATE_FREQUENCY:
+        d = dt / PHYSIC_UPDATE_FREQUENCY
+        for _ in range(int(d)):
+
+            update_groups()
+            applyPhysics(hero)
+
+        d = d % 1
+        update_groups(d)
+        applyPhysics(hero, d)
+
+    else:
+        update_groups()
+        applyPhysics(hero)
+
+    update_groups()
 
 
 def user_events():
@@ -58,7 +70,7 @@ def user_events():
                 holding_keys[key] = True
 
             elif key == K_MOVE_JUMP:
-                hero.addVelocity([0, 36])
+                hero.jump()
 
             elif key == K_CLOSE:
                 close()
@@ -70,34 +82,38 @@ def user_events():
             if key in holding_keys.keys():
                 holding_keys[key] = False
 
+    update_hero_movement()
+
     return None
 
 
-def update_and_draw():
-    background_gr.update()
-    obstacles_gr.update()
-    characters_gr.update()
-    player_gr.update()
-    triggers_gr.update()
+def update_hero_movement():
+    if holding_keys[K_MOVE_RIGHT]:
+        hero.walk_direction = 1
 
+    elif holding_keys[K_MOVE_LEFT]:
+        hero.walk_direction = -1
+
+    else:
+        hero.walk_direction = 0
+
+
+def draw_groups():
     background_gr.draw_all()
     obstacles_gr.draw_all()
     characters_gr.draw_all()
     player_gr.draw_all()
 
 
-def update_hero_movement():
-    if holding_keys[K_MOVE_RIGHT]:
-        hero.walk(Vector2f.xy(2, 0))
-
-    if holding_keys[K_MOVE_LEFT]:
-        hero.walk(Vector2f.xy(-2, 0))
+def update_groups(dt=1):
+    characters_gr.update(dt)
+    triggers_gr.update(dt)
 
 
 def init_screen(hero_life=False, first_load=False):
     global hero, hero_inited
 
-    WorldRectangle(obstacles_gr, [-200, 100], [2500, 200])
+    WorldRectangle(obstacles_gr, [-1000, 100], [5500, 200])
     WorldRectangle(obstacles_gr, [800, 300], [80, 400])
     WorldRectangle(obstacles_gr, [500, 500], [800, 40])
 
@@ -105,6 +121,8 @@ def init_screen(hero_life=False, first_load=False):
     WoodenCrate(obstacles_gr, [600, 800])
     WoodenCrate(obstacles_gr, [600, 900])
     WoodenCrate(obstacles_gr, [600, 600])
+
+    MetalCrate(obstacles_gr, [1000, 400])
 
     if not hero_inited:
         hero = MainHero(player_gr, [250, 400])

@@ -5,7 +5,7 @@ from OpenGL.GLU import *
 import numpy as np
 
 from core.Constants import WINDOW_RESOLUTION, TEXTURE_PACK, DEFAULT_FOV_W, DEFAULT_FOV_H, FULL_SCREEN
-from SupFuntions import load_image
+from utils.files import load_image
 
 # from core.rendering.Shaders import create_shader
 shader_program = None
@@ -186,8 +186,9 @@ class GlTexture:
 
 
 class GLObjectBase(pygame.sprite.Sprite):
-    textures: [GlTexture, ] = None
+    TEXTURES: [GlTexture, ] = None
     texture = 0
+
     vertexesTex: np.array = None
 
     center = None
@@ -221,7 +222,7 @@ class GLObjectBase(pygame.sprite.Sprite):
         self.rect.setCenter(to.rect.getCenter()[:])
 
     def draw(self, color=None):
-        self.__class__.textures[self.texture].draw(self.rect, self.vertexesObj, self.vertexesTex, self.color)
+        self.__class__.TEXTURES[self.texture].draw(self.rect, self.vertexesObj, self.vertexesTex, self.color)
 
     def changeOffset(self, offset):
         no_offset = [[i - self.tex_offset[0], j - self.tex_offset[1]] for i, j in baseEdgesTex]
@@ -230,7 +231,7 @@ class GLObjectBase(pygame.sprite.Sprite):
 
     def setTexture(self, number: int):
         self.texture = number
-        tex = self.__class__.textures[number]
+        tex = self.__class__.TEXTURES[number]
 
         v, h = 1, 1
         if tex.repeat:
