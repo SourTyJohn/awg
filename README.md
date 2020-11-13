@@ -5,12 +5,18 @@
     Metroidvania (side-view adventure)
     Yet another awg, but this time with no mistakes, that were in previous games
     
+    FILES
+    ____________________________________________
     game                 main.py
+    ____________________________________________
     level editor        _MapTools/WorldEditor.py
+    ____________________________________________
     sprite manager
-    animations cooker
+    ____________________________________________
+    animations cooker   utils/cookAnimations.py
+    ____________________________________________
     
 -
     
     VERSION
-    version 0.2.3
+    version 0.3

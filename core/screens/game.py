@@ -1,4 +1,4 @@
-from core.physic.Physics import GLObjectGroup, applyPhysics, Vector2f
+from core.physic.Physics import GLObjectGroup, applyPhysics
 from core.rendering.PyOGL import focus_camera_to
 from core.Objects.GameObjects import *
 from user.KeyMapping import *
@@ -29,7 +29,6 @@ holding_keys = {
 
 
 def render():
-    global physic_end_time
     focus_camera_to(*hero.rect.getPos())
 
     exit_code = user_events()
@@ -41,15 +40,15 @@ def render():
 
 def update(dt):
     if dt > PHYSIC_UPDATE_FREQUENCY:
-        d = dt / PHYSIC_UPDATE_FREQUENCY
-        for _ in range(int(d)):
+        t = dt / PHYSIC_UPDATE_FREQUENCY
+        for _ in range(int(t)):
 
             update_groups()
             applyPhysics(hero)
 
-        d = d % 1
-        update_groups(d)
-        applyPhysics(hero, d)
+        t = t % 1
+        update_groups(t)
+        applyPhysics(hero, t)
 
     else:
         update_groups()

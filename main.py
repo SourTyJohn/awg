@@ -4,8 +4,6 @@ from core.Constants import WINDOW_RESOLUTION, FPS_LOCK, TITLE
 from timeit import default_timer as timer
 
 
-version = '0.2.1'
-
 clock: pg.time.Clock
 
 
