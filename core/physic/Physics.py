@@ -1,9 +1,10 @@
 # import numpy as np
 from core.physic.Vector import Vector2f, LimitedVector2f
 from core.rendering.PyOGL import *
-from core.physic.Collision import collideResolutionFull
+from core.physic.Collision import collideResolutionFull, collideCheckAABB
 
-from core.Constants import GRAVITY_VECTOR, AIR_FRICTION
+from core.Constants import GRAVITY_VECTOR, AIR_FRICTION, RENDER_RECT_FOR_DYNAMIC, RENDER_RECT_FOR_FIXED
+render_rect_d, render_rect_f = Rect(*RENDER_RECT_FOR_DYNAMIC), Rect(*RENDER_RECT_FOR_FIXED)
 
 dynamicObjects = []
 fixedObjects = []
@@ -76,6 +77,9 @@ class GameObjectDynamic(GameObjectFixed):
         else:
             self.velocity = Vector2f.xy(0, 0)
 
+        # if False, object wont .update() and .physic()
+        self.updating = True
+
     @staticmethod
     def typeof():
         return 1
@@ -117,22 +121,51 @@ class GameObjectDynamic(GameObjectFixed):
         return self.velocity
 
 
-# Main physics loop
-def applyPhysics(hero, times=1):
-    hero.update(times)
+def startPhysics(hero):
+    center = hero.rect.getCenter()
+    re_f = render_rect_f
+    re_f.setCenter(center)
+    re_d = render_rect_d
+    re_d.setCenter(center)
+
+    dynamic = []
+    add = dynamic.append
+
     for obj in dynamicObjects:
+        if collideCheckAABB(obj.rect, re_d):
+            add(obj)
+            obj.visible = True
+        else:
+            obj.visible = False
+
+    fixed = []
+    add = fixed.append
+
+    for obj in fixedObjects:
+        if collideCheckAABB(obj.rect, re_f):
+            add(obj)
+            obj.visible = True
+        else:
+            obj.visible = False
+
+    return fixed, dynamic
+
+
+# Main physics loop
+def applyPhysics(f, d, hero, times=1):
+    hero.update(times)
+    for obj in d:
         obj.physic(times)
-    checkCollision(times)
+    checkCollision(f, d, times)
 
 
-def checkCollision(delta_time):
+def checkCollision(f, d, delta_time):
     checked = set()
     check = checked.add
 
-    all_objects = dynamicObjects + fixedObjects
+    all_objects = d + f
 
-    for obj1 in dynamicObjects:
-
+    for obj1 in d:
         check(obj1)
         coll = obj1.collision
 

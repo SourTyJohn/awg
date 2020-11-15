@@ -1,4 +1,4 @@
-from core.physic.Physics import GLObjectGroup, applyPhysics
+from core.physic.Physics import GLObjectGroup, applyPhysics, startPhysics
 from core.rendering.PyOGL import focus_camera_to
 from core.Objects.GameObjects import *
 from user.KeyMapping import *
@@ -39,20 +39,23 @@ def render():
 
 
 def update(dt):
+    h = hero
+    f, d = startPhysics(h)
+
     if dt > PHYSIC_UPDATE_FREQUENCY:
         t = dt / PHYSIC_UPDATE_FREQUENCY
         for _ in range(int(t)):
 
             update_groups()
-            applyPhysics(hero)
+            applyPhysics(f, d, h)
 
         t = t % 1
         update_groups(t)
-        applyPhysics(hero, t)
+        applyPhysics(f, d, h, t)
 
     else:
         update_groups()
-        applyPhysics(hero)
+        applyPhysics(f, d, h)
 
     update_groups()
 
@@ -127,6 +130,11 @@ def init_screen(hero_life=False, first_load=False):
         hero = MainHero(player_gr, [250, 400])
         hero.addVelocity([50, 0])
         hero_inited = True
+
+    WorldRectangle(obstacles_gr, [-500, 300], [500, 10])
+    WorldRectangle(obstacles_gr, [-500, 310], [460, 10])
+    a = WorldRectangle(obstacles_gr, [-500, 320], [420, 10])
+    a.bouncy = 1
 
 
 def close():

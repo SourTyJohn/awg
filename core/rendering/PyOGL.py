@@ -17,11 +17,11 @@ baseEdgesObj = np.array([(GL_ZERO, GL_ZERO), (GL_ONE, GL_ZERO), (GL_ONE, GL_ONE)
 def init_display(size=WINDOW_RESOLUTION):
     global shader_program
 
-    if not FULL_SCREEN:
-        pygame.display.set_mode(size, flags=pygame.OPENGL | pygame.DOUBLEBUF | pygame.HWSURFACE | pygame.SRCALPHA)
-    else:
-        pygame.display.set_mode(
-            size, flags=pygame.OPENGL | pygame.DOUBLEBUF | pygame.HWSURFACE | pygame.SRCALPHA | pygame.FULLSCREEN)
+    flags = pygame.OPENGL | pygame.DOUBLEBUF | pygame.HWSURFACE | pygame.SRCALPHA
+
+    if FULL_SCREEN:
+        flags |= pygame.FULLSCREEN
+    pygame.display.set_mode(size, flags=flags)
 
     clear_display()
 
@@ -45,7 +45,7 @@ def clear_display():
 
 
 class Rect:
-    __slots__ = ['values']
+    __slots__ = ['values', ]
 
     def __init__(self, *args):
         self.values = np.array([*args], dtype=np.int32)
@@ -107,6 +107,7 @@ class GLObjectGroup(pygame.sprite.Group):
 
 
 class GlTexture:
+    __slots__ = ['size', 'key', 'repeat', 'name']
     """vertexes - numpy массив всех вершин квадрата на котором будет текстура
        edges    - numpy массив всех граней этого квадрата. Он одинаков для всех картинок"""
 
@@ -212,6 +213,8 @@ class GLObjectBase(pygame.sprite.Sprite):
             color = [1, 1, 1, 1]
         self.setColor(*color)
 
+        self.visible = True
+
     def __init_subclass__(cls, **kwargs):
         if cls.size and cls.center:
             cls.rect = Rect(0, 0, *cls.size)
@@ -222,7 +225,8 @@ class GLObjectBase(pygame.sprite.Sprite):
         self.rect.setCenter(to.rect.getCenter()[:])
 
     def draw(self, color=None):
-        self.__class__.TEXTURES[self.texture].draw(self.rect, self.vertexesObj, self.vertexesTex, self.color)
+        if self.visible:
+            self.__class__.TEXTURES[self.texture].draw(self.rect, self.vertexesObj, self.vertexesTex, self.color)
 
     def changeOffset(self, offset):
         no_offset = [[i - self.tex_offset[0], j - self.tex_offset[1]] for i, j in baseEdgesTex]

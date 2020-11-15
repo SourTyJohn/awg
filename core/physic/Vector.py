@@ -13,6 +13,18 @@ class Vector2f:
 
     ###
 
+    def __add__(self, other):
+        assert type(other) in (Vector2f, LimitedVector2f)
+        return Vector2f(self.values + other.values)
+
+    def __sub__(self, other):
+        assert type(other) in (int, float)
+        if self.values[0]:
+            self.values[0] -= other
+        if self.values[1]:
+            self.values[1] -= other
+        return self
+
     # Vector2f + Vector2f
     def sum(self, other):
         return Vector2f(self.values + other.values)
@@ -27,6 +39,9 @@ class Vector2f:
 
     def __floordiv__(self, other):
         return Vector2f(self.values // 2)
+
+    def __truediv__(self, other):
+        return Vector2f(self.values / 2)
 
     # Vector2f - Vector2f
     def difference(self, other):
@@ -84,6 +99,9 @@ class Vector2f:
     def __bool__(self):
         return any(self.values)
 
+    def copy(self):
+        return Vector2f(self.values)
+
     # physic
     def friction(self, amount):
         if amount > self.get_length():
@@ -98,6 +116,9 @@ class LimitedVector2f(Vector2f):
     def __init__(self, x, y, limit):
         super().__init__(np.array([x, y], dtype=np.float16))
         self.limit = limit
+
+    def copy(self):
+        return LimitedVector2f(*self.values, self.limit)
 
     def add(self, other):
         summ = self.sum(other)
@@ -120,3 +141,7 @@ def operation_module(x, y, operation=1):
             x += y
 
     return x
+
+
+def distance(rect1, rect2):
+    return (rect1.getCenter() ** 2 + rect2.getCenter() ** 2) ** 0.5

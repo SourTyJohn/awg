@@ -1,8 +1,15 @@
 from core.physic.Vector import Vector2f
-from core.Constants import BOUNCE, G
+from core.Constants import BOUNCE
+
+
+def collideCheckAABB(rect1, rect2):
+    #  simple AABB collision test. Used to choose should object be rendered and updated
+    return rect1[0] < rect2[0] + rect2[2] and rect1[0] + rect1[2] > rect2[0] and\
+           rect1[1] < rect2[1] + rect2[3] and rect1[1] + rect1[3] > rect2[1]
 
 
 def getMinkovskiDifference(r1, r2):
+    #  get minkowski difference for two rectangles
     difference = [
         r1[0] - (r2[0] + r2[2]),
         (r1[0] + r1[2]) - r2[0],
@@ -16,7 +23,7 @@ def getMinkovskiDifference(r1, r2):
 def collideCheck(r1, r2):
     d = getMinkovskiDifference(r1, r2)
 
-    if d[0] <= 0 <= d[1] and d[2] <= 0 <= d[3]:
+    if d[0] < 0 < d[1] and d[2] < 0 < d[3]:
         return d
     return False
 
@@ -58,32 +65,27 @@ def collideResolutionFull(r1: list, obj1, r2: list, obj2, dt):
     # penetration vector
     vector = Vector2f.xy(*collideResolutionVector(difference))
 
-    if obj2.typeof() == 0:  # if obj2 is Fixed Object
-        collideResolutionObject(obj1, vector, 1, obj2, dt)
+    if obj2.typeof() == 0:
+        #  dynamic vs fixed collision
+        collideResolutionObject(obj1, vector, obj2, dt)
 
     else:
-        delta = obj1.mass / obj2.mass
-
-        # impulse_all = obj1.mass * obj1.velocity.get_length() + obj2.mass * obj2.velocity.get_length()
-        # impulse_unit = impulse_all / (obj1.mass + obj2.mass)
-        #
-        # impulse1 = impulse_unit * obj2.mass / obj1.mass
-        # impulse2 = impulse_unit * obj1.mass / obj2.mass
-
-        collideResolutionObject(obj1, vector, delta, obj2, dt)
-        collideResolutionObject(obj2, -vector, 1 / delta, obj1, dt)
+        #  dynamic vs dynamic collision
+        mass = obj1.mass + obj2.mass
+        collideResolutionObject(obj1, vector * (obj2.mass / mass), obj2, dt)
+        collideResolutionObject(obj2, -vector * (obj1.mass / mass), obj1, dt)
 
 
-def collideResolutionObject(obj, vector, delta, obj2, dt):
-    obj.move_by(vector)
+def collideResolutionObject(obj, move_vector, obj2, dt):
+    obj.move_by(move_vector)
     vel = obj.velocity
 
-    if vector[1]:
-        if vector[1] > 0:
+    if move_vector[1]:
+        if move_vector[1] > 0:
             obj.fell()
-        vel.set_y(-vel[1] * delta * BOUNCE)
+        vel.set_y(-vel[1] * BOUNCE)
 
-    if vector[0]:
-        vel.set_x(-vel[0] * delta * BOUNCE)
+    elif move_vector[0]:
+        vel.set_x(-vel[0] * BOUNCE)
 
     obj.friction_apply(dt, k=obj2.friction)

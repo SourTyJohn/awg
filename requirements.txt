@@ -1,7 +1,7 @@
-Pillow==8.0.1
+Pillow==8.0.1  # only for cookAnimations module
 PyOpenGL==3.1.5
-easygui==0.98.1
-freetype-py==2.2.0
+easygui==0.98.1  # only for _mapTools module
+# freetype-py==2.2.0  UNUSED
 numpy==1.19.4
 pip==20.2.4
 pygame==2.0.0

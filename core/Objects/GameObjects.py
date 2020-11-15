@@ -78,6 +78,9 @@ class Character(dynamic):
         self.walk_direction = 0  # may be -1 - move to  the left, 0 - standing, 1 - move to the right
         self.walking_speed = self.__class__.WALKING_SPEED
 
+        self.grab_distance = 60
+        self.grabbed_object = None
+
     def walk(self, direction):
         self.walkVelocity.add(direction)
 
@@ -95,6 +98,13 @@ class Character(dynamic):
     def update(self, *args, **kwargs) -> None:
         #  args[0] - delta_time
         self.walk(Vector2f.xy(self.walking_speed * self.walk_direction * args[0], 0))
+
+        #  grabbed object update
+        if self.grabbed_object:
+            pass
+
+    def grab(self, target):
+        self.grabbed_object = object
 
 #
 
@@ -114,7 +124,7 @@ class MainHero(Character, d, m):
     hitbox = Hitbox([0, 0], size)
 
     #  dynamic
-    mass = 40
+    mass = 1
 
     #  mortal
     max_health = 200
@@ -148,7 +158,7 @@ class WoodenCrate(dynamic, d, m):
     hitbox = Hitbox([0, 0], size)
 
     # dynamic
-    mass = 10
+    mass = 1
 
     # mortal
     max_health = 10
@@ -164,7 +174,7 @@ class WoodenCrate(dynamic, d, m):
 
 class MetalCrate(WoodenCrate, d, m):
     TEXTURES = [Ets['LevelOne/r_orange_bricks_1'], ]
-    mass = 1000
+    mass = 1
 
 
 #
