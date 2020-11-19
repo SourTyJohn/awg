@@ -10,12 +10,14 @@ MAIN_DIRECTORY = dirname(dirname(__file__))
 TEXTURES_DIRECTORY = join(MAIN_DIRECTORY, 'data/Textures')
 ANIMATIONS_DIRECTORY = join(MAIN_DIRECTORY, 'data/Animations')
 SHADERS_DIRECTORY = join(MAIN_DIRECTORY, 'data/Shaders')
+DLLS_DIRECTORY = join(MAIN_DIRECTORY, 'data/DLLs')
 
 
 DIRECTORIES = {'main': MAIN_DIRECTORY,
                'tex': TEXTURES_DIRECTORY,
                'anm': ANIMATIONS_DIRECTORY,
-               'shd': SHADERS_DIRECTORY}
+               'shd': SHADERS_DIRECTORY,
+               'dll': DLLS_DIRECTORY}
 
 
 ERROR_TEXTURE_FILE = join(TEXTURES_DIRECTORY, 'error.png')

@@ -124,7 +124,7 @@ class MainHero(Character, d, m):
     hitbox = Hitbox([0, 0], size)
 
     #  dynamic
-    mass = 1
+    mass = 2
 
     #  mortal
     max_health = 200
@@ -174,7 +174,7 @@ class WoodenCrate(dynamic, d, m):
 
 class MetalCrate(WoodenCrate, d, m):
     TEXTURES = [Ets['LevelOne/r_orange_bricks_1'], ]
-    mass = 1
+    mass = 10
 
 
 #

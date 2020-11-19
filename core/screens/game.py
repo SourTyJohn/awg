@@ -1,5 +1,5 @@
-from core.physic.Physics import GLObjectGroup, applyPhysics, startPhysics
-from core.rendering.PyOGL import focus_camera_to
+from core.physic.Physics import physicsStep, startPhysics
+from core.rendering.PyOGL import focus_camera_to, GLObjectGroup
 from core.Objects.GameObjects import *
 from user.KeyMapping import *
 from core.Constants import PHYSIC_UPDATE_FREQUENCY
@@ -47,15 +47,15 @@ def update(dt):
         for _ in range(int(t)):
 
             update_groups()
-            applyPhysics(f, d, h)
+            physicsStep(f, d, h)
 
         t = t % 1
         update_groups(t)
-        applyPhysics(f, d, h, t)
+        physicsStep(f, d, h, t)
 
     else:
         update_groups()
-        applyPhysics(f, d, h)
+        physicsStep(f, d, h)
 
     update_groups()
 
@@ -123,6 +123,16 @@ def init_screen(hero_life=False, first_load=False):
     WoodenCrate(obstacles_gr, [600, 800])
     WoodenCrate(obstacles_gr, [600, 900])
     WoodenCrate(obstacles_gr, [600, 600])
+
+    WoodenCrate(obstacles_gr, [700, 700])
+    WoodenCrate(obstacles_gr, [700, 800])
+    WoodenCrate(obstacles_gr, [700, 900])
+    WoodenCrate(obstacles_gr, [700, 600])
+
+    WoodenCrate(obstacles_gr, [500, 700])
+    WoodenCrate(obstacles_gr, [500, 800])
+    WoodenCrate(obstacles_gr, [500, 900])
+    WoodenCrate(obstacles_gr, [500, 600])
 
     MetalCrate(obstacles_gr, [1000, 400])
 

@@ -1,10 +1,12 @@
 # import numpy as np
 from core.physic.Vector import Vector2f, LimitedVector2f
 from core.rendering.PyOGL import *
-from core.physic.Collision import collideResolutionFull, collideCheckAABB
-
+import core.physic.Collision as Cll
 from core.Constants import GRAVITY_VECTOR, AIR_FRICTION, RENDER_RECT_FOR_DYNAMIC, RENDER_RECT_FOR_FIXED
 render_rect_d, render_rect_f = Rect(*RENDER_RECT_FOR_DYNAMIC), Rect(*RENDER_RECT_FOR_FIXED)
+
+# from data.DLLs.DLL import dll_collision
+
 
 dynamicObjects = []
 fixedObjects = []
@@ -50,6 +52,9 @@ class GameObjectFixed(GLObjectBase):
         self.bouncy = self.__class__.bouncy
 
         self.connect()
+        
+        # const
+        self.fixedAxises = (True, True, True, True)
 
     @staticmethod
     def typeof():
@@ -79,6 +84,8 @@ class GameObjectDynamic(GameObjectFixed):
 
         # if False, object wont .update() and .physic()
         self.updating = True
+        
+        self.fixedAxises = [False, False, False, False]
 
     @staticmethod
     def typeof():
@@ -101,9 +108,6 @@ class GameObjectDynamic(GameObjectFixed):
 
     def friction_apply(self, dt, k):
         self.velocity.friction(k * dt)
-
-    def collision(self, other, dt):
-        collideResolutionFull(self.getHitboxRect(), self, other.getHitboxRect(), other, dt)
 
     def fell(self):  # Called when object hitting the obstacle after falling
         pass
@@ -132,7 +136,7 @@ def startPhysics(hero):
     add = dynamic.append
 
     for obj in dynamicObjects:
-        if collideCheckAABB(obj.rect, re_d):
+        if Cll.CheckAABB(obj.rect, re_d):
             add(obj)
             obj.visible = True
         else:
@@ -142,7 +146,7 @@ def startPhysics(hero):
     add = fixed.append
 
     for obj in fixedObjects:
-        if collideCheckAABB(obj.rect, re_f):
+        if Cll.CheckAABB(obj.rect, re_f):
             add(obj)
             obj.visible = True
         else:
@@ -152,7 +156,7 @@ def startPhysics(hero):
 
 
 # Main physics loop
-def applyPhysics(f, d, hero, times=1):
+def physicsStep(f, d, hero, times=1):
     hero.update(times)
     for obj in d:
         obj.physic(times)
@@ -160,16 +164,4 @@ def applyPhysics(f, d, hero, times=1):
 
 
 def checkCollision(f, d, delta_time):
-    checked = set()
-    check = checked.add
-
-    all_objects = d + f
-
-    for obj1 in d:
-        check(obj1)
-        coll = obj1.collision
-
-        for obj2 in all_objects:
-
-            if obj2 not in checked:
-                coll(obj2, delta_time)
+    Cll.Step(f, d, delta_time)

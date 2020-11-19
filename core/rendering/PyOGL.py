@@ -48,7 +48,7 @@ class Rect:
     __slots__ = ['values', ]
 
     def __init__(self, *args):
-        self.values = np.array([*args], dtype=np.int32)
+        self.values = np.array([*args], dtype=np.int64)
 
     def __getitem__(self, item):
         return self.values[item]
