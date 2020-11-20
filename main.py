@@ -1,6 +1,6 @@
 import pygame as pg
 import core.rendering.PyOGL as GL
-from core.Constants import WINDOW_RESOLUTION, FPS_LOCK, TITLE, DEBUG
+from core.Constants import WINDOW_RESOLUTION, FPS_LOCK, TITLE, FPS_SHOW
 from timeit import default_timer as timer
 
 
@@ -36,7 +36,7 @@ def game_loop():
     dt = timer() - start_time
     scr.update(dt)
 
-    if DEBUG:  # current FPS display
+    if FPS_SHOW:  # current FPS display
         print(f'\rFPS: {1 / (timer() - start_time) // 1}', end='')
 
     if exit_code in ('menu', 'game'):

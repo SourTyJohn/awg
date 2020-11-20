@@ -1,37 +1,76 @@
-# import numpy as np
 from core.physic.Vector import Vector2f, LimitedVector2f
-from core.rendering.PyOGL import *
+
 import core.physic.Collision as Cll
+from data.DLLs.DLL import dll_collision
+
+from core.rendering.PyOGL import *
+
 from core.Constants import GRAVITY_VECTOR, AIR_FRICTION, RENDER_RECT_FOR_DYNAMIC, RENDER_RECT_FOR_FIXED
 render_rect_d, render_rect_f = Rect(*RENDER_RECT_FOR_DYNAMIC), Rect(*RENDER_RECT_FOR_FIXED)
-
-from data.DLLs.DLL import dll_collision
 
 
 #  storage for all game objects {id: object, }
 #  all the dynamic objects have odd int as id, all fixed have even int id's
+#  empty ids store ids of objects that were vanished. Those ids can be reused
 dynamicObjects = {}
+empty_ids_dynamic = set()
+
 fixedObjects = {}
+empty_ids_fixed = set()
 
 
-def get_all_hitboxes():
+#  get hitbox from every object dynamic, fixed objects lists
+def get_all_hitboxes(dynamic: list, fixed: list) -> list:
     hitboxes = []
     add = hitboxes.append
 
-    for o in dynamicObjects.values():
-        add(o.hitbox.getRect(o.rect.getPos()))
+    for obj in dynamic:
+        add(obj.hitbox.getRect(obj.rect.getPos()))
 
-    for o in fixedObjects.values():
-        add(o.hitbox.getRect(o.rect.getPos()))
+    for obj in fixed:
+        add(obj.hitbox.getRect(obj.rect.getPos()))
 
     return hitboxes
 
 
-def vanish_object(obj_id):
-    if obj_id % 2 == 0:
-        fixedObjects[obj_id].vanish()
-    else:
-        dynamicObjects[obj_id].vanish()
+#  fully delete object
+def vanish_objects(*obj_ids) -> None:
+    for obj_id in obj_ids:
+        if obj_id % 2 == 0:
+            fixedObjects[obj_id].vanish()
+            empty_ids_fixed.add(obj_id)
+        else:
+            dynamicObjects[obj_id].vanish()
+            empty_ids_dynamic.add(obj_id)
+
+
+#  adds object to dynamicObjects or fixedObjects and it's Rect to DLL array of Rects
+def add_object_to_physic(obj):
+    if obj.typeof() == 0:  # fixed
+        eif = empty_ids_fixed
+
+        if eif:
+            this_id = eif.pop()
+        else:
+            this_id = len(fixedObjects) * 2
+
+        fixedObjects[this_id] = obj
+
+    else:  # dynamic
+        eid = empty_ids_dynamic
+
+        if eid:
+            this_id = eid.pop()
+        else:
+            this_id = len(dynamicObjects) * 2 + 1
+
+        dynamicObjects[this_id] = obj
+
+    #  sets id of object
+    obj.id = this_id
+
+    #  adds object to DLL array
+    dll_collision.fill_one_element(*obj.rect)
 
 
 class Hitbox:
@@ -54,7 +93,7 @@ class GameObjectFixed(GLObjectBase):
     size: list = None
 
     friction: float = 0.0
-    bouncy: float = None
+    bouncy: float = 0.0
 
     def __init__(self, group, pos, size='default', rotation=1, tex_offset=(0, 0), texture=0, hitbox='default'):
         """
@@ -77,16 +116,16 @@ class GameObjectFixed(GLObjectBase):
         self.friction = self.__class__.friction
         self.bouncy = self.__class__.bouncy
 
-        self.connect()
-        dll_collision.fill_one_element(*self.rect)
+        add_object_to_physic(self)
 
     @staticmethod
-    def __typeof():
+    def typeof():
         return 0
 
     def connect(self):
         self.id = len(fixedObjects) * 2
         fixedObjects[self.id] = self
+        return self.id
 
     def draw(self, color=None):
         super().draw(color)
@@ -116,12 +155,13 @@ class GameObjectDynamic(GameObjectFixed):
         self.updating = True
 
     @staticmethod
-    def __typeof():
+    def typeof():
         return 1
 
     def connect(self):
         self.id = len(dynamicObjects) * 2 + 1
         dynamicObjects[self.id] = self
+        return self.id
 
     def vanish(self):
         for x in self.groups():

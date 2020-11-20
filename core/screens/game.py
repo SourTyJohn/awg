@@ -1,4 +1,4 @@
-from core.physic.Physics import physicsStep, startPhysics, vanish_object
+from core.physic.Physics import physicsStep, startPhysics, vanish_objects
 from core.rendering.PyOGL import focus_camera_to, GLObjectGroup
 from core.Objects.GameObjects import *
 from user.KeyMapping import *
@@ -40,22 +40,22 @@ def render():
 
 def update(dt):
     h = hero
-    f, d = startPhysics(h)  # fixed, dynamic  objects
+    fixed_objs, dynamic_objs = startPhysics(h)  # fixed, dynamic  objects that will be updated and rendered
 
     if dt > PHYSIC_UPDATE_FREQUENCY:
         t = dt / PHYSIC_UPDATE_FREQUENCY
         for _ in range(int(t)):
 
             update_groups()
-            physicsStep(f, d, h)
+            physicsStep(fixed_objs, dynamic_objs, h)
 
         t = t % 1
         update_groups(t)
-        physicsStep(f, d, h, t)
+        physicsStep(fixed_objs, dynamic_objs, h, t)
 
     else:
         update_groups()
-        physicsStep(f, d, h)
+        physicsStep(fixed_objs, dynamic_objs, h)
 
     update_groups()
 
@@ -124,7 +124,7 @@ def init_screen(hero_life=False, first_load=False):
     WoodenCrate(obstacles_gr, [600, 900])
     WoodenCrate(obstacles_gr, [600, 600])
 
-    WoodenCrate(obstacles_gr, [700, 700])
+    b = WoodenCrate(obstacles_gr, [700, 700])
     WoodenCrate(obstacles_gr, [700, 800])
     WoodenCrate(obstacles_gr, [700, 900])
     WoodenCrate(obstacles_gr, [700, 600])
@@ -132,7 +132,8 @@ def init_screen(hero_life=False, first_load=False):
     WoodenCrate(obstacles_gr, [500, 700])
     WoodenCrate(obstacles_gr, [500, 800])
     WoodenCrate(obstacles_gr, [500, 900])
-    WoodenCrate(obstacles_gr, [500, 600])
+    a = WoodenCrate(obstacles_gr, [500, 600])
+    vanish_objects(a.id, b.id)
 
     MetalCrate(obstacles_gr, [1000, 400])
 
@@ -141,10 +142,8 @@ def init_screen(hero_life=False, first_load=False):
         hero.addVelocity([50, 0])
         hero_inited = True
 
-    WorldRectangle(obstacles_gr, [-500, 300], [500, 10])
-    WorldRectangle(obstacles_gr, [-500, 310], [460, 10])
-    a = WorldRectangle(obstacles_gr, [-500, 320], [420, 10])
-    a.bouncy = 1
+    a = WorldRectangle(obstacles_gr, [-500, 300], [420, 50])
+    a.bouncy = 3
 
 
 def close():
