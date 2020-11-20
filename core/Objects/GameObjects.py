@@ -51,7 +51,7 @@ class Mortal:
             self.die()
 
     def die(self):
-        print('death', self)
+        pass
 
 
 """Mortal means that object have .health: int and if .health <= 0 object will .die()

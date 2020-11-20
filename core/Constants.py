@@ -9,6 +9,7 @@ DLL_USE = True
 
 # FPS
 FPS_LOCK = 60
+FPS_SHOW = False
 PHYSIC_UPDATE_FREQUENCY = 0.017  # optimal with FPS_LOCK==60
 
 
@@ -44,7 +45,7 @@ VOLUME = 1
 
 
 # PHYSICS
-BOUNCE = 1 #0.2
+BOUNCE = 0.2
 AIR_FRICTION = 1
 G = 2.2
 GRAVITY_VECTOR = Vector2f.xy(0, -G)

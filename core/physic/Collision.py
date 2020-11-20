@@ -1,8 +1,6 @@
 from core.physic.Vector import Vector2f
-from core.Constants import BOUNCE  # DLL_USE
-import numpy as np
-
 from core.Constants import DLL_USE
+import numpy as np
 
 if DLL_USE:
     from data.DLLs.DLL import dll_collision as dll
@@ -59,10 +57,11 @@ def ResolutionObject(obj, move_vector, obj2, dt):
     if move_vector[1]:
         if move_vector[1] > 0:
             obj.fell()
-        vel.set_y(-vel[1] * BOUNCE)
+
+        vel.set_y(-vel[1] * ((obj.bouncy + obj2.bouncy) / 2))
 
     elif move_vector[0]:
-        vel.set_x(-vel[0] * BOUNCE)
+        vel.set_x(-vel[0] * ((obj.bouncy + obj2.bouncy) / 2))
 
     obj.friction_apply(dt, k=obj2.friction)
 
@@ -102,8 +101,9 @@ def FixedVsDynamic(r2, obj2, fixes_axises, r1, obj1, dt):
         ResolutionObject(obj2, -vector * (obj1.mass / mass), obj1, dt)
         return -2
 
-# Фиксированные объедки и не фиксированные
+
 def Step(f_objs, d_objs, dt):
+    # f_objs - fixed objects,  d_objects - dynamic objects
 
     #  Broad Phase. Walls and Flours collisions
     fixedAxises = {}
