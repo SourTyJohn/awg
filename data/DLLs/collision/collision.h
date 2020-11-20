@@ -28,6 +28,12 @@ struct Rect
 	int w, h;
 };
 
+#ifdef PLATFORM_WINDOWS
+#define DLL_EXPORT __declspec(dllexport)
+#else
+#define DLL_EXPORT
+#endif
+
 #ifndef PLATFORM_WINDOWS
 	int main(int argc, char const *argv[]);
 #else
@@ -35,8 +41,8 @@ struct Rect
 	BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpReserved);
 #endif
 
-bool checkAABB(struct Rect r1, struct Rect r2);
-void fill_one_element(int x, int y, int w, int h);
+DLL_EXPORT bool checkAABB(struct Rect r1, struct Rect r2);
+DLL_EXPORT void fill_one_element(int x, int y, int w, int h);
 
 #ifdef  __cplusplus
 }

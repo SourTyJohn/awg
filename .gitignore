@@ -8,5 +8,9 @@
 VirtaulEnvirment/*
 data/DLLs/collision/Release/*
 data/DLLs/collision/Debug/*
+data/DLLs/collision/x64/*
 
 .vs/*
+*.lib
+*.ilk
+*.exp

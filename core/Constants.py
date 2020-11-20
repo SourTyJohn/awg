@@ -5,7 +5,7 @@ from core.physic.Vector import Vector2f
 TITLE = 'AWG 2'
 TEXTURE_PACK = 'base_pack'
 DEBUG = True
-DLL_USE = False
+DLL_USE = True
 
 # FPS
 FPS_LOCK = 60
@@ -44,7 +44,7 @@ VOLUME = 1
 
 
 # PHYSICS
-BOUNCE = 0.2
+BOUNCE = 1 #0.2
 AIR_FRICTION = 1
 G = 2.2
 GRAVITY_VECTOR = Vector2f.xy(0, -G)
