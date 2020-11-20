@@ -22,7 +22,3 @@ else:
         path = fpath('collision32.dll', file_type='dll')
         dll_collision = ct.cdll.LoadLibrary(path)
         print("Loaded 32 bit collision dll")
-
-    print("Loading functions...")
-    dll_collision.fill_one_element.restype = ct.c_void_p
-    dll_collision.fill_one_element.argtypes = [ct.c_int, ct.c_int, ct.c_int, ct.c_int]

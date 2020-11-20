@@ -42,7 +42,7 @@ struct Rect
 #endif
 
 bool DLL_EXPORT checkAABB(struct Rect r1, struct Rect r2);
-void DLL_EXPORT fill_one_element(int x, int y, int w, int h);
+void DLL_EXPORT fill_one_element(int x, int y, int w, int h, bool Fixed);
 
 #ifdef  __cplusplus
 }
