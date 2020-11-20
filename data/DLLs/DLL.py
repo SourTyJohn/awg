@@ -12,7 +12,7 @@ else:
     #  DLL CONFIGURATION
 
     #  collision
-    dll_collision = ct.CDLL(fpath('collision.so', file_type='dll'))
+    dll_collision = ct.CDLL(fpath('collision.dll', file_type='dll'))
 
     # dll_collision.getMinkovskiDifference.restype = ndpointer(dtype=ct.c_int, shape=(4,))
     # dll_collision.getMinkovskiDifference.argtypes = \
