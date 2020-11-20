@@ -1,6 +1,6 @@
 import pygame as pg
 import core.rendering.PyOGL as GL
-from core.Constants import WINDOW_RESOLUTION, FPS_LOCK, TITLE
+from core.Constants import WINDOW_RESOLUTION, FPS_LOCK, TITLE, DEBUG
 from timeit import default_timer as timer
 
 
@@ -26,13 +26,18 @@ def game_loop():
     global running, screen_type
     start_time = timer()
 
+    #  Clear screen
     GL.clear_display()
 
     scr = screens[screen_type]
     exit_code = scr.render()
 
     clock.tick(FPS_LOCK)
-    scr.update(timer() - start_time)
+    dt = timer() - start_time
+    scr.update(dt)
+
+    if DEBUG:  # current FPS display
+        print(f'\rFPS: {1 / (timer() - start_time) // 1}', end='')
 
     if exit_code in ('menu', 'game'):
         if exit_code != screen_type:

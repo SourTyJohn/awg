@@ -5,14 +5,38 @@ import core.physic.Collision as Cll
 from core.Constants import GRAVITY_VECTOR, AIR_FRICTION, RENDER_RECT_FOR_DYNAMIC, RENDER_RECT_FOR_FIXED
 render_rect_d, render_rect_f = Rect(*RENDER_RECT_FOR_DYNAMIC), Rect(*RENDER_RECT_FOR_FIXED)
 
-# from data.DLLs.DLL import dll_collision
+from data.DLLs.DLL import dll_collision
 
 
-dynamicObjects = []
-fixedObjects = []
+#  storage for all game objects {id: object, }
+#  all the dynamic objects have odd int as id, all fixed have even int id's
+dynamicObjects = {}
+fixedObjects = {}
+
+
+def get_all_hitboxes():
+    hitboxes = []
+    add = hitboxes.append
+
+    for o in dynamicObjects.values():
+        add(o.hitbox.getRect(o.rect.getPos()))
+
+    for o in fixedObjects.values():
+        add(o.hitbox.getRect(o.rect.getPos()))
+
+    return hitboxes
+
+
+def vanish_object(obj_id):
+    if obj_id % 2 == 0:
+        fixedObjects[obj_id].vanish()
+    else:
+        dynamicObjects[obj_id].vanish()
 
 
 class Hitbox:
+    """Hitbox class for detecting collision.
+    Can be bounded to dynamic or fixed object"""
     __slots__ = ['offset', 'size', ]
 
     def __init__(self, offset, size):
@@ -24,10 +48,12 @@ class Hitbox:
 
 
 class GameObjectFixed(GLObjectBase):
+    id: int  # hash for storing in hash tables
+
     hitbox: Hitbox = None
     size: list = None
 
-    friction: float = 0
+    friction: float = 0.0
     bouncy: float = None
 
     def __init__(self, group, pos, size='default', rotation=1, tex_offset=(0, 0), texture=0, hitbox='default'):
@@ -52,22 +78,26 @@ class GameObjectFixed(GLObjectBase):
         self.bouncy = self.__class__.bouncy
 
         self.connect()
-        
-        # const
-        self.fixedAxises = (True, True, True, True)
+        dll_collision.fill_one_element(*self.rect)
 
     @staticmethod
-    def typeof():
+    def __typeof():
         return 0
 
     def connect(self):
-        fixedObjects.append(self)
+        self.id = len(fixedObjects) * 2
+        fixedObjects[self.id] = self
 
     def draw(self, color=None):
         super().draw(color)
 
     def getHitboxRect(self):
         return self.hitbox.getRect(self.rect[:2])
+
+    def vanish(self):
+        for x in self.groups():
+            x.remove(self)
+        del fixedObjects[self.id]
 
 
 class GameObjectDynamic(GameObjectFixed):
@@ -84,15 +114,19 @@ class GameObjectDynamic(GameObjectFixed):
 
         # if False, object wont .update() and .physic()
         self.updating = True
-        
-        self.fixedAxises = [False, False, False, False]
 
     @staticmethod
-    def typeof():
+    def __typeof():
         return 1
 
     def connect(self):
-        dynamicObjects.append(self)
+        self.id = len(dynamicObjects) * 2 + 1
+        dynamicObjects[self.id] = self
+
+    def vanish(self):
+        for x in self.groups():
+            x.remove(self)
+        del dynamicObjects[self.id]
 
     def draw(self, color=None):
         super().draw(color)
@@ -125,28 +159,36 @@ class GameObjectDynamic(GameObjectFixed):
         return self.velocity
 
 
+#  Decides should object be rendered at this frame and returns list of rendered objects
 def startPhysics(hero):
+    #  setup render rectangle by moving it to player
     center = hero.rect.getCenter()
     re_f = render_rect_f
     re_f.setCenter(center)
     re_d = render_rect_d
     re_d.setCenter(center)
 
+    check = Cll.CheckAABB
+
+    #  Testing if dynamic object in render zone
     dynamic = []
     add = dynamic.append
+    for ido in dynamicObjects:
+        obj = dynamicObjects[ido]
 
-    for obj in dynamicObjects:
-        if Cll.CheckAABB(obj.rect, re_d):
+        if check(obj.rect, re_d):
             add(obj)
             obj.visible = True
         else:
             obj.visible = False
 
+    #  Testing if fixed object in render zone
     fixed = []
     add = fixed.append
+    for ido in fixedObjects:
+        obj = fixedObjects[ido]
 
-    for obj in fixedObjects:
-        if Cll.CheckAABB(obj.rect, re_f):
+        if check(obj.rect, re_f):
             add(obj)
             obj.visible = True
         else:
@@ -158,10 +200,10 @@ def startPhysics(hero):
 # Main physics loop
 def physicsStep(f, d, hero, times=1):
     hero.update(times)
+
+    #  do physics for every dynamic object in render distance
     for obj in d:
         obj.physic(times)
-    checkCollision(f, d, times)
 
-
-def checkCollision(f, d, delta_time):
-    Cll.Step(f, d, delta_time)
+    #  collision loop from Collision.py
+    Cll.Step(f, d, times)
