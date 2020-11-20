@@ -32,8 +32,6 @@ else:
     # ND_POINTER_INT = np.ctypeslib.ndpointer(dtype=np.int64, ndim=1, flags="C")
     # ND_POINTER_BOOL = np.ctypeslib.ndpointer(dtype=np.bool, ndim=1, flags="C")
 
-    print("Loading functions...")
-
     # dll_collision.fill_one_element.restype = ct.c_void_p
     # dll_collision.fill_one_element.argtypes = [ct.c_int, ct.c_int, ct.c_int, ct.c_int]
     #
