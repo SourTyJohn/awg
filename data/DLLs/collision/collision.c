@@ -2,10 +2,15 @@
 
 #ifdef PLATFORM_WINDOWS
 
-BOOL WINAPI DllMain(
-    HINSTANCE hinstDLL,  // handle to DLL module
-    DWORD fdwReason,     // reason for calling function
-    LPVOID lpReserved)  // reserved
+#ifdef __cplusplus
+
+extern "C" BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpReserved)
+
+#else
+
+BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpReserved)
+
+#endif 
 {
     // Perform actions based on the reason for calling.
     switch (fdwReason)
@@ -40,7 +45,7 @@ int main(int argc, char const* argv[])
 int countHitboxes = 0;
 struct Rect hitboxes[256];
 
-void fill_one_element(int x, int y, int w, int h)
+void DLL_EXPORT fill_one_element(int x, int y, int w, int h)
 {
     hitboxes[countHitboxes].x = x;
     hitboxes[countHitboxes].y = y;
@@ -50,7 +55,7 @@ void fill_one_element(int x, int y, int w, int h)
     countHitboxes++;
 }
 
-bool checkAABB(struct Rect r1, struct Rect r2)
+bool DLL_EXPORT checkAABB(struct Rect r1, struct Rect r2)
 { 
 	if (r1.x < r2.x + r2.w && r1.x + r1.w > r2.x && r1.y < r2.y + r2.h && r1.y + r1.h > r2.y) {
 		return true;

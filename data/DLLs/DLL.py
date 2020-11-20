@@ -17,11 +17,13 @@ else:
     if arch[0] == '64bit':
         #  collision
         path = fpath('collision64.dll', file_type='dll')
-        dll_collision = ct.CDLL(path)
+        dll_collision = ct.cdll.LoadLibrary(path)
+        print("Loaded 64 bit collision dll")
     else:
         #  collision
         path = fpath('collision32.dll', file_type='dll')
-        dll_collision = ct.CDLL(path)
+        dll_collision = ct.cdll.LoadLibrary(path)
+        print("Loaded 32 bit collision dll")
 
     # dll_collision.getMinkovskiDifference.restype = ndpointer(dtype=ct.c_int, shape=(4,))
     # dll_collision.getMinkovskiDifference.argtypes = \
@@ -30,8 +32,10 @@ else:
     # ND_POINTER_INT = np.ctypeslib.ndpointer(dtype=np.int64, ndim=1, flags="C")
     # ND_POINTER_BOOL = np.ctypeslib.ndpointer(dtype=np.bool, ndim=1, flags="C")
 
-    dll_collision.fill_one_element.restype = ct.c_void_p
-    dll_collision.fill_one_element.argtypes = [ct.c_int, ct.c_int, ct.c_int, ct.c_int]
+    print("Loading functions...")
+
+    # dll_collision.fill_one_element.restype = ct.c_void_p
+    # dll_collision.fill_one_element.argtypes = [ct.c_int, ct.c_int, ct.c_int, ct.c_int]
     #
 
     #
