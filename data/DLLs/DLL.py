@@ -17,12 +17,12 @@ else:
     # dll_collision.getMinkovskiDifference.restype = ndpointer(dtype=ct.c_int, shape=(4,))
     # dll_collision.getMinkovskiDifference.argtypes = \
     #     [ct.c_int, ct.c_int, ct.c_int, ct.c_int, ct.c_int, ct.c_int, ct.c_int, ct.c_int]
+    #
+    # ND_POINTER_INT = np.ctypeslib.ndpointer(dtype=np.int64, ndim=1, flags="C")
+    # ND_POINTER_BOOL = np.ctypeslib.ndpointer(dtype=np.bool, ndim=1, flags="C")
 
-    ND_POINTER_INT = np.ctypeslib.ndpointer(dtype=np.int64, ndim=1, flags="C")
-    ND_POINTER_BOOL = np.ctypeslib.ndpointer(dtype=np.bool, ndim=1, flags="C")
-
-    dll_collision.ManyAABBcheck.restype = ndpointer(dtype=ct.c_int)
-    dll_collision.ManyAABBcheck.argtypes = [ct.c_int, ND_POINTER_INT, ND_POINTER_INT, ND_POINTER_BOOL]
+    dll_collision.fill_one_element.restype = None
+    dll_collision.fill_one_element.argtypes = [ct.c_int, ct.c_int, ct.c_int, ct.c_int]
     #
 
     #

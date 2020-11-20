@@ -1,4 +1,4 @@
-from core.physic.Physics import physicsStep, startPhysics
+from core.physic.Physics import physicsStep, startPhysics, vanish_object
 from core.rendering.PyOGL import focus_camera_to, GLObjectGroup
 from core.Objects.GameObjects import *
 from user.KeyMapping import *
@@ -40,7 +40,7 @@ def render():
 
 def update(dt):
     h = hero
-    f, d = startPhysics(h)
+    f, d = startPhysics(h)  # fixed, dynamic  objects
 
     if dt > PHYSIC_UPDATE_FREQUENCY:
         t = dt / PHYSIC_UPDATE_FREQUENCY

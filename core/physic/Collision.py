@@ -1,8 +1,8 @@
 from core.physic.Vector import Vector2f
-from core.Constants import BOUNCE, DLL_USE
+from core.Constants import BOUNCE  # DLL_USE
 import numpy as np
 
-from data.DLLs.DLL import dll_collision as dll
+# from data.DLLs.DLL import dll_collision as dll
 
 
 def CheckAABB(rect1, rect2):
@@ -112,21 +112,21 @@ def Step(f_objs, d_objs, dt):
     for obj1 in f_objs:
         for obj2 in d_objs:
 
-            res = coll(obj1.rect, obj1, (True, True, True, True), obj2.rect, obj2, dt)
-            if res > -1:
-                fixedAxises[obj2][res] = True
+            f_axis = coll(obj1.rect, obj1, (True, True, True, True), obj2.rect, obj2, dt)
+            if f_axis > -1:
+                fixedAxises[obj2][f_axis] = True
 
     #  Main Phase.  Dynamic Objects collisions
     s = sorted(d_objs, key=lambda j: -sum(fixedAxises[j]))
     n = len(s)
 
-    for o1 in range(n):
+    for o1 in range(n):  # Handshakes
         for o2 in range(o1 + 1, n):
 
             obj1, obj2 = s[o1], s[o2]
-            res = coll(obj1.rect, obj1, fixedAxises[obj1], obj2.rect, obj2, dt)
+            f_axis = coll(obj1.rect, obj1, fixedAxises[obj1], obj2.rect, obj2, dt)
 
-            if res > -1:
-                fixedAxises[obj2][res] = True
+            if f_axis > -1:
+                fixedAxises[obj2][f_axis] = True
 
     fixedAxises.clear()
