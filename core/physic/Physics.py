@@ -5,6 +5,8 @@ import core.physic.Collision as Cll
 from core.Constants import GRAVITY_VECTOR, AIR_FRICTION, RENDER_RECT_FOR_DYNAMIC, RENDER_RECT_FOR_FIXED
 render_rect_d, render_rect_f = Rect(*RENDER_RECT_FOR_DYNAMIC), Rect(*RENDER_RECT_FOR_FIXED)
 
+from core.Constants import DLL_USE
+
 if DLL_USE:
     from data.DLLs.DLL import dll_collision
 
