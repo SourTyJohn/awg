@@ -5,12 +5,12 @@ import core.physic.Collision as Cll
 from core.Constants import GRAVITY_VECTOR, AIR_FRICTION, RENDER_RECT_FOR_DYNAMIC, RENDER_RECT_FOR_FIXED
 render_rect_d, render_rect_f = Rect(*RENDER_RECT_FOR_DYNAMIC), Rect(*RENDER_RECT_FOR_FIXED)
 
-# from data.DLLs.DLL import dll_collision
+if DLL_USE:
+    from data.DLLs.DLL import dll_collision
 
 
 dynamicObjects = []
 fixedObjects = []
-
 
 class Hitbox:
     __slots__ = ['offset', 'size', ]
@@ -21,7 +21,6 @@ class Hitbox:
 
     def getRect(self, self_pos):
         return [self_pos[0] + self.offset[0], self_pos[1] + self.offset[1], *self.size]
-
 
 class GameObjectFixed(GLObjectBase):
     hitbox: Hitbox = None

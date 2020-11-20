@@ -99,7 +99,7 @@ def FixedVsDynamic(r2, obj2, fixes_axises, r1, obj1, dt):
         ResolutionObject(obj2, -vector * (obj1.mass / mass), obj1, dt)
         return -2
 
-
+# Фиксированные объедки и не фиксированные
 def Step(f_objs, d_objs, dt):
 
     #  Broad Phase. Walls and Flours collisions

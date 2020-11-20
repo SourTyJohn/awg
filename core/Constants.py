@@ -5,7 +5,7 @@ from core.physic.Vector import Vector2f
 TITLE = 'AWG 2'
 TEXTURE_PACK = 'base_pack'
 DEBUG = True
-DLL_USE = True
+DLL_USE = False
 
 # FPS
 FPS_LOCK = 60

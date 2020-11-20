@@ -1,0 +1,12 @@
+
+*.iobj
+*.ipch
+*.ipdb
+*.pdb
+*.pyc
+
+VirtaulEnvirment/*
+data/DLLs/collision/Release/*
+data/DLLs/collision/Debug/*
+
+.vs/*
