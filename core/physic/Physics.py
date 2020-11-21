@@ -134,8 +134,8 @@ class GameObjectFixed(GLObjectBase):
         return self.hitbox.getRect(self.rect[:2])
 
     def vanish(self):
-        for x in self.groups():
-            x.remove(self)
+        for j in self.groups():
+            j.remove(self)
         del fixedObjects[self.id]
 
 
@@ -164,8 +164,7 @@ class GameObjectDynamic(GameObjectFixed):
         return self.id
 
     def vanish(self):
-        for x in self.groups():
-            x.remove(self)
+        self.kill()
         del dynamicObjects[self.id]
 
     def draw(self, color=None):
@@ -189,6 +188,11 @@ class GameObjectDynamic(GameObjectFixed):
     # movement
     def _doMove(self, dt):
         self.move_by(self.velocity * dt)
+
+    def move_by(self, vector):
+        pos = self.rect.getPos()
+        pos[0] += vector[0]
+        pos[1] += vector[1]
 
     def addVelocity(self, vector):
         if type(vector) != Vector2f:

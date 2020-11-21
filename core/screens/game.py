@@ -115,6 +115,7 @@ def update_groups(dt=1):
 def init_screen(hero_life=False, first_load=False):
     global hero, hero_inited
 
+
     WorldRectangle(obstacles_gr, [-1000, 100], [5500, 200])
     WorldRectangle(obstacles_gr, [800, 300], [80, 400])
     WorldRectangle(obstacles_gr, [500, 500], [800, 40])
@@ -137,18 +138,14 @@ def init_screen(hero_life=False, first_load=False):
 
     MetalCrate(obstacles_gr, [1000, 400])
 
-    if not hero_inited:
-        hero = MainHero(player_gr, [250, 400])
-        hero.addVelocity([50, 0])
-        hero_inited = True
-
     a = WorldRectangle(obstacles_gr, [-500, 300], [420, 50])
     a.bouncy = 3
 
+    # if not hero_inited:
+    hero = MainHero(player_gr, [250, 400])
+    hero.addVelocity([50, 0])
+    hero_inited = True
+
 
 def close():
-    background_gr.empty()
-    obstacles_gr.empty()
-    characters_gr.empty()
-    player_gr.empty()
-    triggers_gr.empty()
+    pass

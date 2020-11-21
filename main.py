@@ -58,7 +58,7 @@ if __name__ == '__main__':
     import core.screens.menu as rmenu
     import core.screens.game as rgame
 
-    rmenu.init_screen()
+    rmenu.init_screen(first_load=True)
 
     screens = {'menu': rmenu, 'game': rgame}
 

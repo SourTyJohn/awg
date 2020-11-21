@@ -65,7 +65,7 @@ def render():
         if event.type == pygame.KEYDOWN:
             if event.key == K_CLOSE and not first:
                 close_menu()
-                return 'INIT_game'
+                return 'game'
 
             elif event.key == K_MOVE_UP and 0 < selected_button:
                 selected_button -= 1
