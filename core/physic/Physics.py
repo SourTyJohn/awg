@@ -203,7 +203,7 @@ class GameObjectDynamic(GameObjectFixed):
         return self.velocity
 
 
-#  Decides should object be rendered at this frame and returns list of rendered objects
+#  Decides should object be rendered at this frame and returns lists of rendered objects
 def startPhysics(hero):
     #  setup render rectangle by moving it to player
     center = hero.rect.getCenter()

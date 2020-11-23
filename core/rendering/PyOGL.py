@@ -31,8 +31,9 @@ def init_display(size=WINDOW_RESOLUTION):
     glMatrixMode(GL_MODELVIEW)
 
     glEnable(GL_TEXTURE_2D)
-    glEnable(GL_BLEND)
+
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+    glEnable(GL_BLEND)
 
     #  Creating shader program that will be used for all rendering
     # shader_program = create_shader('vertex.glsl', 'fragment.glsl')
@@ -294,8 +295,8 @@ class GLObjectComposite(pygame.sprite.Sprite):
             obj.setRotation(rotation)
 
 
-#  Поле зрения. Camera
-ortho_params = ()
+#  Camera params. np.array([left, right, bottom, top], dtype=int64)
+ortho_params: np.array
 
 
 def make_GL2D_texture(image, w, h, repeat=False):
@@ -318,32 +319,32 @@ def make_GL2D_texture(image, w, h, repeat=False):
     return bitmap_tex
 
 
-# Для вызова перед отрисовкой
+# Before start of drawing
 def draw_begin():
     glMatrixMode(GL_PROJECTION)
     glLoadIdentity()
     glPushMatrix()
+
     gluOrtho2D(*ortho_params)
+
     glMatrixMode(GL_MODELVIEW)
     glLoadIdentity()
     glPushMatrix()
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
-    glEnable(GL_BLEND)
 
 
-# Для вызова после отрисовки
+# After end of drawing
 def draw_end():
     glMatrixMode(GL_PROJECTION)
     glPopMatrix()
+
     glMatrixMode(GL_MODELVIEW)
     glPopMatrix()
-    glDisable(GL_BLEND)
 
 
 # camera
 def camera_apply(rect):
     global ortho_params
-    ortho_params = np.array([rect[0], rect[0] + rect[2], rect[1], rect[1] + rect[3]], dtype='int16')
+    ortho_params = np.array([rect[0], rect[0] + rect[2], rect[1], rect[1] + rect[3]], dtype='int64')
 
 
 def focus_camera_to(x_v, y, fov=None):
@@ -356,7 +357,7 @@ def focus_camera_to(x_v, y, fov=None):
         width = DEFAULT_FOV_W
         height = DEFAULT_FOV_H
 
-    ortho_params = np.array([x_v - width, x_v + width, y - height, y + height], dtype='int16')
+    ortho_params = np.array([x_v - width, x_v + width, y - height, y + height], dtype='int64')
 
 
 # draw

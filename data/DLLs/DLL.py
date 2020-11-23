@@ -26,4 +26,4 @@ else:
     print("Loading functions...")
     dll_collision.fill_one_element.restype = ct.c_void_p
     dll_collision.fill_one_element.argtypes = [ct.c_int, ct.c_int, ct.c_int, ct.c_int]
-    print("Functions Loaded.")
+    print("Loaded.")

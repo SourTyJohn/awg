@@ -1,4 +1,5 @@
-from core.physic.Physics import GameObjectFixed, GameObjectDynamic, Hitbox, LimitedVector2f, Vector2f, vanish_objects
+from core.physic.Physics import GameObjectFixed, GameObjectDynamic, Hitbox,\
+    LimitedVector2f, Vector2f, vanish_objects, GLObjectBase
 from core.rendering.Textures import EssentialTextureStorage as Ets
 
 
@@ -65,6 +66,19 @@ class WorldRectangle(fixed):
     def __init__(self, gr, pos, size, tex_offset=(0, 0), texture='Devs/r_devs_1'):
         hitbox = Hitbox([0, 0], size)
         super().__init__(gr, pos, size=size, tex_offset=tex_offset, texture=texture, hitbox=hitbox)
+
+
+class Background:
+
+    def __init__(self, paralax_k, *layers):
+        # layers - Texture objects from core.rendering.PyOGL module
+        # background layers that will be drawn in the same order, they were passed to Background constructor
+
+        self.paralax_k = paralax_k
+        self.layers = layers
+
+    def draw(self):
+        pass
 
 
 class Character(dynamic):
