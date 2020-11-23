@@ -8,6 +8,7 @@ VirtaulEnvirment/*
 data/DLLs/collision/Release/*
 data/DLLs/collision/Debug/*
 data/DLLs/collision/x64/*
+build/*
 
 .vs/*
 *.lib

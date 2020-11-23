@@ -1,10 +1,5 @@
 from core.physic.Vector import Vector2f
-from core.Constants import DLL_USE
 import numpy as np
-
-if DLL_USE:
-    from data.DLLs.DLL import dll_collision as dll
-
 
 def CheckAABB(rect1, rect2):
     #  simple AABB collision test
