@@ -105,31 +105,88 @@ def FixedVsDynamic(r2, obj2, fixes_axises, r1, obj1, dt):
 def Step(f_objs, d_objs, dt):
     # f_objs - fixed objects,  d_objects - dynamic objects
 
-    #  Broad Phase. Walls and Flours collisions
-    fixedAxises = {}
-    coll = FixedVsDynamic
-
+    fixedDirections = {}
+    """fixedDirections stores directions in witch dynamic objects can not be moved in this Step()
+    At the beginning all directions are unlocked"""
     for x in d_objs:
-        fixedAxises[x] = np.array([False, False, False, False], dtype=np.bool)
+        """key - DynamicObject
+        value[0] - array of bool representing directions that locked for this object  
+        value[1] - amount of locked directions (amount of True in array)"""
+        fixedDirections[x] = [np.array([False, False, False, False], dtype=np.bool), 0]
+
+    """ --FIRST PHASE
+    Collision of Dynamic Objects with Fixed and start filling fixedDirections with True"""
+    coll = FixedVsDynamic
 
     for obj1 in f_objs:
         for obj2 in d_objs:
-
             f_axis = coll(obj1.rect, obj1, (True, True, True, True), obj2.rect, obj2, dt)
+            #  f_axis - direction that must be locked for this object
             if f_axis > -1:
-                fixedAxises[obj2][f_axis] = True
+                tmp = fixedDirections[obj2]
+                if not tmp[0][f_axis]:
+                    tmp[0][f_axis] = True
+                    tmp[1] += 1
 
-    #  Main Phase.  Dynamic Objects collisions
-    s = sorted(d_objs, key=lambda j: -sum(fixedAxises[j]))
-    n = len(s)
+    """ --SECOND PHASE
+    Collision of Dynamic Objects vs Dynamic"""
 
-    for o1 in range(n):  # Handshakes
-        for o2 in range(o1 + 1, n):
+    """key - amount of fixed directions
+     value - set of dynamic objects with that amount of fixed directions"""
+    objectsWithFixed = {
+        0: set(),
+        1: set(),
+        2: set(),
+        3: set(),
+        4: set()
+    }
 
-            obj1, obj2 = s[o1], s[o2]
-            f_axis = coll(obj1.rect, obj1, fixedAxises[obj1], obj2.rect, obj2, dt)
+    # filling  objectsWithFixed
+    for obj in fixedDirections.keys():
+        objectsWithFixed[fixedDirections[obj][1]].add(obj)
 
-            if f_axis > -1:
-                fixedAxises[obj2][f_axis] = True
+    # maxx_fixed - shows what key of objectsWithFixed should be used
+    maxx_fixed = 4
 
-    fixedAxises.clear()
+    # checked - set of object that were already checked by collision
+    checked = set()
+    add = checked.add
+
+    while maxx_fixed:
+
+        current = objectsWithFixed[maxx_fixed]
+        if current:
+
+            obj1 = current.pop()
+            add(obj1)
+
+            for obj2 in d_objs:
+
+                if obj2 in checked:
+                    continue
+
+                f_axis = coll(obj1.rect, obj1, fixedDirections[obj1][0], obj2.rect, obj2, dt)
+                #  f_axis - direction that must be locked for this object
+
+                if f_axis > -1:
+                    tmp = fixedDirections[obj2]
+
+                    if not tmp[0][f_axis]:
+                        tmp[0][f_axis] = True
+                        tmp[1] += 1
+                        k = tmp[1]
+
+                        objectsWithFixed[k - 1].discard(obj2)
+                        objectsWithFixed[k].add(obj2)
+
+                        if k > maxx_fixed:
+                            maxx_fixed = k
+        else:
+            # if all of objects with maxx_fixed fixed directions where already checked,
+            # than it lowers maxx_fixed
+            maxx_fixed -= 1
+
+    # clearing all temporary data
+    fixedDirections.clear()
+    objectsWithFixed.clear()
+    checked.clear()
