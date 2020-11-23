@@ -1,4 +1,4 @@
-from core.physic.Physics import GameObjectFixed, GameObjectDynamic, Hitbox, LimitedVector2f, Vector2f
+from core.physic.Physics import GameObjectFixed, GameObjectDynamic, Hitbox, LimitedVector2f, Vector2f, vanish_objects
 from core.rendering.Textures import EssentialTextureStorage as Ets
 
 
@@ -130,10 +130,19 @@ class MainHero(Character, d, m):
     max_health = 200
     lethal_fall_velocity = 256
 
+    #  Main Hero is Singleton. __instance stores only MainHero object
+    __instance = None
+
     def __init__(self, gr, pos):
         super().__init__(MainHero.MAX_WALKING_SPEED, gr, pos, MainHero.size)
         self.jumps = 0
         self.init_mortal(self.__class__)
+
+    def __new__(cls, *args, **kwargs):
+        if cls.__instance:
+            vanish_objects(cls.__instance.id)
+        cls.__instance = super(MainHero, cls).__new__(cls)
+        return cls.__instance
 
     def jump(self):
         if self.jumps < MainHero.MAX_JUMPS:

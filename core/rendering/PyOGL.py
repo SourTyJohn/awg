@@ -47,8 +47,8 @@ def clear_display():
 class Rect:
     __slots__ = ['values', ]
 
-    def __init__(self, *args):
-        self.values = np.array([*args], dtype=np.int64)
+    def __init__(self, x: int, y: int, w: int, h: int):
+        self.values = np.array([x, y, w, h], dtype=np.int64)
 
     def __getitem__(self, item):
         return self.values[item]
@@ -215,6 +215,7 @@ class GLObjectBase(pygame.sprite.Sprite):
 
         self.visible = True
 
+    #  setting up subclasses
     def __init_subclass__(cls, **kwargs):
         if cls.size and cls.center:
             cls.rect = Rect(0, 0, *cls.size)
@@ -228,6 +229,7 @@ class GLObjectBase(pygame.sprite.Sprite):
         if self.visible:
             self.__class__.TEXTURES[self.texture].draw(self.rect, self.vertexesObj, self.vertexesTex, self.color)
 
+    #  visual
     def changeOffset(self, offset):
         no_offset = [[i - self.tex_offset[0], j - self.tex_offset[1]] for i, j in baseEdgesTex]
         self.tex_offset = np.array(offset, dtype=np.int16)
@@ -256,7 +258,8 @@ class GLObjectBase(pygame.sprite.Sprite):
     def setColor(self, *args):
         self.color = np.array([*args], dtype=np.float16)
 
-    def move(self, pos):
+    #  move
+    def move_to(self, pos):
         self.rect.setX(pos[0])
         self.rect.setY(pos[1])
 
@@ -265,12 +268,13 @@ class GLObjectBase(pygame.sprite.Sprite):
         pos[0] += vector[0]
         pos[1] += vector[1]
 
+    def getPos(self):
+        return self.rect[:2]
+
+    #  delete
     def delete(self):
         print(f'deleted obj: {self}')
         self.kill()
-
-    def getPos(self):
-        return self.rect[:2]
 
 
 class GLObjectComposite(pygame.sprite.Sprite):
