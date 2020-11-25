@@ -1,14 +1,15 @@
 from OpenGL.GL import *
 from OpenGL.GLU import *
 
-from utils.files import get_shader_path
+from utils.files import get_full_path
 
 
 class BlankShader:
     def __init__(self):
         pass
 
-    def use(self):
+    @staticmethod
+    def use():
         print('BlankShader.use() warning !')
 
 
@@ -16,11 +17,11 @@ class Shader:
     def __init__(self, vertex_path: str, fragment_path: str):
 
         #  Reading shader code
-        v = open(get_shader_path(vertex_path))
+        v = open(get_full_path(vertex_path, file_type='shd'))
         vertx_code = v.read()
         v.close()
 
-        f = open(get_shader_path(fragment_path))
+        f = open(get_full_path(fragment_path, file_type='shd'))
         fragm_code = f.read()
         f.close()
 

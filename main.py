@@ -30,11 +30,9 @@ def game_loop():
     GL.clear_display()
 
     scr = screens[screen_type]
-    exit_code = scr.render()
 
-    clock.tick(FPS_LOCK)
-    dt = timer() - start_time
-    scr.update(dt)
+    exit_code = scr.update(0.017)
+    scr.render()
 
     if FPS_SHOW:  # current FPS display
         print(f'\rFPS: {1 / (timer() - start_time) // 1}', end='')
@@ -48,6 +46,7 @@ def game_loop():
         running = False
 
     pg.display.flip()
+    clock.tick(FPS_LOCK)
 
 
 if __name__ == '__main__':

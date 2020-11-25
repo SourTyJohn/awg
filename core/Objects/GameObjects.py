@@ -1,6 +1,12 @@
-from core.physic.Physics import GameObjectFixed, GameObjectDynamic, Hitbox,\
-    LimitedVector2f, Vector2f, vanish_objects, GLObjectBase
+"""
+THIS MODUlE CONTAINS ALL GAME OBJECTS THAT CAN BE USED IN GAME (screens.game)
+"""
+
+from core.physic.Physics import GameObjectFixed, GameObjectDynamic, Hitbox, LimitedVector2f, Vector2f, vanish_objects
 from core.rendering.Textures import EssentialTextureStorage as Ets
+from pygame.sprite import Sprite
+
+import numpy as np
 
 
 fixed = GameObjectFixed
@@ -60,7 +66,9 @@ class Mortal:
 m = Mortal
 
 
-class WorldRectangle(fixed):
+class WorldRectangleRigid(fixed):
+    # This class represents base level geometry with rigid body
+
     TEXTURES = Ets
 
     def __init__(self, gr, pos, size, tex_offset=(0, 0), texture='Devs/r_devs_1'):
@@ -68,17 +76,42 @@ class WorldRectangle(fixed):
         super().__init__(gr, pos, size=size, tex_offset=tex_offset, texture=texture, hitbox=hitbox)
 
 
-class Background:
+class Background(Sprite):
+    # This class represents level background
 
-    def __init__(self, paralax_k, *layers):
+    def __init__(self, group, paralax_k, pos, *layers):
+        # group - always in background group
+        super().__init__(group)
+
         # layers - Texture objects from core.rendering.PyOGL module
         # background layers that will be drawn in the same order, they were passed to Background constructor
-
         self.paralax_k = paralax_k
+
+        # key - Texture
+        # values - xPositions of this texture
         self.layers = layers
 
-    def draw(self):
-        pass
+        # data that will be passed to Texture.draw() function
+        self.y = pos[1]
+        self.vertexes = Ets[layers[0]].makeVertexes()
+
+        # borders
+        self.size = Ets[layers[0]].size
+        # self.left_pos = pos[0]
+        # self.right_pos = pos[0] + self.size
+
+        self.offset_base = np.array([-x // 2 for x in self.size], dtype=np.int64)
+        self.offset = np.array([0, 0], dtype=np.int64)
+        self.pos = np.array([0, 0], dtype=np.int64)
+
+    def draw(self, color=None):
+        # draw all layers
+        for layer in self.layers:
+            Ets[layer].draw(self.offset_base + self.pos + self.offset, self.vertexes)
+
+    def update(self, *args, **kwargs) -> None:
+        # args[1] - camera
+        self.pos = args[1].getPos()
 
 
 class Character(dynamic):
@@ -128,6 +161,7 @@ class MainHero(Character, d, m):
     MAX_JUMPS = 2
     WALKING_SPEED = 2
     JUMP_VECTOR = Vector2f.xy(0, 36)
+    MANY_JUMPS_DELAY = 12
 
     # character
     MAX_WALKING_SPEED = 16
@@ -149,7 +183,10 @@ class MainHero(Character, d, m):
 
     def __init__(self, gr, pos):
         super().__init__(MainHero.MAX_WALKING_SPEED, gr, pos, MainHero.size)
+
         self.jumps = 0
+        self.jump_delay_current = 0
+
         self.init_mortal(self.__class__)
 
     def __new__(cls, *args, **kwargs):
@@ -158,10 +195,22 @@ class MainHero(Character, d, m):
         cls.__instance = super(MainHero, cls).__new__(cls)
         return cls.__instance
 
+    def update(self, *args, **kwargs):
+        # args[0] - delta time
+
+        # jump delay update
+        if self.jump_delay_current < MainHero.MANY_JUMPS_DELAY:
+            self.jump_delay_current += args[0]
+
+        # character.update()
+        super().update(*args, **kwargs)
+
     def jump(self):
-        if self.jumps < MainHero.MAX_JUMPS:
+        if self.jumps < MainHero.MAX_JUMPS and self.jump_delay_current >= MainHero.MANY_JUMPS_DELAY:
+
             self.addVelocity(MainHero.JUMP_VECTOR)
             self.jumps += 1
+            self.jump_delay_current = 0
 
     def fell(self):
         Mortal.fell(self, self.velocity[1])

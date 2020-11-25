@@ -6,6 +6,7 @@ import numpy as np
 
 from core.Constants import WINDOW_RESOLUTION, TEXTURE_PACK, DEFAULT_FOV_W, DEFAULT_FOV_H, FULL_SCREEN
 from utils.files import load_image
+from core.rendering.Shaders import create_shader
 
 # from core.rendering.Shaders import create_shader
 shader_program = None
@@ -13,9 +14,71 @@ shader_program = None
 baseEdgesTex = np.array([(GL_ZERO, GL_ONE), (GL_ONE, GL_ONE), (GL_ONE, GL_ZERO), (GL_ZERO, GL_ZERO)], dtype=np.int16)
 baseEdgesObj = np.array([(GL_ZERO, GL_ZERO), (GL_ONE, GL_ZERO), (GL_ONE, GL_ONE), (GL_ZERO, GL_ONE)], dtype=np.int16)
 
+# background color
+clear_color = (0.35, 0.35, 0.5, 0.0)
+
+
+class Camera:
+    ortho_params: np.array
+    __instance = None  # Camera object is Singleton
+
+    def __init__(self):
+        #  Camera params. np.array([left, right, bottom, top], dtype=int64)
+        self.ortho_params = None
+
+        #  Field of view
+        self.fov = 1  # scale
+        self.fovW = DEFAULT_FOV_W  # field half width
+        self.fovH = DEFAULT_FOV_H  # filed half height
+
+    def __new__(cls, *args, **kwargs):
+        if cls.__instance:
+            del cls.__instance
+        cls.__instance = super(Camera, cls).__new__(cls)
+        return cls.__instance
+
+    def __getitem__(self, item):
+        return self.ortho_params[item]
+
+    def setFov(self, fov):
+        if fov != self.fov:
+            self.fov = fov
+            self.fovW = (WINDOW_RESOLUTION[0] * self.fov) // 2
+            self.fovH = (WINDOW_RESOLUTION[1] * self.fov) // 2
+
+    def getRect(self):
+        # returns Rect objects representing field of camera view
+        o = self.ortho_params
+        return Rect(o[0], o[2], o[1] - o[0], o[3] - o[2])
+
+    def getPos(self):
+        return np.array([(self[0] + self[1]) // 2, (self[2] + self[3]) // 2], dtype=np.int64)
+
+    def setField(self, rect):
+        self.ortho_params = np.array([rect[0], rect[0] + rect[2], rect[1], rect[1] + rect[3]], dtype='int64')
+
+    def apply(self):
+        # applying field of view. Called only in draw_begin()
+        gluOrtho2D(*self.ortho_params)
+
+    def focusTo(self, x_v, y_v, soft=True):
+        if soft:
+            # camera smoothly moving to (x_v, y_x) point
+            past_pos = self.getPos()
+            d_x, d_y = past_pos[0] - x_v, past_pos[1] - y_v
+            x_v, y_v = past_pos[0] - d_x * 0.2, past_pos[1] - d_y * 0.2
+
+        self.ortho_params = np.array(
+            [x_v - self.fovW, x_v + self.fovW, y_v - self.fovH, y_v + self.fovH],
+            dtype='int64'
+        )
+
+
+camera: Camera
+
 
 def init_display(size=WINDOW_RESOLUTION):
-    global shader_program
+    global shader_program, camera
 
     flags = pygame.OPENGL | pygame.DOUBLEBUF | pygame.HWSURFACE | pygame.SRCALPHA
 
@@ -35,21 +98,24 @@ def init_display(size=WINDOW_RESOLUTION):
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
     glEnable(GL_BLEND)
 
+    # camera singleton object
+    camera = Camera()
+
     #  Creating shader program that will be used for all rendering
-    # shader_program = create_shader('vertex.glsl', 'fragment.glsl')
-    # shader_program.use()
+    shader_program = create_shader('vertex.glsl', 'fragment.glsl')
+    shader_program.use()
 
 
 def clear_display():
-    glClearColor(0.35, 0.35, 0.5, 0.0)
+    glClearColor(*clear_color)
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 
 
 class Rect:
     __slots__ = ['values', ]
 
-    def __init__(self, x: int, y: int, w: int, h: int):
-        self.values = np.array([x, y, w, h], dtype=np.int64)
+    def __init__(self, x_: int, y_: int, w_: int, h_: int):
+        self.values = np.array([x_, y_, w_, h_], dtype=np.int64)
 
     def __getitem__(self, item):
         return self.values[item]
@@ -156,10 +222,11 @@ class GlTexture:
         return GlTexture(texture, f'text:{text}')
 
     def makeVertexes(self):
+        # make objVertexes with size of this texture
         return np.array([(self.size[0] * i, self.size[1] * j) for i, j in baseEdgesObj], dtype=np.int32)
 
     """actor - параметр, нужный только для анимаций"""
-    def draw(self, pos, ver_obj, ver_tex, color, actor=None, ):
+    def draw(self, pos, ver_obj, ver_tex=baseEdgesTex, color=(1, 1, 1, 1), actor=None, ):
         #  verObj, verTex - грани объекта и текстуры на это объекте
 
         draw_begin()
@@ -216,11 +283,14 @@ class GLObjectBase(pygame.sprite.Sprite):
 
         self.visible = True
 
-    #  setting up subclasses
     def __init_subclass__(cls, **kwargs):
+        #  setting up subclasses
         if cls.size and cls.center:
             cls.rect = Rect(0, 0, *cls.size)
             cls.rect.setCenter(cls.center)
+
+    def __repr__(self):
+        print(f'<{self.__class__.__name__} Rect: {self.rect}. In {len(self.groups())} groups.>')
 
     def align_center(self, to):
         # Move self rect center to other GLObject's center
@@ -295,10 +365,6 @@ class GLObjectComposite(pygame.sprite.Sprite):
             obj.setRotation(rotation)
 
 
-#  Camera params. np.array([left, right, bottom, top], dtype=int64)
-ortho_params: np.array
-
-
 def make_GL2D_texture(image, w, h, repeat=False):
     """pygame.Surface --> OpenGL.texture"""
 
@@ -325,7 +391,7 @@ def draw_begin():
     glLoadIdentity()
     glPushMatrix()
 
-    gluOrtho2D(*ortho_params)
+    camera.apply()
 
     glMatrixMode(GL_MODELVIEW)
     glLoadIdentity()
@@ -339,25 +405,6 @@ def draw_end():
 
     glMatrixMode(GL_MODELVIEW)
     glPopMatrix()
-
-
-# camera
-def camera_apply(rect):
-    global ortho_params
-    ortho_params = np.array([rect[0], rect[0] + rect[2], rect[1], rect[1] + rect[3]], dtype='int64')
-
-
-def focus_camera_to(x_v, y, fov=None):
-    global ortho_params
-
-    if fov:
-        width = (WINDOW_RESOLUTION[0] * fov) // 2
-        height = (WINDOW_RESOLUTION[1] * fov) // 2
-    else:
-        width = DEFAULT_FOV_W
-        height = DEFAULT_FOV_H
-
-    ortho_params = np.array([x_v - width, x_v + width, y - height, y + height], dtype='int64')
 
 
 # draw

@@ -1,3 +1,8 @@
+"""
+THIS MODULE CONTAINS ALL DATA DIRECTORIES OF THE GAME
+AND ALLOWS EASY ACCESS TO IT
+"""
+
 from os.path import join, dirname
 from core.Constants import *
 import pygame as pg

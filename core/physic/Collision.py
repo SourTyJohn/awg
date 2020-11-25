@@ -1,6 +1,7 @@
 from core.physic.Vector import Vector2f
 import numpy as np
 
+
 def CheckAABB(rect1, rect2):
     #  simple AABB collision test
     return rect1[0] < rect2[0] + rect2[2] and rect1[0] + rect1[2] > rect2[0] and \

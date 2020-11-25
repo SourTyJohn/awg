@@ -2,7 +2,6 @@ from user.KeyMapping import K_CLOSE, K_MOVE_UP, K_MOVE_DOWN, K_MENU_PRESS
 
 from core.rendering.Textures import *
 from core.rendering.Textures import EssentialTextureStorage as Ets
-# from core.rendering.PyOGL import draw_texture
 
 
 decoration = Gl.GLObjectGroup()
@@ -22,9 +21,9 @@ hero_is_alive = True
 
 
 def init_screen(hero_life=True, first_load=False):
-    global buttons
+    global buttons, selected_button
 
-    Gl.camera_apply(WINDOW_RECT)
+    Gl.camera.setField(WINDOW_RECT)
 
     global first
     global exit_code
@@ -37,6 +36,7 @@ def init_screen(hero_life=True, first_load=False):
 
     buttons = [FullButton(730 - x * 120, x) for x in range(5)]
     Button.hover(0, -1)
+    selected_button = 0
 
 
 def close_menu():
@@ -49,13 +49,23 @@ exit_code = None
 
 
 def render():
-    global selected_button
+    decoration.draw_all()
+    buttons_group.draw_all()
 
+
+def update(dt):
     if exit_code:
         close_menu()
         return exit_code
 
-    event = None
+    user_events()
+
+    buttons_group.update()
+    decoration.update()
+
+
+def user_events():
+    global selected_button, exit_code
 
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
@@ -65,7 +75,7 @@ def render():
         if event.type == pygame.KEYDOWN:
             if event.key == K_CLOSE and not first:
                 close_menu()
-                return 'game'
+                exit_code = 'game'
 
             elif event.key == K_MOVE_UP and 0 < selected_button:
                 selected_button -= 1
@@ -77,20 +87,6 @@ def render():
 
             elif event.key == K_MENU_PRESS:
                 buttons[selected_button].pressed()
-
-    decoration.draw_all()
-    buttons_group.draw_all()
-
-    # h: MainFrame
-    # draw_texture(MainFrame.textures[0].key, np.array([0, 0], dtype=np.float32),
-    # h.vertexesObj, h.vertexesTex, (1, 1, 1, 1))
-
-    buttons_group.update(event)
-    decoration.update()
-
-
-def update(dt):
-    pass
 
 
 class MainFrame(Gl.GLObjectBase):

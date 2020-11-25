@@ -185,11 +185,6 @@ class GameObjectDynamic(GameObjectFixed):
     def _doMove(self, dt):
         self.move_by(self.velocity * dt)
 
-    def move_by(self, vector):
-        pos = self.rect.getPos()
-        pos[0] += vector[0]
-        pos[1] += vector[1]
-
     def addVelocity(self, vector):
         if type(vector) != Vector2f:
             vector = Vector2f.xy(*vector)
