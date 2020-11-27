@@ -216,9 +216,6 @@ class MainHero(Character, d, m):
         Mortal.fell(self, self.velocity[1])
         self.jumps = 0
 
-    def draw(self, color=None):
-        super().draw()
-
     def addVelocity(self, vector):
         super().addVelocity(vector)
 

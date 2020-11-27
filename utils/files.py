@@ -65,8 +65,6 @@ def load_image(name, pack=None):
     else:
         fullname = get_full_path(name, file_type='tex')
 
-    print(fullname)
-
     if os.path.exists(fullname):
         image = pg.image.load(fullname).convert_alpha()
         return 0, image

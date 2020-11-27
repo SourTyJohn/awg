@@ -1,4 +1,4 @@
-from core.physic.Vector import Vector2f
+from core.Math.DataTypes import Vector2f
 import numpy as np
 
 
@@ -116,7 +116,7 @@ def Step(f_objs, d_objs, dt):
 
     for obj1 in f_objs:
         for obj2 in d_objs:
-            f_axis = coll(obj1.rect, obj1, (True, True, True, True), obj2.rect, obj2, dt)
+            f_axis = coll(obj1.hitrect, obj1, (True, True, True, True), obj2.hitrect, obj2, dt)
             #  f_axis - direction that must be locked for this object
             if f_axis > -1:
                 tmp = fixedDirections[obj2]
@@ -161,7 +161,7 @@ def Step(f_objs, d_objs, dt):
                 if obj2 in checked:
                     continue
 
-                f_axis = coll(obj1.rect, obj1, fixedDirections[obj1][0], obj2.rect, obj2, dt)
+                f_axis = coll(obj1.hitrect, obj1, fixedDirections[obj1][0], obj2.hitrect, obj2, dt)
                 #  f_axis - direction that must be locked for this object
 
                 if f_axis > -1:

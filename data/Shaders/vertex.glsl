@@ -1,12 +1,20 @@
-#version 330 core
+#version 410
 
-layout (location = 0) in vec3 position;
-layout (location = 1) in vec2 texCoordIn;
+layout(location = 0) in vec2 position;
+layout(location = 1) in vec4 color;
+layout(location = 2) in vec2 InTexCoords;
 
-out vec2 texCoordOut;
+uniform mat4 Translate;
+uniform mat4 Scale;
+uniform mat4 Ortho;
 
-void main()
-{
-    gl_Position = vec4(position, 1.0f);
-    texCoordOut = texCoordIn;
+out vec4 newColor;
+out vec2 TexCoords;
+
+void main() {
+
+gl_Position =  vec4(position, 0.0, 1.0) * Translate * Ortho;
+newColor = color;
+TexCoords = InTexCoords;
+
 }

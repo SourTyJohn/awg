@@ -1,5 +1,4 @@
 from OpenGL.GL import *
-from OpenGL.GLU import *
 
 from utils.files import get_full_path
 
@@ -54,6 +53,9 @@ class Shader:
 
         glDeleteShader(vertex)
         glDeleteShader(fragment)
+
+    def p(self):
+        return self.program
 
     def use(self):
         glUseProgram(self.program)

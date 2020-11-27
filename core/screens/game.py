@@ -1,5 +1,5 @@
 from core.physic.Physics import physicsStep, startPhysics, vanish_objects
-from core.rendering.PyOGL import camera, GLObjectGroup
+from core.rendering.PyOGL import camera, GLObjectGroup, drawGroups
 from core.Objects.GameObjects import *
 from user.KeyMapping import *
 from core.Constants import PHYSIC_UPDATE_FREQUENCY
@@ -101,10 +101,7 @@ def update_hero_movement():
 
 def draw_groups():
     # drawing all GLSprite groups
-    background_gr.draw_all()
-    obstacles_gr.draw_all()
-    characters_gr.draw_all()
-    player_gr.draw_all()
+    drawGroups(background_gr, obstacles_gr, characters_gr, player_gr)
 
 
 def update_groups(dt=1):
@@ -140,6 +137,8 @@ def init_screen(hero_life=False, first_load=False):
 
     a = WorldRectangleRigid(obstacles_gr, [-500, 200], [420, 50])
     a.bouncy = 3
+
+    WorldRectangleRigid(obstacles_gr, [-500, 400], [256, 256 + 256])
 
     # b = Background(background_gr, 1, [0, -1080], 'Backgrounds/back1', )
 

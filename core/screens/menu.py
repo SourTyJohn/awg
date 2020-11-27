@@ -1,17 +1,17 @@
 from user.KeyMapping import K_CLOSE, K_MOVE_UP, K_MOVE_DOWN, K_MENU_PRESS
 
 from core.rendering.Textures import *
+from core.rendering.PyOGL import drawGroups, splitDrawData
 from core.rendering.Textures import EssentialTextureStorage as Ets
 
 
 decoration = Gl.GLObjectGroup()
 back = Gl.GLObjectGroup()
-
 buttons_group = Gl.GLObjectGroup()
+
 buttons_count = 4
 selected_button = 0
 buttons = []  # list of all buttons
-text_group = Gl.GLObjectGroup()
 
 # only on first load
 first = True
@@ -34,7 +34,7 @@ def init_screen(hero_life=True, first_load=False):
 
     MainFrame()
 
-    buttons = [FullButton(730 - x * 120, x) for x in range(5)]
+    buttons = [FullButton(700 - x * 100, x) for x in range(5)]
     Button.hover(0, -1)
     selected_button = 0
 
@@ -49,8 +49,7 @@ exit_code = None
 
 
 def render():
-    decoration.draw_all()
-    buttons_group.draw_all()
+    drawGroups(decoration, buttons_group)
 
 
 def update(dt):
@@ -70,7 +69,7 @@ def user_events():
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             close_menu()
-            return 'Quit'
+            exit_code = 'Quit'
 
         if event.type == pygame.KEYDOWN:
             if event.key == K_CLOSE and not first:
@@ -105,9 +104,10 @@ class ButtonText(Gl.GLObjectBase):
     def __init__(self, number):
         self.texture = number
 
-        super().__init__(text_group, Button.rect.copy())
+        drawData = ButtonText.TEXTURES[number].makeDrawData()
+        super().__init__(None, Button.rect.copy(), no_vbo=True)
+        self.bindBuffer(drawData)
 
-        self.vertexesObj = ButtonText.TEXTURES[number].makeVertexes()
         self.rect.setSize(*ButtonText.TEXTURES[number].size)
 
 
@@ -115,14 +115,14 @@ class Button(Gl.GLObjectBase):
     # 0 - Non Selected Button, 1 - Selected
     TEXTURES = [Ets['GUI/button_menu_default'], Ets['GUI/button_menu_selected']]
 
-    size = [720, 80]
+    size = [960, 96]
     center = WINDOW_MIDDLE[:]
     rect = None
 
     def __init__(self, y_pos):
         rect = Button.rect.copy()
         rect.setY(y_pos)
-        super().__init__(buttons_group, rect)
+        super().__init__(None, rect)
 
     @staticmethod
     def hover(this: int, prev: int):

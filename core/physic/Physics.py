@@ -1,11 +1,12 @@
-from core.physic.Vector import Vector2f, LimitedVector2f
+from core.Math.DataTypes import Vector2f, LimitedVector2f, Rect4f
 
 import core.physic.Collision as Cll
 
-from core.rendering.PyOGL import *
+from core.rendering.PyOGL import GLObjectBase
 
 from core.Constants import GRAVITY_VECTOR, AIR_FRICTION, RENDER_RECT_FOR_DYNAMIC, RENDER_RECT_FOR_FIXED
-render_rect_d, render_rect_f = Rect(*RENDER_RECT_FOR_DYNAMIC), Rect(*RENDER_RECT_FOR_FIXED)
+
+render_rect_d, render_rect_f = Rect4f(*RENDER_RECT_FOR_DYNAMIC), Rect4f(*RENDER_RECT_FOR_FIXED)
 
 
 #  storage for all game objects {id: object, }
@@ -78,8 +79,11 @@ class Hitbox:
         self.offset = offset
         self.size = size
 
-    def getRect(self, self_pos):
+    def getRectList(self, self_pos):
         return [self_pos[0] + self.offset[0], self_pos[1] + self.offset[1], *self.size]
+
+    def getRect4f(self, self_pos):
+        return Rect4f(self_pos[0] + self.offset[0], self_pos[1] + self.offset[1], *self.size)
 
 
 class GameObjectFixed(GLObjectBase):
@@ -123,16 +127,17 @@ class GameObjectFixed(GLObjectBase):
         fixedObjects[self.id] = self
         return self.id
 
-    def draw(self, color=None):
-        super().draw(color)
-
     def getHitboxRect(self):
-        return self.hitbox.getRect(self.rect[:2])
+        return self.hitbox.getRect4f(self.rect[:2])
 
     def vanish(self):
         for j in self.groups():
             j.remove(self)
         del fixedObjects[self.id]
+
+    @property  # get hitbox rect. Used in collision detection
+    def hitrect(self):
+        return self.hitbox.getRect4f(self.getPos())
 
 
 class GameObjectDynamic(GameObjectFixed):
@@ -162,9 +167,6 @@ class GameObjectDynamic(GameObjectFixed):
     def vanish(self):
         self.kill()
         del dynamicObjects[self.id]
-
-    def draw(self, color=None):
-        super().draw(color)
 
     # physic
     def physic(self, dt):  # dt - delta time from last call

@@ -1,5 +1,21 @@
 import numpy as np
 
+"""
+Some self-made classes commonly used in entire project
+
+Types:
+
+Vector2f - np.array of two 32-bit floats
+LimitedVector2f
+
+Rect4f - np.array of four 32-bit floats
+"""
+
+
+######################
+# ####  VECTOR  #### #
+######################
+
 
 class Vector2f:
     __slots__ = ['values', ]
@@ -9,7 +25,7 @@ class Vector2f:
 
     @classmethod
     def xy(cls, x, y):
-        return cls(np.array([x, y], dtype=np.float16))
+        return cls(np.array([x, y], dtype=np.float32))
 
     ###
 
@@ -141,6 +157,57 @@ def operation_module(x, y, operation=1):
             x += y
 
     return x
+
+
+######################
+# #####  RECT  ##### #
+######################
+
+
+class Rect4f:
+    __slots__ = ['values', ]
+
+    def __init__(self, x_: float, y_: float, w_: float, h_: float):
+        self.values = np.array([x_, y_, w_, h_], dtype=np.float64)
+
+    def __getitem__(self, item):
+        return self.values[item]
+
+    def __repr__(self):
+        return f'<Rect4f: pos{self.values[:2]}. size: {self.values[2:]}>'
+
+    def copy(self):
+        return Rect4f(*self.values)
+
+    # center
+    def getCenter(self):
+        return self.values[0] + self.values[2] / 2, self.values[1] + self.values[3] / 2
+
+    def setCenter(self, center):
+        self.values[0] = center[0] - self.values[2] / 2
+        self.values[1] = center[1] - self.values[3] / 2
+
+    # pos
+    def getPos(self):
+        return self.values[:2]
+
+    def setY(self, y_v):
+        self.values[1] = y_v
+
+    def setX(self, x_v):
+        self.values[0] = x_v
+
+    def setPos(self, pos):
+        self.setX(pos[0])
+        self.setY(pos[1])
+
+    # size
+    def getSize(self):
+        return self.values[2:4]
+
+    def setSize(self, w, h):
+        self.values[2] = w
+        self.values[3] = h
 
 
 def distance(rect1, rect2):
