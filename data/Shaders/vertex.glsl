@@ -12,9 +12,7 @@ out vec4 newColor;
 out vec2 TexCoords;
 
 void main() {
-
 gl_Position =  vec4(position, 0.0, 1.0) * Translate * Ortho;
 newColor = color;
 TexCoords = InTexCoords;
-
 }
