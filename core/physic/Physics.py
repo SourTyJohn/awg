@@ -33,17 +33,6 @@ def get_all_hitboxes(dynamic: list, fixed: list) -> list:
     return hitboxes
 
 
-#  fully delete object
-def vanish_objects(*obj_ids) -> None:
-    for obj_id in obj_ids:
-        if obj_id % 2 == 0:
-            fixedObjects[obj_id].vanish()
-            empty_ids_fixed.add(obj_id)
-        else:
-            dynamicObjects[obj_id].vanish()
-            empty_ids_dynamic.add(obj_id)
-
-
 #  adds object to dynamicObjects or fixedObjects
 def add_object_to_physic(obj):
     if obj.typeof() == 0:  # fixed
@@ -87,6 +76,10 @@ class Hitbox:
 
 
 class GameObjectFixed(GLObjectBase):
+    """GLObjectBase with fixed physic body
+    DynamicObjects can collide with it
+    """
+
     id: int  # hash for storing in hash tables
 
     hitbox: Hitbox = None
@@ -122,17 +115,13 @@ class GameObjectFixed(GLObjectBase):
     def typeof():
         return 0
 
-    def connect(self):
-        self.id = len(fixedObjects) * 2
-        fixedObjects[self.id] = self
-        return self.id
-
     def getHitboxRect(self):
         return self.hitbox.getRect4f(self.rect[:2])
 
-    def vanish(self):
-        for j in self.groups():
-            j.remove(self)
+    def delete(self):
+        empty_ids_fixed.add(self.id)
+        self.kill()
+        GLObjectBase.delete(self)
         del fixedObjects[self.id]
 
     @property  # get hitbox rect. Used in collision detection
@@ -141,6 +130,11 @@ class GameObjectFixed(GLObjectBase):
 
 
 class GameObjectDynamic(GameObjectFixed):
+    """GLObjectBase with dynamic physic body
+    Can collide with other physic bodies
+    Have mass, that will affect physic behavior
+    """
+
     mass: int = 0
 
     def __init__(self, group, pos, size, rotation=1, tex_offset=(0, 0), max_velocity=None):
@@ -159,13 +153,10 @@ class GameObjectDynamic(GameObjectFixed):
     def typeof():
         return 1
 
-    def connect(self):
-        self.id = len(dynamicObjects) * 2 + 1
-        dynamicObjects[self.id] = self
-        return self.id
-
-    def vanish(self):
+    def delete(self):
+        empty_ids_dynamic.add(self.id)
         self.kill()
+        GLObjectBase.delete(self)
         del dynamicObjects[self.id]
 
     # physic

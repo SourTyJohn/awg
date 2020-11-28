@@ -1,4 +1,4 @@
-from core.physic.Physics import physicsStep, startPhysics, vanish_objects
+from core.physic.Physics import physicsStep, startPhysics
 from core.rendering.PyOGL import camera, GLObjectGroup, drawGroups
 from core.Objects.GameObjects import *
 from user.KeyMapping import *
@@ -7,12 +7,12 @@ from core.Constants import PHYSIC_UPDATE_FREQUENCY
 import pygame
 
 
-background_gr = GLObjectGroup()
-obstacles_gr = GLObjectGroup()
-characters_gr = GLObjectGroup()
-player_gr = GLObjectGroup()
+background_gr = GLObjectGroup(g_name='g_background')
+obstacles_gr = GLObjectGroup(g_name='g_obstacle')
+characters_gr = GLObjectGroup(g_name='g_characters')
+player_gr = GLObjectGroup(g_name='g_player')
 
-triggers_gr = GLObjectGroup()
+triggers_gr = GLObjectGroup(g_name='g_triggers')
 
 
 hero_inited = False
@@ -131,7 +131,9 @@ def init_screen(hero_life=False, first_load=False):
     WoodenCrate(obstacles_gr, [500, 800])
     WoodenCrate(obstacles_gr, [500, 900])
     a = WoodenCrate(obstacles_gr, [500, 600])
-    vanish_objects(a.id, b.id)
+
+    a.delete()
+    b.delete()
 
     MetalCrate(obstacles_gr, [1000, 400])
 

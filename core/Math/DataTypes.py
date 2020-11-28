@@ -130,7 +130,7 @@ class LimitedVector2f(Vector2f):
     __slots__ = ['limit', ]
 
     def __init__(self, x, y, limit):
-        super().__init__(np.array([x, y], dtype=np.float16))
+        super().__init__(np.array([x, y], dtype=np.float32))
         self.limit = limit
 
     def copy(self):

@@ -2,11 +2,9 @@
 THIS MODUlE CONTAINS ALL GAME OBJECTS THAT CAN BE USED IN GAME (screens.game)
 """
 
-from core.physic.Physics import GameObjectFixed, GameObjectDynamic, Hitbox, LimitedVector2f, Vector2f, vanish_objects
+from core.physic.Physics import GameObjectFixed, GameObjectDynamic, Hitbox, LimitedVector2f, Vector2f
 from core.rendering.Textures import EssentialTextureStorage as Ets
 from pygame.sprite import Sprite
-
-import numpy as np
 
 
 fixed = GameObjectFixed
@@ -77,41 +75,7 @@ class WorldRectangleRigid(fixed):
 
 
 class Background(Sprite):
-    # This class represents level background
-
-    def __init__(self, group, paralax_k, pos, *layers):
-        # group - always in background group
-        super().__init__(group)
-
-        # layers - Texture objects from core.rendering.PyOGL module
-        # background layers that will be drawn in the same order, they were passed to Background constructor
-        self.paralax_k = paralax_k
-
-        # key - Texture
-        # values - xPositions of this texture
-        self.layers = layers
-
-        # data that will be passed to Texture.draw() function
-        self.y = pos[1]
-        self.vertexes = Ets[layers[0]].makeVertexes()
-
-        # borders
-        self.size = Ets[layers[0]].size
-        # self.left_pos = pos[0]
-        # self.right_pos = pos[0] + self.size
-
-        self.offset_base = np.array([-x // 2 for x in self.size], dtype=np.int64)
-        self.offset = np.array([0, 0], dtype=np.int64)
-        self.pos = np.array([0, 0], dtype=np.int64)
-
-    def draw(self, color=None):
-        # draw all layers
-        for layer in self.layers:
-            Ets[layer].draw(self.offset_base + self.pos + self.offset, self.vertexes)
-
-    def update(self, *args, **kwargs) -> None:
-        # args[1] - camera
-        self.pos = args[1].getPos()
+    pass
 
 
 class Character(dynamic):
@@ -191,7 +155,7 @@ class MainHero(Character, d, m):
 
     def __new__(cls, *args, **kwargs):
         if cls.__instance:
-            vanish_objects(cls.__instance.id)
+            cls.__instance.delete()
         cls.__instance = super(MainHero, cls).__new__(cls)
         return cls.__instance
 

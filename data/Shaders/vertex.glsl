@@ -8,11 +8,11 @@ uniform mat4 Translate;
 uniform mat4 Scale;
 uniform mat4 Ortho;
 
-out vec4 newColor;
+out vec4 Color;
 out vec2 TexCoords;
 
 void main() {
 gl_Position =  vec4(position, 0.0, 1.0) * Translate * Ortho;
-newColor = color;
+Color = color;
 TexCoords = InTexCoords;
 }

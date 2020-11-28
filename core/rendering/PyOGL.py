@@ -1,18 +1,18 @@
 import pygame
-
 from OpenGL.GL import *
-
 import numpy as np
 
 from core.Constants import WINDOW_RESOLUTION, TEXTURE_PACK, DEFAULT_FOV_W,\
     DEFAULT_FOV_H, FULL_SCREEN, DEBUG, DEFAULT_SCALE
 from utils.files import load_image
-from core.rendering.Shaders import create_shader
 
 import core.Math.Matrix as Mat
 from core.Math.DataTypes import Rect4f
 
-# from core.rendering.Shaders import create_shader
+# from pympler.asizeof import asizeof
+
+
+from core.rendering.Shaders import create_shader
 shader_program = None
 
 # background color
@@ -120,9 +120,16 @@ def clear_display():
 
 
 class GLObjectGroup(pygame.sprite.Group):
-    def __init__(self, *args, do_draw=True):
+    __slots__ = ('do_draw', 'name', )
+
+    def __init__(self, *args, g_name='no-name', do_draw=True):
         super().__init__(*args)
         self.do_draw = do_draw
+        self.name = g_name
+
+    def __repr__(self):
+        #  Memory: {asizeof(self)}
+        return f'<GLObjectGroup({len(self.sprites())}) {self.name}>'
 
     def update(self, *args):
         super().update(*args)
@@ -139,7 +146,7 @@ class GLObjectGroup(pygame.sprite.Group):
 
 
 class GlTexture:
-    __slots__ = ['size', 'key', 'repeat', 'name']
+    __slots__ = ('size', 'key', 'repeat', 'name')
 
     def __init__(self, image, tex_name, repeat=False):
         self.size = image.get_size()  # units
@@ -239,6 +246,8 @@ class GlTexture:
 
 
 class GLObjectBase(pygame.sprite.Sprite):
+    __slots__ = ('rect', 'tex_offset', 'rotation', 'color', 'visible', 'drawData', 'vbo')
+
     TEXTURES: [GlTexture, ] = None
     texture = 0
 
@@ -261,7 +270,7 @@ class GLObjectBase(pygame.sprite.Sprite):
         self.rect = Rect4f(*rect)
 
         # Offset of a texture on this object
-        self.tex_offset = np.array(tex_offset, dtype=np.float16)
+        self.tex_offset = np.array(tex_offset, dtype=np.float32)
 
         # -1 for left    0 for middle   1 for right
         self.rotation = rotation
@@ -269,7 +278,7 @@ class GLObjectBase(pygame.sprite.Sprite):
         # additional color over texture
         if color is None:
             color = [1, 1, 1, 1]
-        self.setColor(*color)
+        self.color = np.array(color, dtype=np.float32)
 
         # if False object wont be rendered
         self.visible = True
@@ -281,6 +290,7 @@ class GLObjectBase(pygame.sprite.Sprite):
         # if no_vbo, than you must bind vbo outside class constructor
         if not no_vbo:
             self.bindBuffer(self.drawData)
+            del self.drawData
 
     def setTexture(self, texture: int = None, rotation: int = None):
         if texture is not None:
@@ -308,11 +318,12 @@ class GLObjectBase(pygame.sprite.Sprite):
         if rotation:
             pass
 
-    def bindBuffer(self, data):
+    def bindBuffer(self, data, vbo=None):
         """Generating Buffer to store this object's vertex data,
         necessary for drawing"""
 
-        vbo = glGenBuffers(1)
+        if vbo is None:
+            vbo = glGenBuffers(1)
         glBindBuffer(GL_ARRAY_BUFFER, vbo)
 
         # self.drawData.nbytes usually == 128. 32 * np.float32
@@ -351,7 +362,9 @@ class GLObjectBase(pygame.sprite.Sprite):
         # self.vertexesTex = [self.vertexesTex[j - 1 + 2 * (j % 2 == 0)] for j in range(4)]
 
     def setColor(self, *args):
-        self.color = np.array([*args], dtype=np.float16)
+        self.color = np.array([*args], dtype=np.float32)
+        self.setTexture(self.texture, self.rotation)
+        self.bindBuffer(self.drawData, self.vbo)
 
     #  move
     def move_to(self, pos):
@@ -369,6 +382,10 @@ class GLObjectBase(pygame.sprite.Sprite):
     #  delete
     def delete(self):
         print(f'deleted obj: {self}')
+
+        glBindBuffer(GL_ARRAY_BUFFER, self.vbo)
+        glBufferData(GL_ARRAY_BUFFER, 0, None, GL_STATIC_DRAW)
+
         self.kill()
 
 
