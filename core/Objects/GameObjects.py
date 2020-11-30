@@ -3,12 +3,13 @@ THIS MODUlE CONTAINS ALL GAME OBJECTS THAT CAN BE USED IN GAME (screens.game)
 """
 
 from core.physic.Physics import GameObjectFixed, GameObjectDynamic, Hitbox, LimitedVector2f, Vector2f
+from core.rendering.PyOGL import GLObjectBase
 from core.rendering.Textures import EssentialTextureStorage as Ets
-from pygame.sprite import Sprite
 
 
 fixed = GameObjectFixed
 dynamic = GameObjectDynamic
+base = GLObjectBase
 
 
 class DirectAccessObject:
@@ -72,10 +73,6 @@ class WorldRectangleRigid(fixed):
     def __init__(self, gr, pos, size, tex_offset=(0, 0), texture='Devs/r_devs_1'):
         hitbox = Hitbox([0, 0], size)
         super().__init__(gr, pos, size=size, tex_offset=tex_offset, texture=texture, hitbox=hitbox)
-
-
-class Background(Sprite):
-    pass
 
 
 class Character(dynamic):

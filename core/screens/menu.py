@@ -40,9 +40,9 @@ def init_screen(hero_life=True, first_load=False):
 
 
 def close_menu():
-    decoration.empty()
-    back.empty()
-    buttons_group.empty()
+    decoration.delete_all()
+    back.delete_all()
+    buttons_group.delete_all()
 
 
 exit_code = None

@@ -3,7 +3,7 @@ from OpenGL.GL import *
 import numpy as np
 
 from core.Constants import WINDOW_RESOLUTION, TEXTURE_PACK, DEFAULT_FOV_W,\
-    DEFAULT_FOV_H, FULL_SCREEN, DEBUG, DEFAULT_SCALE
+    DEFAULT_FOV_H, FULL_SCREEN, DEBUG, DEFAULT_SCALE, WINDOW_SIZE
 from utils.files import load_image
 
 import core.Math.Matrix as Mat
@@ -12,11 +12,11 @@ from core.Math.DataTypes import Rect4f
 # from pympler.asizeof import asizeof
 
 
-from core.rendering.Shaders import create_shader
+import core.rendering.Shaders as Shaders
 shader_program = None
 
 # background color
-clear_color = (0.35, 0.35, 0.5, 0.0)
+clear_color = (0.0, 0.0, 0.0, 0.0)
 
 
 class Camera:
@@ -89,12 +89,7 @@ def init_display(size=WINDOW_RESOLUTION):
 
     clear_display()
 
-    glMatrixMode(GL_PROJECTION)
-    glLoadIdentity()
-    glMatrixMode(GL_MODELVIEW)
-
     glEnable(GL_TEXTURE_2D)
-
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
     glEnable(GL_BLEND)
 
@@ -102,7 +97,8 @@ def init_display(size=WINDOW_RESOLUTION):
     camera = Camera()
 
     #  Creating shader program that will be used for all rendering
-    shader_program = create_shader('vertex.glsl', 'fragment.glsl')
+    Shaders.init()
+    shader_program = Shaders.shaders['DefaultShader']
     shader_program.use()
 
     # setting clear color
@@ -121,6 +117,7 @@ def clear_display():
 
 class GLObjectGroup(pygame.sprite.Group):
     __slots__ = ('do_draw', 'name', )
+    """Container of GlObjects"""
 
     def __init__(self, *args, g_name='no-name', do_draw=True):
         super().__init__(*args)
@@ -139,10 +136,17 @@ class GLObjectGroup(pygame.sprite.Group):
             for obj in self.sprites():
                 obj.draw(shader)
 
+    """Clearing storage"""
     def empty(self):
         super().empty()
+
+    """Deleting all of group.sprites()"""
+    def delete_all(self):
+
         for obj in self.sprites():
-            obj.kill()
+            obj.delete()
+
+        self.empty()
 
 
 class GlTexture:
@@ -195,7 +199,9 @@ class GlTexture:
         return GlTexture(texture, f'text:{text}')
 
     def makeDrawData(self, color=(1.0, 1.0, 1.0, 1.0)):
-        # make draw data with size of this texture
+        """Make draw data with size of this texture
+        Usually GlObjects have their own drawData, but you can calculate drawData,
+        which will perfect for this texture"""
         w_o, h_o = self.size
 
         data = np.array([
@@ -217,23 +223,8 @@ class GlTexture:
         # bind VBO
         glBindBuffer(GL_ARRAY_BUFFER, vbo)
 
-        # attribute pointers
-        glGetAttribLocation(shader, 'position')
-        glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 32, ctypes.c_void_p(0))
-        glEnableVertexAttribArray(0)
-
-        glGetAttribLocation(shader, 'color')
-        glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 32, ctypes.c_void_p(8))
-        glEnableVertexAttribArray(1)
-
-        glGetAttribLocation(shader, "InTexCoords")
-        glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 32, ctypes.c_void_p(24))
-        glEnableVertexAttribArray(2)
-
-        # translate matrix
-        translateM = Mat.translate(*pos)
-        loc = glGetUniformLocation(shader, "Translate")
-        glUniformMatrix4fv(loc, 1, GL_FALSE, translateM)
+        # drawing using Shader
+        shader.draw(pos, )
 
         # drawing
         glBindTexture(GL_TEXTURE_2D, self.key)
@@ -245,7 +236,11 @@ class GlTexture:
         del self
 
 
-class GLObjectBase(pygame.sprite.Sprite):
+class Sprite(pygame.sprite.Sprite):
+    rect: Rect4f
+
+
+class GLObjectBase(Sprite):
     __slots__ = ('rect', 'tex_offset', 'rotation', 'color', 'visible', 'drawData', 'vbo')
 
     TEXTURES: [GlTexture, ] = None
@@ -340,7 +335,7 @@ class GLObjectBase(pygame.sprite.Sprite):
             cls.rect.setCenter(cls.center)
 
     def __repr__(self):
-        return f'<{self.__class__.__name__} Rect4f: {self.rect}. In {len(self.groups())} groups.>'
+        return f'<{self.__class__.__name__} {self.rect}. In {len(self.groups())} groups. VBO: {self.vbo}>'
 
     def align_center(self, to):
         # Move self rect center to other GLObject's center
@@ -389,7 +384,7 @@ class GLObjectBase(pygame.sprite.Sprite):
         self.kill()
 
 
-class GLObjectComposite(pygame.sprite.Sprite):
+class GLObjectComposite(Sprite):
     def __init__(self, group, *objects):
 
         """All of the objects must be in zero SpriteGroups"""
@@ -408,6 +403,81 @@ class GLObjectComposite(pygame.sprite.Sprite):
     def setRotation(self, rotation):
         for obj in self.objects:
             obj.setRotation(rotation)
+
+    def delete(self):
+        for obj in self.objects:
+            obj.delete()
+
+
+class BackgroundColor(Sprite):
+    __instance = None
+
+    color: np.array = (0.35, 0.35, 0.5, 1.0)
+    drawData: np.array
+    vbo: int
+
+    def __init__(self, gr, ):
+        super().__init__(gr)
+
+        #
+
+        self.rect = Rect4f(0, 0, *WINDOW_SIZE)
+        w_o, h_o = self.rect[2:]
+        color = self.__class__.color
+
+        data = np.array([
+            # obj cords  # color
+            0.0, 0.0, *color,
+            w_o, 0.0, *color,
+            w_o, h_o, *color,
+            0.0, h_o, *color,
+
+        ], dtype=np.float32)
+
+        #
+
+        vbo = glGenBuffers(1)
+        glBindBuffer(GL_ARRAY_BUFFER, vbo)
+
+        glBufferData(GL_ARRAY_BUFFER, data.nbytes, data, GL_STATIC_DRAW)
+        self.vbo = vbo
+
+    def __new__(cls, *args, **kwargs):
+        cls.__instance = super(BackgroundColor, cls).__new__(cls)
+        return cls.__instance
+
+    def draw(self, shader):
+        prev_shader = shader
+
+        background_shader = Shaders.shaders['BackgroundShader']
+        background_shader.use()
+
+        #
+
+        glBindBuffer(GL_ARRAY_BUFFER, self.vbo)
+
+        #
+        scaleM = Mat.scale(DEFAULT_SCALE, DEFAULT_SCALE)
+        orthoM = camera.getMatrix()
+        shader = shader_program
+
+        loc = glGetUniformLocation(shader.p(), "Scale")
+        glUniformMatrix4fv(loc, 1, GL_FALSE, scaleM)
+
+        loc = glGetUniformLocation(shader.p(), "Ortho")
+        glUniformMatrix4fv(loc, 1, GL_FALSE, orthoM)
+        #
+
+        background_shader.draw(self.rect.getPos(), camera=camera)
+
+        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, None)
+
+        #
+
+        prev_shader.use()
+
+    def update(self, *args, **kwargs) -> None:
+        self.rect.setCenter(args[1].getPos())
 
 
 def make_GL2D_texture(image, w, h, repeat=False):
@@ -443,12 +513,12 @@ def drawGroups(*groups):
     # calculating and binding matrixes of scale and camera
     scaleM = Mat.scale(DEFAULT_SCALE, DEFAULT_SCALE)
     orthoM = camera.getMatrix()
-    shader = shader_program.p()
+    shader = shader_program
 
-    loc = glGetUniformLocation(shader, "Scale")
+    loc = glGetUniformLocation(shader.p(), "Scale")
     glUniformMatrix4fv(loc, 1, GL_FALSE, scaleM)
 
-    loc = glGetUniformLocation(shader, "Ortho")
+    loc = glGetUniformLocation(shader.p(), "Ortho")
     glUniformMatrix4fv(loc, 1, GL_FALSE, orthoM)
 
     # drawing each object in each group

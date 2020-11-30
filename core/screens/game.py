@@ -1,5 +1,5 @@
 from core.physic.Physics import physicsStep, startPhysics
-from core.rendering.PyOGL import camera, GLObjectGroup, drawGroups
+from core.rendering.PyOGL import camera, GLObjectGroup, drawGroups, BackgroundColor
 from core.Objects.GameObjects import *
 from user.KeyMapping import *
 from core.Constants import PHYSIC_UPDATE_FREQUENCY
@@ -29,8 +29,10 @@ holding_keys = {
 
 
 def render():
-    # VISUAL
+    # CAMERA UPDATE
     camera.focusTo(*hero.rect.getPos())
+    background_gr.update(1, camera)
+
     draw_groups()
 
 
@@ -42,7 +44,8 @@ def update(dt):
 
     # PHYSIC AND UPDATE
     h = hero
-    fixed_objs, dynamic_objs = startPhysics(h)  # fixed, dynamic  objects that will be updated and rendered
+    fixed_objs, dynamic_objs = startPhysics(h)
+    # fixed, dynamic  objects that will be updated and rendered
 
     if dt > PHYSIC_UPDATE_FREQUENCY:
         t = dt / PHYSIC_UPDATE_FREQUENCY
@@ -148,6 +151,8 @@ def init_screen(hero_life=False, first_load=False):
     hero = MainHero(player_gr, [250, 400])
     hero.addVelocity([50, 0])
     hero_inited = True
+
+    b = BackgroundColor(background_gr)
 
 
 def close():

@@ -30,9 +30,10 @@ def game_loop():
     GL.clear_display()
 
     scr = screens[screen_type]
-
     exit_code = scr.update(0.017)
     scr.render()
+
+    #
 
     if FPS_SHOW:  # current FPS display
         print(f'\rFPS: {1 / (timer() - start_time) // 1}', end='')
