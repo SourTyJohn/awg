@@ -1,7 +1,7 @@
 from user.KeyMapping import K_CLOSE, K_MOVE_UP, K_MOVE_DOWN, K_MENU_PRESS
 
 from core.rendering.Textures import *
-from core.rendering.PyOGL import drawGroups, splitDrawData
+from core.rendering.PyOGL import drawGroups
 from core.rendering.Textures import EssentialTextureStorage as Ets
 
 
@@ -108,7 +108,7 @@ class ButtonText(Gl.GLObjectBase):
         super().__init__(None, Button.rect.copy(), no_vbo=True)
         self.bindBuffer(drawData)
 
-        self.rect.setSize(*ButtonText.TEXTURES[number].size)
+        self.rect.size = ButtonText.TEXTURES[number].size
 
 
 class Button(Gl.GLObjectBase):
@@ -121,7 +121,7 @@ class Button(Gl.GLObjectBase):
 
     def __init__(self, y_pos):
         rect = Button.rect.copy()
-        rect.setY(y_pos)
+        rect.y = y_pos
         super().__init__(None, rect)
 
     @staticmethod

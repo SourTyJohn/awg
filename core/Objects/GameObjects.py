@@ -2,13 +2,13 @@
 THIS MODUlE CONTAINS ALL GAME OBJECTS THAT CAN BE USED IN GAME (screens.game)
 """
 
-from core.physic.Physics import GameObjectFixed, GameObjectDynamic, Hitbox, LimitedVector2f, Vector2f
+from core.physic.Physics import DynamicObject, StaticObject, Hitbox
 from core.rendering.PyOGL import GLObjectBase
 from core.rendering.Textures import EssentialTextureStorage as Ets
 
 
-fixed = GameObjectFixed
-dynamic = GameObjectDynamic
+fixed = StaticObject
+dynamic = DynamicObject
 base = GLObjectBase
 
 
@@ -81,37 +81,20 @@ class Character(dynamic):
     def __init__(self, max_walking_speed, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.walkVelocity = LimitedVector2f(0, 0, max_walking_speed)
-
+        self.walkVelocity = 0  # TODO: WALK VELOCITY
         self.walk_direction = 0  # may be -1 - move to  the left, 0 - standing, 1 - move to the right
         self.walking_speed = self.__class__.WALKING_SPEED
 
         self.grab_distance = 60
         self.grabbed_object = None
 
-    def walk(self, direction):
-        self.walkVelocity.add(direction)
-
-    def _doMove(self, dt):
-        move_vector = self.velocity.sum(self.walkVelocity)
-        self.move_by(move_vector * dt)
-
-    def getVelocity(self):
-        return self.velocity.sum(self.walkVelocity)
-
-    def friction_apply(self, dt, k):
-        self.velocity.friction(k * dt)
-        self.walkVelocity.friction(k * dt)
-
     def update(self, *args, **kwargs) -> None:
-        #  args[0] - delta_time
-        self.walk(Vector2f.xy(self.walking_speed * self.walk_direction * args[0], 0))
-
         #  grabbed object update
         if self.grabbed_object:
             pass
 
     def grab(self, target):
+        #  TODO: GRAB
         self.grabbed_object = object
 
 #
@@ -121,7 +104,7 @@ class MainHero(Character, d, m):
     # unique
     MAX_JUMPS = 2
     WALKING_SPEED = 2
-    JUMP_VECTOR = Vector2f.xy(0, 36)
+    JUMP_VECTOR = None
     MANY_JUMPS_DELAY = 12
 
     # character
@@ -130,7 +113,7 @@ class MainHero(Character, d, m):
     #  static
     TEXTURES = [Ets['LevelOne/r_pebble_grass_1'], ]
     size = [64, 144]
-    hitbox = Hitbox([0, 0], size)
+    hitbox_data = Hitbox([0, 0], size)
 
     #  dynamic
     mass = 2
@@ -166,40 +149,23 @@ class MainHero(Character, d, m):
         # character.update()
         super().update(*args, **kwargs)
 
-    def jump(self):
-        if self.jumps < MainHero.MAX_JUMPS and self.jump_delay_current >= MainHero.MANY_JUMPS_DELAY:
-
-            self.addVelocity(MainHero.JUMP_VECTOR)
-            self.jumps += 1
-            self.jump_delay_current = 0
-
-    def fell(self):
-        Mortal.fell(self, self.velocity[1])
-        self.jumps = 0
-
-    def addVelocity(self, vector):
-        super().addVelocity(vector)
-
 
 class WoodenCrate(dynamic, d, m):
     # static
     TEXTURES = [Ets['LevelOne/r_tile_grey_1'], ]
     size = [64, 64]
-    hitbox = Hitbox([0, 0], size)
+    hitbox_data = Hitbox([0, 0], size)
 
     # dynamic
-    mass = 1
+    mass = 10
 
     # mortal
     max_health = 10
     lethal_fall_velocity = 64
 
     def __init__(self, gr, pos):
-        super().__init__(gr, pos, WoodenCrate.size, max_velocity=64)
+        super().__init__(gr, pos, WoodenCrate.size)
         self.init_mortal(self.__class__)
-
-    def fell(self):
-        Mortal.fell(self, self.velocity[1])
 
 
 class MetalCrate(WoodenCrate, d, m):

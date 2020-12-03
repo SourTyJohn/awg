@@ -1,14 +1,10 @@
 import numpy as np
+from math import cos, sin, radians
 
 """
-Some self-made classes commonly used in entire project
-
-Types:
-
-Vector2f - np.array of two 32-bit floats
-LimitedVector2f
-
-Rect4f - np.array of four 32-bit floats
+Some self-made data types commonly used in engine
+- Vectors and vector math (used for Physics)
+- Rect (used for Collision, Drawing)
 """
 
 
@@ -18,88 +14,85 @@ Rect4f - np.array of four 32-bit floats
 
 
 class Vector2f:
-    __slots__ = ['values', ]
+    """Array of two floats representing vector"""
+    __slots__ = ('values', )
 
+    # Init class from np.array
     def __init__(self, array):
         self.values = array
 
+    # Init class from two numbers
     @classmethod
     def xy(cls, x, y):
         return cls(np.array([x, y], dtype=np.float32))
 
-    ###
-
+    # Vector + Vector
     def __add__(self, other):
-        assert type(other) in (Vector2f, LimitedVector2f)
+        assert isinstance(other, (Vector2f, LimitedVector2f))
         return Vector2f(self.values + other.values)
 
+    # Vector - Vector
     def __sub__(self, other):
-        assert type(other) in (int, float)
-        if self.values[0]:
-            self.values[0] -= other
-        if self.values[1]:
-            self.values[1] -= other
-        return self
-
-    # Vector2f + Vector2f
-    def sum(self, other):
-        return Vector2f(self.values + other.values)
-
-    # Vector2f += Vector2f
-    def add(self, other):
-        self.values += other.values
-
-    # Vector2f * int
-    def __mul__(self, other):
-        return Vector2f(self.values * other)
-
-    def __floordiv__(self, other):
-        return Vector2f(self.values // 2)
-
-    def __truediv__(self, other):
-        return Vector2f(self.values / 2)
-
-    # Vector2f - Vector2f
-    def difference(self, other):
+        assert isinstance(other, (Vector2f, LimitedVector2f))
         return Vector2f(self.values - other.values)
 
-    # Vector2f -= Vector2f
+    # self += Vector
+    def add(self, other):
+        assert isinstance(other, (Vector2f, LimitedVector2f))
+        self.values += other.values
+
+    # self -= Vector
     def sub(self, other):
+        assert isinstance(other, (Vector2f, LimitedVector2f))
         self.values -= other.values
 
+    # Vector * int
+    def __mul__(self, other):
+        assert isinstance(other, (int, float))
+        return Vector2f(self.values * other)
+
+    # Vector // int
+    def __floordiv__(self, other):
+        assert isinstance(other, (int, float))
+        return Vector2f(self.values // 2)
+
+    # Vector / int
+    def __truediv__(self, other):
+        assert isinstance(other, (int, float))
+        return Vector2f(self.values / 2)
+
     # Length of this Vector
-    def get_length(self):
+    def length(self):
         return (self[0]**2 + self[1] ** 2) ** 0.5
 
+    # Shortens Vector by value
     def sub_length(self, value):
-        if self[0] == 0:
-            self.set_x(0)
-            self.set_y(operation_module(self[1], value, -1))
+        length = self.length() - value
+        vec = vec_normalize(self)
+        self.values = vec.values * length
 
-        elif self[1] == 0:
-            self.set_x(operation_module(self[0], value, -1))
-            self.set_y(0)
-
-        else:
-            delta = self[1] / self[0]
-
-            x = abs((value ** 2 / (delta ** 2 + 1)) ** 0.5)
-            y = abs(x * delta)
-
-            self.set_x(int(operation_module(self[0], x, -1)))
-            self.set_y(int(operation_module(self[1], y, -1)))
-
-    # set
+    # Replace self.values with values of other Vector
     def set_values_from(self, vec):
         self.values = vec.values
 
-    def set_x(self, x):
-        self.values[0] = x
+    # VALUES
+    @property
+    def x(self):
+        return self[0]
 
-    def set_y(self, y):
-        self.values[1] = y
+    @x.setter
+    def x(self, value):
+        self.values[0] = value
 
+    @property
+    def y(self):
+        return self[1]
+
+    @y.setter
+    def y(self, value):
+        self.values[1] = value
     ###
+
     def zero(self):
         self.values -= self.values
 
@@ -120,14 +113,21 @@ class Vector2f:
 
     # physic
     def friction(self, amount):
-        if amount > self.get_length():
+        if amount > self.length():
             self.zero()
         else:
             self.sub_length(amount)
 
+    def rotate(self, theta):
+        theta = radians(theta)
+        dc, ds = cos(theta), sin(theta)
+        x, y = dc * self.x - ds * self.y, ds * self.x + dc * self.y
+        return self.__class__(x, y)
+
 
 class LimitedVector2f(Vector2f):
-    __slots__ = ['limit', ]
+    """Vector2f with limited length"""
+    __slots__ = ('limit', )
 
     def __init__(self, x, y, limit):
         super().__init__(np.array([x, y], dtype=np.float32))
@@ -137,26 +137,29 @@ class LimitedVector2f(Vector2f):
         return LimitedVector2f(*self.values, self.limit)
 
     def add(self, other):
-        summ = self.sum(other)
-        if summ.get_length() >= self.limit:
-            summ.values *= self.limit / summ.get_length()
+        assert isinstance(other, (Vector2f, LimitedVector2f))
+
+        summ = self + other
+        if summ.length() >= self.limit:
+            summ.values *= self.limit / summ.length()
         self.values = summ.values
 
 
-def operation_module(x, y, operation=1):
-    if operation == 1:
-        if x >= 0:
-            x += y
-        else:
-            x -= y
+def vec_normalize(vec):
+    length = vec.length()
+    return Vector2f.xy(vec.x / length, vec.y / length)
 
-    elif operation == -1:
-        if x >= 0:
-            x -= y
-        else:
-            x += y
 
-    return x
+def vec_dot(blue, red):
+    return blue.x * red.x + blue.y * red.y
+
+
+def vec_cross(blue, red):
+    return blue.x * red.y - blue.y * red.x
+
+
+def vec_orthogonal(self):
+    return self.__class__(self.x, -self.y)
 
 
 ######################
@@ -165,6 +168,7 @@ def operation_module(x, y, operation=1):
 
 
 class Rect4f:
+    """Array of four floats, representing pos and size of rectangle"""
     __slots__ = ['values', ]
 
     def __init__(self, x_: float, y_: float, w_: float, h_: float):
@@ -179,35 +183,89 @@ class Rect4f:
     def copy(self):
         return Rect4f(*self.values)
 
-    # center
-    def getCenter(self):
+    # CENTER
+    @property
+    def center(self):
         return self.values[0] + self.values[2] / 2, self.values[1] + self.values[3] / 2
 
-    def setCenter(self, center):
-        self.values[0] = center[0] - self.values[2] / 2
-        self.values[1] = center[1] - self.values[3] / 2
+    @center.setter
+    def center(self, value):
+        self.values[0] = value[0] - self.values[2] / 2
+        self.values[1] = value[1] - self.values[3] / 2
 
-    # pos
-    def getPos(self):
+    # POSITION
+    @property
+    def pos(self):
         return self.values[:2]
 
-    def setY(self, y_v):
-        self.values[1] = y_v
+    @pos.setter
+    def pos(self, value):
+        self.values[0] = value[0]
+        self.values[1] = value[1]
 
-    def setX(self, x_v):
-        self.values[0] = x_v
+    def move_by(self, vec):
+        self.values[0] += vec[0]
+        self.values[1] += vec[1]
 
-    def setPos(self, pos):
-        self.setX(pos[0])
-        self.setY(pos[1])
-
-    # size
-    def getSize(self):
+    # SIZE
+    @property
+    def size(self):
         return self.values[2:4]
 
-    def setSize(self, w, h):
-        self.values[2] = w
-        self.values[3] = h
+    @size.setter
+    def size(self, value):
+        self.values[2] = value[0]
+        self.values[3] = value[1]
+
+    # BORDERS
+    @property
+    def R(self):  # right
+        return self[0] + self[2]
+
+    @property
+    def L(self):  # left
+        return self[0]
+
+    @property
+    def T(self):  # top
+        return self[1] + self[3]
+
+    @property
+    def B(self):  # bottom
+        return self[1]
+
+    # VALUES
+    @property
+    def x(self):
+        return self[0]
+
+    @x.setter
+    def x(self, value):
+        self.values[0] = value
+
+    @property
+    def y(self):
+        return self[1]
+
+    @y.setter
+    def y(self, value):
+        self.values[1] = value
+
+    @property
+    def w(self):
+        return self[2]
+
+    @w.setter
+    def w(self, value):
+        self.values[2] = value
+
+    @property
+    def h(self):
+        return self[3]
+
+    @h.setter
+    def h(self, value):
+        self.values[3] = value
 
 
 def distance(rect1, rect2):

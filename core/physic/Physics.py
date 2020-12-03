@@ -1,62 +1,5 @@
-from core.Math.DataTypes import Vector2f, LimitedVector2f, Rect4f
-
-import core.physic.Collision as Cll
-
 from core.rendering.PyOGL import GLObjectBase
-
-from core.Constants import GRAVITY_VECTOR, AIR_FRICTION, RENDER_RECT_FOR_DYNAMIC, RENDER_RECT_FOR_FIXED
-
-render_rect_d, render_rect_f = Rect4f(*RENDER_RECT_FOR_DYNAMIC), Rect4f(*RENDER_RECT_FOR_FIXED)
-
-
-#  storage for all game objects {id: object, }
-#  all the dynamic objects have odd int as id, all fixed have even int id's
-#  empty ids store ids of objects that were vanished. Those ids can be reused
-dynamicObjects = {}
-empty_ids_dynamic = set()
-
-fixedObjects = {}
-empty_ids_fixed = set()
-
-
-#  get hitbox from every object dynamic, fixed objects lists
-def get_all_hitboxes(dynamic: list, fixed: list) -> list:
-    hitboxes = []
-    add = hitboxes.append
-
-    for obj in dynamic:
-        add(obj.hitbox.getRect(obj.rect.getPos()))
-
-    for obj in fixed:
-        add(obj.hitbox.getRect(obj.rect.getPos()))
-
-    return hitboxes
-
-
-#  adds object to dynamicObjects or fixedObjects
-def add_object_to_physic(obj):
-    if obj.typeof() == 0:  # fixed
-        eif = empty_ids_fixed
-
-        if eif:
-            this_id = eif.pop()
-        else:
-            this_id = len(fixedObjects) * 2
-
-        fixedObjects[this_id] = obj
-
-    else:  # dynamic
-        eid = empty_ids_dynamic
-
-        if eid:
-            this_id = eid.pop()
-        else:
-            this_id = len(dynamicObjects) * 2 + 1
-
-        dynamicObjects[this_id] = obj
-
-    #  sets id of object
-    obj.id = this_id
+import pymunk
 
 
 class Hitbox:
@@ -71,167 +14,86 @@ class Hitbox:
     def getRectList(self, self_pos):
         return [self_pos[0] + self.offset[0], self_pos[1] + self.offset[1], *self.size]
 
-    def getRect4f(self, self_pos):
-        return Rect4f(self_pos[0] + self.offset[0], self_pos[1] + self.offset[1], *self.size)
 
-
-class GameObjectFixed(GLObjectBase):
-    """GLObjectBase with fixed physic body
-    DynamicObjects can collide with it
-    """
-
-    id: int  # hash for storing in hash tables
-
-    hitbox: Hitbox = None
-    size: list = None
-
-    friction: float = 0.0
-    bouncy: float = 0.0
-
-    def __init__(self, group, pos, size='default', rotation=1, tex_offset=(0, 0), texture=0, hitbox='default'):
-        """
-        group - sprite group
-        size - size of a texture, not hitbox
-        If hitbox is None, object has no collision
-        """
-
-        self.texture = texture
-
-        if size == 'default':
-            size = self.__class__.size
-
-        if hitbox == 'default':
-            hitbox = self.__class__.hitbox
-
-        super().__init__(group, [*pos, *size], rotation, tex_offset)
-
-        self.hitbox = hitbox
-        self.friction = self.__class__.friction
-        self.bouncy = self.__class__.bouncy
-
-        add_object_to_physic(self)
-
-    @staticmethod
-    def typeof():
-        return 0
-
-    def getHitboxRect(self):
-        return self.hitbox.getRect4f(self.rect[:2])
-
-    def delete(self):
-        empty_ids_fixed.add(self.id)
-        self.kill()
-        GLObjectBase.delete(self)
-        del fixedObjects[self.id]
-
-    @property  # get hitbox rect. Used in collision detection
-    def hitrect(self):
-        return self.hitbox.getRect4f(self.getPos())
-
-
-class GameObjectDynamic(GameObjectFixed):
-    """GLObjectBase with dynamic physic body
-    Can collide with other physic bodies
-    Have mass, that will affect physic behavior
-    """
+class PhysicObject(GLObjectBase):
+    size: list
 
     mass: int = 0
+    density: float = 1.0
+    friction: float = 0.5
 
-    def __init__(self, group, pos, size, rotation=1, tex_offset=(0, 0), max_velocity=None):
-        super().__init__(group, pos, size, rotation, tex_offset)
+    btypes = (
+        pymunk.Body.STATIC,
+        pymunk.Body.DYNAMIC
+    )
 
-        self.mass = self.__class__.mass
-        if max_velocity:
-            self.velocity = LimitedVector2f(0, 0, max_velocity)
-        else:
-            self.velocity = Vector2f.xy(0, 0)
+    hitbox_data: Hitbox  # must define in subclasses
+    shape: pymunk.Poly
 
-        # if False, object wont .update() and .physic()
-        self.updating = True
+    def __init__(self, group, pos, size='cls', hitbox='cls', body_type=0, tex_offset=(0, 0), texture=0):
+        cls = self.__class__
 
-    @staticmethod
-    def typeof():
-        return 1
+        if size == 'cls':
+            size = cls.size
 
-    def delete(self):
-        empty_ids_dynamic.add(self.id)
-        self.kill()
-        GLObjectBase.delete(self)
-        del dynamicObjects[self.id]
+        if hitbox == 'cls':
+            hitbox = cls.hitbox_data
 
-    # physic
-    def physic(self, dt):  # dt - delta time from last call
-        self._gravitation(dt=dt)
-        self.friction_apply(dt=dt, k=AIR_FRICTION)
-        self._doMove(dt=dt)
+        self.texture = texture
+        super().__init__(group, rect=[*pos, *size], tex_offset=tex_offset)
 
-    def _gravitation(self, dt, g=GRAVITY_VECTOR):
-        self.velocity.add(g * dt)
+        s = hitbox.size
+        points = (
+            (0,     0),
+            (0,     s[1]),
+            (s[0],  s[1]),
+            (s[0],  0)
+        )
 
-    def friction_apply(self, dt, k):
-        self.velocity.friction(k * dt)
+        mass = cls.mass
+        moment = pymunk.moment_for_poly(mass, points, (0, 0))
 
-    def fell(self):  # Called when object hitting the obstacle after falling
+        self.body = pymunk.Body(mass, moment, body_type=PhysicObject.btypes[body_type])
+        self.body.position = pos[:]
+
+        self.shape = pymunk.Poly(self.body, points)
+        self.shape.friction = cls.friction
+
+        world.space.add(self.body, self.shape)
+
+    def update(self, *args, **kwargs) -> None:
+        self.rect.center = self.body.position
+
+    def draw(self, shader):
+        if self.visible:
+            print(self.body.rotation_vector)
+            self.__class__.TEXTURES[self.texture].draw(self.rect.pos, self.vbo,
+                                                       shader)
+
+
+class DynamicObject(PhysicObject):
+    def __init__(self, group, pos, size='cls', tex_offset=(0, 0), texture=0, hitbox='cls'):
+        super().__init__(group, pos, size=size, body_type=1, hitbox=hitbox, tex_offset=tex_offset, texture=texture)
         pass
 
-    # movement
-    def _doMove(self, dt):
-        self.move_by(self.velocity * dt)
 
-    def addVelocity(self, vector):
-        if type(vector) != Vector2f:
-            vector = Vector2f.xy(*vector)
-        self.velocity.add(vector)
-
-    def getVelocity(self):
-        return self.velocity
+class StaticObject(PhysicObject):
+    def __init__(self, group, pos, size='cls', tex_offset=(0, 0), texture=0, hitbox='cls'):
+        super().__init__(group, pos, size=size, body_type=0, hitbox=hitbox, tex_offset=tex_offset, texture=texture)
+        pass
 
 
-#  Decides should object be rendered at this frame and returns lists of rendered objects
-def startPhysics(hero):
-    #  setup render rectangle by moving it to player
-    center = hero.rect.getCenter()
-    re_f = render_rect_f
-    re_f.setCenter(center)
-    re_d = render_rect_d
-    re_d.setCenter(center)
+class World:
+    __instance = None
 
-    check = Cll.CheckAABB
+    def __init__(self):
+        self.space = pymunk.Space()
+        self.space.gravity = (0, -1600)
+        self.space.sleep_time_threshold = 0.3
 
-    #  Testing if dynamic object in render zone
-    dynamic = []
-    add = dynamic.append
-    for ido in dynamicObjects:
-        obj = dynamicObjects[ido]
-
-        if check(obj.rect, re_d):
-            add(obj)
-            obj.visible = True
-        else:
-            obj.visible = False
-
-    #  Testing if fixed object in render zone
-    fixed = []
-    add = fixed.append
-    for ido in fixedObjects:
-        obj = fixedObjects[ido]
-
-        if check(obj.rect, re_f):
-            add(obj)
-            obj.visible = True
-        else:
-            obj.visible = False
-
-    return fixed, dynamic
+    def step(self, dt):
+        dt = 1 / 60
+        self.space.step(dt)
 
 
-# Main physics loop
-def physicsStep(f, d, hero, times=1):
-    hero.update(times)
-
-    #  do physics for every dynamic object in render distance
-    for obj in d:
-        obj.physic(times)
-
-    #  collision loop from Collision.py
-    Cll.Step(f, d, times)
+world = World()

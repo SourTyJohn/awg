@@ -332,18 +332,18 @@ class GLObjectBase(Sprite):
             will be set based on this params"""
 
             cls.rect = Rect4f(0, 0, *cls.size)
-            cls.rect.setCenter(cls.center)
+            cls.rect.center = cls.center
 
     def __repr__(self):
         return f'<{self.__class__.__name__} {self.rect}. In {len(self.groups())} groups. VBO: {self.vbo}>'
 
     def align_center(self, to):
         # Move self rect center to other GLObject's center
-        self.rect.setCenter(to.rect.getCenter()[:])
+        self.rect.center = to.rect.center[:]
 
     def draw(self, shader):
         if self.visible:
-            self.__class__.TEXTURES[self.texture].draw(self.rect.getPos(), self.vbo, shader)
+            self.__class__.TEXTURES[self.texture].draw(self.rect.pos, self.vbo, shader)
 
     #  visual
     def changeOffset(self, offset):
@@ -363,13 +363,11 @@ class GLObjectBase(Sprite):
 
     #  move
     def move_to(self, pos):
-        self.rect.setX(pos[0])
-        self.rect.setY(pos[1])
+        self.rect.x = pos[0]
+        self.rect.y = pos[1]
 
     def move_by(self, vector):
-        pos = self.rect.getPos()
-        pos[0] += vector[0]
-        pos[1] += vector[1]
+        self.rect.move_by(vector)
 
     def getPos(self):
         return self.rect[:2]
@@ -468,7 +466,7 @@ class BackgroundColor(Sprite):
         glUniformMatrix4fv(loc, 1, GL_FALSE, orthoM)
         #
 
-        background_shader.draw(self.rect.getPos(), camera=camera)
+        background_shader.draw(self.rect.pos, camera=camera)
 
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, None)
 
@@ -477,7 +475,7 @@ class BackgroundColor(Sprite):
         prev_shader.use()
 
     def update(self, *args, **kwargs) -> None:
-        self.rect.setCenter(args[1].getPos())
+        self.rect.center = args[1].getPos()
 
 
 def make_GL2D_texture(image, w, h, repeat=False):

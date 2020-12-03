@@ -1,8 +1,8 @@
-from core.physic.Physics import physicsStep, startPhysics
+from core.physic.Physics import world
 from core.rendering.PyOGL import camera, GLObjectGroup, drawGroups, BackgroundColor
-from core.Objects.GameObjects import *
 from user.KeyMapping import *
 from core.Constants import PHYSIC_UPDATE_FREQUENCY
+from core.Objects.GameObjects import *
 
 import pygame
 
@@ -16,7 +16,7 @@ triggers_gr = GLObjectGroup(g_name='g_triggers')
 
 
 hero_inited = False
-hero: MainHero  # MainHero object
+# hero: MainHero  # MainHero object
 
 
 #  Keys that player is holding
@@ -30,7 +30,7 @@ holding_keys = {
 
 def render():
     # CAMERA UPDATE
-    camera.focusTo(*hero.rect.getPos())
+    camera.focusTo(500, 500)
     background_gr.update(1, camera)
 
     draw_groups()
@@ -43,23 +43,25 @@ def update(dt):
         return exit_code
 
     # PHYSIC AND UPDATE
-    h = hero
-    fixed_objs, dynamic_objs = startPhysics(h)
+    # h = hero
+    # fixed_objs, dynamic_objs = startPhysics(h)
     # fixed, dynamic  objects that will be updated and rendered
 
     if dt > PHYSIC_UPDATE_FREQUENCY:
-        t = dt / PHYSIC_UPDATE_FREQUENCY
-
-        for _ in range(int(t)):
-            physicsStep(fixed_objs, dynamic_objs, h)
-            update_groups()
-
-        t = t % 1
-        physicsStep(fixed_objs, dynamic_objs, h, t)
-        update_groups(t)
+        # t = dt / PHYSIC_UPDATE_FREQUENCY
+        #
+        # for _ in range(int(t)):
+        #     physicsStep(fixed_objs, dynamic_objs, h)
+        #     update_groups()
+        #
+        # t = t % 1
+        # physicsStep(fixed_objs, dynamic_objs, h, t)
+        # update_groups(t)
+        pass
 
     else:
-        physicsStep(fixed_objs, dynamic_objs, h)
+        # physicsStep(fixed_objs, dynamic_objs, h)
+        world.step(1)
         update_groups()
 
 
@@ -94,6 +96,7 @@ def user_events():
 
 def update_hero_movement():
     # update direction hero's walking based on USER INPUT from user_events()
+    return
     if holding_keys[K_MOVE_RIGHT]:
         hero.walk_direction = 1
     elif holding_keys[K_MOVE_LEFT]:
@@ -109,6 +112,7 @@ def draw_groups():
 
 def update_groups(dt=1):
     # updating all GLSprite groups
+    obstacles_gr.update(dt)
     background_gr.update(dt, camera)
     triggers_gr.update(dt)
 
@@ -116,43 +120,12 @@ def update_groups(dt=1):
 def init_screen(hero_life=False, first_load=False):
     global hero, hero_inited
 
-    WorldRectangleRigid(obstacles_gr, [-1000, 0], [5500, 200])
-    WorldRectangleRigid(obstacles_gr, [800, 200], [80, 400])
-    WorldRectangleRigid(obstacles_gr, [500, 400], [800, 40])
-
-    WoodenCrate(obstacles_gr, [600, 700])
-    WoodenCrate(obstacles_gr, [600, 800])
-    WoodenCrate(obstacles_gr, [600, 900])
-    WoodenCrate(obstacles_gr, [600, 600])
-
-    b = WoodenCrate(obstacles_gr, [700, 700])
-    WoodenCrate(obstacles_gr, [700, 800])
-    WoodenCrate(obstacles_gr, [700, 900])
-    WoodenCrate(obstacles_gr, [700, 600])
-
+    b = BackgroundColor(background_gr)
     WoodenCrate(obstacles_gr, [500, 700])
     WoodenCrate(obstacles_gr, [500, 800])
     WoodenCrate(obstacles_gr, [500, 900])
-    a = WoodenCrate(obstacles_gr, [500, 600])
 
-    a.delete()
-    b.delete()
-
-    MetalCrate(obstacles_gr, [1000, 400])
-
-    a = WorldRectangleRigid(obstacles_gr, [-500, 200], [420, 50])
-    a.bouncy = 3
-
-    WorldRectangleRigid(obstacles_gr, [-500, 400], [256, 256 + 256])
-
-    # b = Background(background_gr, 1, [0, -1080], 'Backgrounds/back1', )
-
-    # if not hero_inited:
-    hero = MainHero(player_gr, [250, 400])
-    hero.addVelocity([50, 0])
-    hero_inited = True
-
-    b = BackgroundColor(background_gr)
+    WorldRectangleRigid(obstacles_gr, pos=[300, 300], size=[1000, 100])
 
 
 def close():
