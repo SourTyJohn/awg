@@ -2,9 +2,15 @@
 THIS MODUlE CONTAINS ALL GAME OBJECTS THAT CAN BE USED IN GAME (screens.game)
 """
 
-from core.physic.Physics import DynamicObject, StaticObject, Hitbox
+from core.physic.Physics import DynamicObject, StaticObject, Trigger
 from core.rendering.PyOGL import GLObjectBase
 from core.rendering.Textures import EssentialTextureStorage as Ets
+from core.Constants import WINDOW_SIZE
+
+from pymunk.vec2d import Vec2d
+from pymunk import inf
+
+import numpy as np
 
 
 fixed = StaticObject
@@ -13,37 +19,82 @@ base = GLObjectBase
 
 
 class DirectAccessObject:
+    """Direct access means that object complete and ready to be placed on level
+       Subclasses of this class will be added to allObjects dict"""
     rect = None
 
     def __repr__(self):
         return f'<Direct obj: {self.__class__.__name__}> at pos: {self.rect[:2]}'
 
 
-"""Direct access means that object complete and ready to be placed on level"""
 d = DirectAccessObject
 
 
-class Mortal:
-    lethal_fall_velocity: int = -1
-    # [y] velocity that will cause calling die()
-    # if set to -1, object can not get damage from falling
-    # if velocity[y] >= lethal_fall_velocity // 4 -> damage
+class WorldRectangleRigid(fixed):
+    # This class represents base level geometry with rigid body
 
+    TEXTURES = Ets
+
+    def __init__(self, gr, pos, size, tex_offset=(0, 0), texture='Devs/r_devs_1'):
+        hitbox = (0, 0, *size)
+        super().__init__(gr, pos, collision_type='obstacle', size=size,
+                         tex_offset=tex_offset, texture=texture, hitbox=hitbox)
+
+
+class BackgroundColor(GLObjectBase):
+    # Texture is not actually visible. Only color
+    TEXTURES = (Ets['Devs/error'], )
+
+    # BackgroundColor
+    color: np.array = [0.35, 0.35, 0.5, 1.0]
+
+    # Singleton
+    __instance = None
+
+    def __init__(self, gr):
+        self.texture = 0
+        super().__init__(gr, rect=[0, 0, *WINDOW_SIZE], color=BackgroundColor.color)
+
+    def __new__(cls, *args, **kwargs):
+        cls.__instance = super(BackgroundColor, cls).__new__(cls)
+        return cls.__instance
+
+    def update(self, *args, **kwargs) -> None:
+        # args[1] - camera
+        self.rect.pos = args[1].getPos()
+
+
+class Mortal:
+    """Mortal means that object have .health: int and if .health <= 0 object will .die()
+       Apply this to every DESTRUCTABLE OBJECT"""
+
+    lethal_fall_velocity: int = -1
+    """[y] velocity that will cause calling die()
+    if set to -1, object can not get damage from falling
+    if velocity[y] >= lethal_fall_velocity // 4 -> damage"""
+
+    # health
     health: int
     max_health: int
 
+    # stamina
     stamina: int
     max_stamina: int
 
     def init_mortal(self, cls, health='max'):
+        """You need to call this in constructor of subclasses
+        to fully integrate Mortal functionality"""
         if health == 'max':
             self.health = cls.max_health
 
-    def fell(self, power):
+    def update(self, *args, **kwargs):
+        pass
+
+    def fall(self, vec):
         if self.lethal_fall_velocity == -1:
             return
 
-        damage = abs(power / self.lethal_fall_velocity)
+        damage = abs(vec.length / self.lethal_fall_velocity)
 
         if damage < 0.35:
             return
@@ -60,63 +111,105 @@ class Mortal:
         pass
 
 
-"""Mortal means that object have .health: int and if .health <= 0 object will .die()
-   Apply this to every destructable object """
 m = Mortal
 
 
-class WorldRectangleRigid(fixed):
-    # This class represents base level geometry with rigid body
-
-    TEXTURES = Ets
-
-    def __init__(self, gr, pos, size, tex_offset=(0, 0), texture='Devs/r_devs_1'):
-        hitbox = Hitbox([0, 0], size)
-        super().__init__(gr, pos, size=size, tex_offset=tex_offset, texture=texture, hitbox=hitbox)
-
-
 class Character(dynamic):
-    WALKING_SPEED = 0
+    MAX_JUMPS = 2
+    WALKING_VEC = 0
+    JUMP_VECTOR = Vec2d(0, 0)
+    MANY_JUMPS_DELAY = 12
+    MAX_WALKING_SPEED = 0
 
-    def __init__(self, max_walking_speed, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.walkVelocity = 0  # TODO: WALK VELOCITY
+        # Walking, Running
         self.walk_direction = 0  # may be -1 - move to  the left, 0 - standing, 1 - move to the right
-        self.walking_speed = self.__class__.WALKING_SPEED
+        self.walking_vec = self.__class__.WALKING_VEC
+        self.max_walking_speed = self.__class__.MAX_WALKING_SPEED
 
+        # Jumping
+        self.jumps = 0
+        self.jump_delay_current = 0
+        self.max_jumps = self.__class__.MAX_JUMPS
+        self.many_jump_delay = self.__class__.MANY_JUMPS_DELAY
+        self.jump_vec = self.__class__.JUMP_VECTOR
+
+        # Grab
         self.grab_distance = 60
         self.grabbed_object = None
 
+        # Blocks rotation. Characters stand on their feet
+        self.body.moment = inf
+
+        # Standing ob ground trigger
+        self.on_ground_trigger = Trigger(self.touch_ground, 'trigger_obstacle', self.untouch_ground,
+                                         bound_to=self, offset=(0, -self.size[1] / 2), size=(-self.size[0] - 2, 6))
+        self.on_ground = False
+
     def update(self, *args, **kwargs) -> None:
-        #  grabbed object update
+        # args[0] - dt
+        super().update(*args, **kwargs)
+
+        # Grabbed object update
         if self.grabbed_object:
             pass
 
+        # Walking
+        self.walk(dt=args[0])
+
+    # Moving around
+    def walk(self, dt):
+        if not self.walk_direction or (self.body.velocity.length > self.max_walking_speed):
+            return
+
+        if self.on_ground:
+            self.body.apply_force_at_local_point(
+                self.walking_vec * self.walk_direction * dt, self.body.center_of_gravity
+            )
+        else:
+            pass  # MOVING IN THE AIR LOCKED
+            # self.body.apply_force_at_local_point(
+            #     self.walking_vec * self.walk_direction * dt * 0.2, self.body.center_of_gravity
+            # )
+
+        self.rotY(self.walk_direction)
+
+    def jump(self):
+        if self.jumps < self.max_jumps:
+            self.body.apply_impulse_at_local_point(self.jump_vec)
+            self.jumps += 1
+
+    # Grabbed object
     def grab(self, target):
         #  TODO: GRAB
-        self.grabbed_object = object
+        self.grabbed_object = target
 
-#
+    # Legs Trigger
+    def touch_ground(self, *args):
+        # actor - ground, owner - self, world - world
+        self.jumps = 0
+        self.on_ground = True
+
+    def untouch_ground(self, *args):
+        self.on_ground = False
 
 
 class MainHero(Character, d, m):
-    # unique
-    MAX_JUMPS = 2
-    WALKING_SPEED = 2
-    JUMP_VECTOR = None
-    MANY_JUMPS_DELAY = 12
-
-    # character
-    MAX_WALKING_SPEED = 16
-
     #  static
     TEXTURES = [Ets['LevelOne/r_pebble_grass_1'], ]
-    size = [64, 144]
-    hitbox_data = Hitbox([0, 0], size)
+    size = (64, 144)
+    hitbox_data = (0, 0, *size)
+    friction = 2
 
     #  dynamic
-    mass = 2
+    mass = 10.0
+
+    # character
+    JUMP_VECTOR = Vec2d(0, 600 * mass)
+    WALKING_VEC = Vec2d(384_000 * mass, 0)
+    MAX_WALKING_SPEED = 120 * mass
 
     #  mortal
     max_health = 200
@@ -126,11 +219,7 @@ class MainHero(Character, d, m):
     __instance = None
 
     def __init__(self, gr, pos):
-        super().__init__(MainHero.MAX_WALKING_SPEED, gr, pos, MainHero.size)
-
-        self.jumps = 0
-        self.jump_delay_current = 0
-
+        Character.__init__(self, gr, pos, 'mortal', MainHero.size)
         self.init_mortal(self.__class__)
 
     def __new__(cls, *args, **kwargs):
@@ -141,39 +230,42 @@ class MainHero(Character, d, m):
 
     def update(self, *args, **kwargs):
         # args[0] - delta time
+        super().update(*args, **kwargs)
 
         # jump delay update
         if self.jump_delay_current < MainHero.MANY_JUMPS_DELAY:
             self.jump_delay_current += args[0]
 
-        # character.update()
-        super().update(*args, **kwargs)
-
 
 class WoodenCrate(dynamic, d, m):
     # static
-    TEXTURES = [Ets['LevelOne/r_tile_grey_1'], ]
-    size = [64, 64]
-    hitbox_data = Hitbox([0, 0], size)
+    TEXTURES = (Ets['LevelOne/r_tile_grey_1'], )
+    size = (48, 48)
+    hitbox_data = (0, 0, *size)
 
     # dynamic
-    mass = 10
+    mass = 1.0
 
     # mortal
     max_health = 10
     lethal_fall_velocity = 64
 
     def __init__(self, gr, pos):
-        super().__init__(gr, pos, WoodenCrate.size)
+        super().__init__(gr, pos, collision_type='mortal', size=self.__class__.size)
         self.init_mortal(self.__class__)
 
 
 class MetalCrate(WoodenCrate, d, m):
-    TEXTURES = [Ets['LevelOne/r_orange_bricks_1'], ]
-    mass = 10
+    # static
+    TEXTURES = (Ets['LevelOne/r_orange_bricks_1'], )
+    size = (128, 128)
+    hitbox_data = (0, 0, *size)
 
+    # dynamic
+    mass = 60.0
 
-#
+    # mortal
+    max_health = 32
 
 
 """Storage of all Direct objects. Can be accessed by WorldEditor, LevelLoader and create_object() function"""

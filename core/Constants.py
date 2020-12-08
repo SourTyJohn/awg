@@ -1,5 +1,5 @@
 import pygame
-from core.Math.DataTypes import Vector2f
+import pymunk
 
 # BASE
 TITLE = 'AWG 2'  # window name
@@ -27,7 +27,7 @@ WINDOW_RESOLUTION = '16x10low'  # current
 WINDOW_RESOLUTION = WINDOW_RESOLUTIONS[WINDOW_RESOLUTION]
 FULL_SCREEN = False
 WINDOW_MIDDLE = [x // 2 for x in WINDOW_SIZE]
-WINDOW_RECT = [0, 0, *WINDOW_SIZE]
+WINDOW_RECT = [*WINDOW_MIDDLE, *WINDOW_SIZE]
 DEFAULT_SCALE = 1
 
 
@@ -47,6 +47,24 @@ VOLUME = 1
 
 
 # PHYSICS
-AIR_FRICTION = 1
-G = 2.2
-GRAVITY_VECTOR = Vector2f.xy(0, -G)
+GRAVITY_VECTOR = (0, -2000)
+
+# body types from pymunk
+BODY_TYPES = (
+    pymunk.Body.STATIC,
+    pymunk.Body.DYNAMIC,
+    pymunk.Body.KINEMATIC
+)
+
+# collision types for pymunk.Shape
+COLL_TYPES = {
+    'player': 0,
+    'mortal': 1,
+    'item': 2,
+    'obstacle': 3,
+
+    'trigger_obstacle': 10,
+    'trigger_player': 11,
+    'trigger_mortal': 12,
+    'trigger_item': 13,
+}

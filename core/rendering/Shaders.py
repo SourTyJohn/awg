@@ -4,6 +4,7 @@ from utils.files import get_full_path
 
 from core.Math import Matrix as Mat
 
+import numpy as np
 
 shaders = {}
 
@@ -80,10 +81,11 @@ class DefaultShader(Shader):
     def __init__(self):
         super().__init__('default_vert.glsl', 'default_frag.glsl')
 
-    def draw(self, pos, **kwargs):
+    def draw(self, pos, **kw):
+        #  reqires kw['rotation']
         shader = self.p()
 
-        # attribute pointers
+        # ATTRIBUTES POINTERS
         glGetAttribLocation(shader, 'position')
         glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 32, ctypes.c_void_p(0))
         glEnableVertexAttribArray(0)
@@ -96,7 +98,16 @@ class DefaultShader(Shader):
         glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 32, ctypes.c_void_p(24))
         glEnableVertexAttribArray(2)
 
-        # translate matrix
+        # ROTATION
+        rotationMZ = Mat.rotz(-kw['rotation'])
+        loc = glGetUniformLocation(shader, "RotationZ")
+        glUniformMatrix4fv(loc, 1, GL_FALSE, rotationMZ)
+
+        # rotationMY = Mat.reflectY()
+        # loc = glGetUniformLocation(shader, "RotationY")
+        # glUniformMatrix4fv(loc, 1, GL_FALSE, rotationMY)
+
+        # TRANSLATE
         translateM = Mat.translate(*pos)
         loc = glGetUniformLocation(shader, "Translate")
         glUniformMatrix4fv(loc, 1, GL_FALSE, translateM)
@@ -116,11 +127,11 @@ class BackgroundShader(Shader):
 
         # attribute pointers
         glGetAttribLocation(shader, 'position')
-        glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 24, ctypes.c_void_p(0))
+        glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 32, ctypes.c_void_p(0))
         glEnableVertexAttribArray(0)
 
         glGetAttribLocation(shader, 'color')
-        glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 24, ctypes.c_void_p(8))
+        glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 32, ctypes.c_void_p(8))
         glEnableVertexAttribArray(1)
 
         # translate matrix
@@ -128,7 +139,7 @@ class BackgroundShader(Shader):
         loc = glGetUniformLocation(shader, "Translate")
         glUniformMatrix4fv(loc, 1, GL_FALSE, translateM)
 
-        cameraPos = kwargs['camera'].getPos()[1]
+        cameraPos = kwargs['camera'].getPos()[1] / 2048 + 0.6
         loc = glGetUniformLocation(shader, "cameraPos")
         glUniform1f(loc, cameraPos)
 

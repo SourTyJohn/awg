@@ -5,9 +5,9 @@ from core.rendering.PyOGL import drawGroups
 from core.rendering.Textures import EssentialTextureStorage as Ets
 
 
-decoration = Gl.GLObjectGroup()
-back = Gl.GLObjectGroup()
-buttons_group = Gl.GLObjectGroup()
+decoration = Gl.GLObjectGroupRender()
+back = Gl.GLObjectGroupRender()
+buttons_group = Gl.GLObjectGroupRender()
 
 buttons_count = 4
 selected_button = 0
@@ -57,13 +57,13 @@ def update(dt):
         close_menu()
         return exit_code
 
-    user_events()
+    user_input()
 
     buttons_group.update()
     decoration.update()
 
 
-def user_events():
+def user_input():
     global selected_button, exit_code
 
     for event in pygame.event.get():
@@ -95,7 +95,7 @@ class MainFrame(Gl.GLObjectBase):
         super().__init__(decoration, WINDOW_RECT)
 
 
-# ---- Buttons ----
+# ---- BUTTONS----
 class ButtonText(Gl.GLObjectBase):
     TEXTURES = [Ets[x] for x in [
         'text:Новая игра', 'text:Загрузить игру', 'text:Сохранить игру', 'text:Настройки', 'text:Выйти'
@@ -105,7 +105,7 @@ class ButtonText(Gl.GLObjectBase):
         self.texture = number
 
         drawData = ButtonText.TEXTURES[number].makeDrawData()
-        super().__init__(None, Button.rect.copy(), no_vbo=True)
+        super().__init__(None, [0, 0, *Button.size], no_vbo=True)
         self.bindBuffer(drawData)
 
         self.rect.size = ButtonText.TEXTURES[number].size
@@ -113,16 +113,12 @@ class ButtonText(Gl.GLObjectBase):
 
 class Button(Gl.GLObjectBase):
     # 0 - Non Selected Button, 1 - Selected
-    TEXTURES = [Ets['GUI/button_menu_default'], Ets['GUI/button_menu_selected']]
+    TEXTURES = (Ets['GUI/button_menu_default'], Ets['GUI/button_menu_selected'])
 
-    size = [960, 96]
-    center = WINDOW_MIDDLE[:]
-    rect = None
+    size = (960, 96)
 
     def __init__(self, y_pos):
-        rect = Button.rect.copy()
-        rect.y = y_pos
-        super().__init__(None, rect)
+        super().__init__(None, [WINDOW_MIDDLE[0], y_pos, *Button.size])
 
     @staticmethod
     def hover(this: int, prev: int):
@@ -132,10 +128,14 @@ class Button(Gl.GLObjectBase):
 
 
 class FullButton(Gl.GLObjectComposite):
+    """Button with text on it"""
+
     def __init__(self, y_pos, number):
         button = Button(y_pos)
+
         text = ButtonText(number)
-        text.align_center(button)
+        text.rect.pos = button.rect.pos
+
         super().__init__(buttons_group, button, text)
         self.number = number
 
@@ -161,7 +161,7 @@ class ButtonFunctions:
     @classmethod
     def loadGame(cls):
         global exit_code
-        buttons[selected_button].setRotation((buttons[selected_button][0].rotation + 1) % 2)
+        buttons[selected_button].rotY(-buttons[selected_button][0].y_Rotation)
 
 
 Bf = ButtonFunctions

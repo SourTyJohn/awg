@@ -2,9 +2,10 @@ import math
 import numpy as np
 
 """Matrix math for Shaders
-"""
+*Shaders use fortran matrix"""
 
 
+# unused
 def transform(m, v):
     return np.asarray(m * np.asmatrix(v).T)[:, 0]
 
@@ -20,6 +21,12 @@ def normalize(v):
     return v / m
 
 
+def sincos(a):
+    a = math.radians(a)
+    return math.sin(a), math.cos(a)
+
+
+# CAMERA
 def ortho(l_, r, b, t, n=-1, f=1):
     dx = r - l_
     dy = t - b
@@ -34,6 +41,7 @@ def ortho(l_, r, b, t, n=-1, f=1):
                               [0.0, 0.0, 0.0, 1.0]])
 
 
+# unused
 def perspective(fovy, aspect, n, f):
     s = 1.0 / math.tan(math.radians(fovy) / 2.0)
     sx, sy = s / aspect, s
@@ -45,6 +53,7 @@ def perspective(fovy, aspect, n, f):
                      [0, 0, -1, 0]])
 
 
+# unused
 def frustum(x0, x1, y0, y1, z0, z1):
     a = (x1 + x0) / (x1 - x0)
     b = (y1 + y0) / (y1 - y0)
@@ -58,19 +67,17 @@ def frustum(x0, x1, y0, y1, z0, z1):
                      [0, 0, -1, 0]])
 
 
+# MOVING
 def translate(x, y, z=0):
     return np.asfortranarray([[1, 0, 0, x], [0, 1, 0, y], [0, 0, 1, z], [0, 0, 0, 1]])
 
 
+# SCALING
 def scale(x, y, z=1):
     return np.asfortranarray([[x, 0, 0, 0], [0, y, 0, 0], [0, 0, z, 0], [0, 0, 0, 1]])
 
 
-def sincos(a):
-    a = math.radians(a)
-    return math.sin(a), math.cos(a)
-
-
+# ROTATION
 def rotate(a, xyz):
     x, y, z = normalize(xyz)
     s, c = sincos(a)
@@ -83,20 +90,36 @@ def rotate(a, xyz):
 
 def rotx(a):
     s, c = sincos(a)
-    return np.array([[1, 0, 0, 0],
-                     [0, c, -s, 0],
-                     [0, s, c, 0],
-                     [0, 0, 0, 1]])
+    return np.asfortranarray([[1, 0,  0, 0],
+                              [0, c, -s, 0],
+                              [0, s,  c, 0],
+                              [0, 0,  0, 1]])
 
 
 def roty(a):
     s, c = sincos(a)
-    return np.array([[c, 0, s, 0],
-                     [0, 1, 0, 0],
-                     [-s, 0, c, 0],
-                     [0, 0, 0, 1]])
+    return np.asfortranarray([[+c, 0, s, 0],
+                              [+0, 1, 0, 0],
+                              [-s, 0, c, 0],
+                              [+0, 0, 0, 1]])
 
 
+def reflectY():
+    return np.asfortranarray([[-1,  0, 0, 0],
+                              [+0,  1, 0, 0],
+                              [+0,  0, 1, 0],
+                              [+0,  0, 0, 1]])
+
+
+def rotz(a):
+    s, c = sincos(a)
+    return np.asfortranarray([[c, -s, 0, 0],
+                              [s,  c, 0, 0],
+                              [0,  0, 1, 0],
+                              [0,  0, 0, 1]])
+
+
+# unused
 def lookAt(eye, target, up):
     F = target[:3] - eye[:3]
     f = normalize(F)
@@ -110,6 +133,7 @@ def lookAt(eye, target, up):
     return M * T
 
 
+# unused
 def viewport(x, y, w, h):
     x, y, w, h = map(float, (x, y, w, h))
     return np.array([[w / 2, 0, 0, x + w / 2],
