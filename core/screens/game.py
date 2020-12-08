@@ -111,12 +111,19 @@ def init_screen(hero_life=False, first_load=False):
     global hero, hero_inited
 
     BackgroundColor(background_gr)
-    WorldRectangleRigid(obstacles_gr, pos=[-300, 500], size=[2100, 100])
+    WorldRectangleRigid(obstacles_gr, pos=[0, 500], size=[4100, 100])
+    WorldRectangleRigid(obstacles_gr, pos=[850, 700], size=[200, 200])
+
+    a = WorldRectangleRigid(obstacles_gr, pos=[-500, 575], size=[800, 50])
+    a.bfriction = 0.0
+
+    WorldRectangleRigid(obstacles_gr, pos=[1600, 1200], size=[50, 900])
+    WorldRectangleRigid(obstacles_gr, pos=[2000, 1000], size=[50, 900])
 
     MetalCrate(obstacles_gr, pos=[700, 800])
-
     hero = MainHero(player_gr, pos=[500, 800])
 
 
 def close():
-    pass
+    obstacles_gr.delete_all()
+    triggers_gr.delete_all()

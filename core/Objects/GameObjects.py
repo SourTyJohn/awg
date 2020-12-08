@@ -120,6 +120,7 @@ class Character(dynamic):
     JUMP_VECTOR = Vec2d(0, 0)
     MANY_JUMPS_DELAY = 12
     MAX_WALKING_SPEED = 0
+    IN_AIR_MOVE = 0.8  # sec
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -143,21 +144,26 @@ class Character(dynamic):
         # Blocks rotation. Characters stand on their feet
         self.body.moment = inf
 
-        # Standing ob ground trigger
+        # Standing on ground trigger
         self.on_ground_trigger = Trigger(self.touch_ground, 'trigger_obstacle', self.untouch_ground,
-                                         bound_to=self, offset=(0, -self.size[1] / 2), size=(-self.size[0] - 2, 6))
-        self.on_ground = False
+                                         bound_to=self, offset=(0, -self.size[1] // 2), size=(self.size[0] // 2 - 1, 6))
+        self.on_ground = False  # is Character standing on solid floor
+        self.in_air = 0  # How long din't Character touch solid flour
 
     def update(self, *args, **kwargs) -> None:
-        # args[0] - dt
+        dt = args[0]
+
         super().update(*args, **kwargs)
 
         # Grabbed object update
         if self.grabbed_object:
             pass
 
+        if not self.on_ground:
+            self.in_air += dt
+
         # Walking
-        self.walk(dt=args[0])
+        self.walk(dt)
 
     # Moving around
     def walk(self, dt):
@@ -166,13 +172,11 @@ class Character(dynamic):
 
         if self.on_ground:
             self.body.apply_force_at_local_point(
-                self.walking_vec * self.walk_direction * dt, self.body.center_of_gravity
-            )
-        else:
-            pass  # MOVING IN THE AIR LOCKED
-            # self.body.apply_force_at_local_point(
-            #     self.walking_vec * self.walk_direction * dt * 0.2, self.body.center_of_gravity
-            # )
+                self.walking_vec * self.walk_direction * dt, self.body.center_of_gravity)
+
+        elif self.in_air < self.IN_AIR_MOVE:
+            self.body.apply_force_at_local_point(
+                self.walking_vec * self.walk_direction * dt * 0.2, self.body.center_of_gravity)
 
         self.rotY(self.walk_direction)
 
@@ -191,9 +195,11 @@ class Character(dynamic):
         # actor - ground, owner - self, world - world
         self.jumps = 0
         self.on_ground = True
+        self.in_air = 0
 
     def untouch_ground(self, *args):
-        self.on_ground = False
+        if len(self.on_ground_trigger.entities) == 0:
+            self.on_ground = False
 
 
 class MainHero(Character, d, m):
@@ -207,7 +213,7 @@ class MainHero(Character, d, m):
     mass = 10.0
 
     # character
-    JUMP_VECTOR = Vec2d(0, 600 * mass)
+    JUMP_VECTOR = Vec2d(0, 700 * mass)
     WALKING_VEC = Vec2d(384_000 * mass, 0)
     MAX_WALKING_SPEED = 120 * mass
 
@@ -240,11 +246,11 @@ class MainHero(Character, d, m):
 class WoodenCrate(dynamic, d, m):
     # static
     TEXTURES = (Ets['LevelOne/r_tile_grey_1'], )
-    size = (48, 48)
+    size = (64, 64)
     hitbox_data = (0, 0, *size)
 
     # dynamic
-    mass = 1.0
+    mass = 4.0
 
     # mortal
     max_health = 10

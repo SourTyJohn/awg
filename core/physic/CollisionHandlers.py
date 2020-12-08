@@ -16,16 +16,18 @@ def setup(space: pymunk.Space):
     ct = COLL_TYPES
 
     # OBSTACLES
-    coll = space.add_collision_handler(ct['mortal'], ct['obstacle'])
-    coll.begin = collision_mortal_vs_obstacle
+    # coll = space.add_collision_handler(ct['mortal'], ct['obstacle'])
+    # coll.begin = collision_mortal_vs_obstacle
 
     # TRIGGERS
     coll = space.add_collision_handler(ct['obstacle'], ct['trigger_obstacle'])
-    coll.begin = trigger
+    coll.begin = trigger_enter
     coll = space.add_collision_handler(ct['mortal'], ct['trigger_obstacle'])
-    coll.begin = trigger
+    coll.begin = trigger_enter
 
     coll = space.add_collision_handler(ct['obstacle'], ct['trigger_obstacle'])
+    coll.separate = trigger_leave
+    coll = space.add_collision_handler(ct['mortal'], ct['trigger_obstacle'])
     coll.separate = trigger_leave
 
 
@@ -41,13 +43,13 @@ def collision_player_vs_item(space, arbiter):
 
 
 def collision_mortal_vs_obstacle(arbiter: pymunk.Arbiter, space, data):
-    if arbiter.is_first_contact and arbiter.normal == (-0.0, -1.0):
+    if arbiter.is_first_contact:
         from_shape(arbiter).fall(arbiter.total_impulse)
 
     return True
 
 
-def trigger(arbiter: pymunk.Arbiter, space, data):
+def trigger_enter(arbiter: pymunk.Arbiter, space, data):
     if arbiter.is_first_contact:
         actor = from_shape(arbiter, i=0)
         from_shape(arbiter, i=1).enter(actor, arbiter)

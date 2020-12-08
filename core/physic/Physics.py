@@ -71,7 +71,11 @@ class PhysicObject(GLObjectBase):
         world.add(self.body, self.shape)
 
         # Add to objects dictionary
-        objects[self.body.__hash__()] = self
+        objects[self.bhash] = self
+
+    @property
+    def bhash(self):
+        return self.body.__hash__()
 
     def update(self, *args, **kwargs) -> None:
         pass
@@ -98,6 +102,23 @@ class PhysicObject(GLObjectBase):
             self.__class__.TEXTURES[self.texture].draw(
                 self.body.position, self.vbo, shader, z_rotation=rotation
             )
+
+    # physic
+    @property
+    def bmass(self):
+        return self.body.mass
+
+    @bmass.setter
+    def bmass(self, value):
+        self.bmass = value
+
+    @property
+    def bfriction(self):
+        return self.shape.friction
+
+    @bfriction.setter
+    def bfriction(self, value):
+        self.shape.friction = value
 
 
 class DynamicObject(PhysicObject):
@@ -147,7 +168,7 @@ class Trigger(Sprite):
     """Area that will call given function if something intersects it and/or leaves it"""
     __slots__ = (
         'function_enter', 'function_leave', 'collision_type', 'triggers_by',
-        'ignore', 'pos', 'bound_to', 'offset', 'size'
+        'ignore', 'pos', 'bound_to', 'offset', 'size', 'entities'
     )
 
     def __init__(self, function_enter, collision_type, function_leave=None, triggers_by=(), ignore=(),
@@ -174,7 +195,10 @@ class Trigger(Sprite):
         
         ::arg ignore - tuple of classes from GameObject.py,
         that can not activate this trigger
-        If empty, than there is no ignored objects"""
+        If empty, than there is no ignored objects
+        
+        ::arg entities - list of body.__hash__ of all objects that entered
+        and d'nt leave Trigger"""
 
         # Checking errors
         if pos and bound_to:
@@ -191,6 +215,7 @@ class Trigger(Sprite):
         self.triggers_by, self.ignore = triggers_by, ignore
         self.bound_to, self.offset = bound_to, offset
         self.collision_type = collision_type
+        self.entities = set()
 
         # Static body and shape
         self.body = pymunk.Body(0, 0, body_type=BODY_TYPES[2])
@@ -206,7 +231,15 @@ class Trigger(Sprite):
         new_triggers.add(self)
 
         # Adding Trigger to objects dict
-        objects[self.body.__hash__()] = self
+        objects[self.bhash] = self
+
+    def delete(self):
+        world.vanish(self)
+        self.kill()
+
+    @property
+    def bhash(self):
+        return self.body.__hash__()
 
     def __repr__(self):
         return f'<Trigger Pos: {self.body.position}. Bounded to: {self.bound_to}>'
@@ -226,6 +259,9 @@ class Trigger(Sprite):
     def enter(self, actor, arbiter):
         if actor is self.bound_to or actor in self.ignore or not self.function_enter:
             return
+
+        self.entities.add(actor.bhash)
+
         if self.triggers_by:
             if actor.__class__ in self.triggers_by:
                 return self.function_enter(actor, self.bound_to, world, arbiter)
@@ -235,6 +271,9 @@ class Trigger(Sprite):
     def leave(self, actor, arbiter):
         if actor is self.bound_to or actor in self.ignore or not self.function_leave:
             return
+
+        self.entities.remove(actor.bhash)
+
         if self.triggers_by:
             if actor.__class__ in self.triggers_by:
                 return self.function_leave(actor, self.bound_to, world, arbiter)

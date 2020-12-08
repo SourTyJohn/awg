@@ -20,32 +20,43 @@ def _main():
 
 running = True
 screen_type = 'menu'
+start_time = None
 
 
 def game_loop():
-    global running, screen_type
-    start_time = timer()
+    global running, screen_type, start_time
 
     #  Clear screen
     GL.clear_display()
 
+    #  Focus selected screen
     scr = screens[screen_type]
-    exit_code = scr.update(0.017)
+
+    # Visualization
     scr.render()
 
-    #
+    # Update screen
+    if start_time:
+        exit_code = scr.update(timer() - start_time)
+    else:
+        exit_code = None
 
-    if FPS_SHOW:  # current FPS display
+    # Timer
+    start_time = timer()
+
+    # Current FPS display
+    if FPS_SHOW:
         print(f'\rFPS: {1 / (timer() - start_time) // 1}', end='')
 
+    # Screen feedback
     if exit_code in ('menu', 'game'):
         if exit_code != screen_type:
             screen_type = exit_code
             screens[exit_code].init_screen()
-
     elif exit_code == 'Quit':
         running = False
 
+    # End phase
     pg.display.flip()
     clock.tick(FPS_LOCK)
 
