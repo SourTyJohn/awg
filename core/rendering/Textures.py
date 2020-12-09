@@ -9,7 +9,7 @@ T_ERROR_TEXTURE = Gl.GlTexture.load_image('devs/error.png', repeat=True)
 
 
 def loadTexturePack(name):
-    print(f'-- loading Texture Pack: {name}')
+    print(f'\n-- loading Texture Pack: {name}')
 
     path = get_full_path(name, file_type='tex')
     directories = listdir(path)
@@ -19,9 +19,10 @@ def loadTexturePack(name):
         textures = listdir(f'data/Textures/{name}/{dr}')
 
         for tex in textures:
-            pack.append(Gl.GlTexture.load_image(f'{dr}/{tex}', (tex[0] == 'r')))
+            t = Gl.GlTexture.load_image(f'{dr}/{tex}', (tex[0] == 'r'))
+            pack.append(t)
 
-    print(f'-- Texture Pack: {name} loaded')
+    print(f'-- Texture Pack: {name} loaded\n')
     return pack
 
 

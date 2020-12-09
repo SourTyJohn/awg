@@ -5,6 +5,7 @@
 *.pyc
 
 VirtaulEnvirment/*
+venv/*
 data/DLLs/collision/Release/*
 data/DLLs/collision/Debug/*
 data/DLLs/collision/x64/*

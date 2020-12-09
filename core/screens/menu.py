@@ -1,18 +1,17 @@
 from user.KeyMapping import K_CLOSE, K_MOVE_UP, K_MOVE_DOWN, K_MENU_PRESS
 
 from core.rendering.Textures import *
+from core.rendering.PyOGL import drawGroups
 from core.rendering.Textures import EssentialTextureStorage as Ets
-# from core.rendering.PyOGL import draw_texture
 
 
-decoration = Gl.GLObjectGroup()
-back = Gl.GLObjectGroup()
+decoration = Gl.GLObjectGroupRender()
+back = Gl.GLObjectGroupRender()
+buttons_group = Gl.GLObjectGroupRender()
 
-buttons_group = Gl.GLObjectGroup()
 buttons_count = 4
 selected_button = 0
 buttons = []  # list of all buttons
-text_group = Gl.GLObjectGroup()
 
 # only on first load
 first = True
@@ -22,9 +21,9 @@ hero_is_alive = True
 
 
 def init_screen(hero_life=True, first_load=False):
-    global buttons
+    global buttons, selected_button
 
-    Gl.camera_apply(WINDOW_RECT)
+    Gl.camera.setField(WINDOW_RECT)
 
     global first
     global exit_code
@@ -35,37 +34,47 @@ def init_screen(hero_life=True, first_load=False):
 
     MainFrame()
 
-    buttons = [FullButton(730 - x * 120, x) for x in range(5)]
+    buttons = [FullButton(700 - x * 100, x) for x in range(5)]
     Button.hover(0, -1)
+    selected_button = 0
 
 
 def close_menu():
-    decoration.empty()
-    back.empty()
-    buttons_group.empty()
+    decoration.delete_all()
+    back.delete_all()
+    buttons_group.delete_all()
 
 
 exit_code = None
 
 
 def render():
-    global selected_button
+    drawGroups(decoration, buttons_group)
 
+
+def update(dt):
     if exit_code:
         close_menu()
         return exit_code
 
-    event = None
+    user_input()
+
+    buttons_group.update()
+    decoration.update()
+
+
+def user_input():
+    global selected_button, exit_code
 
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             close_menu()
-            return 'Quit'
+            exit_code = 'Quit'
 
         if event.type == pygame.KEYDOWN:
             if event.key == K_CLOSE and not first:
                 close_menu()
-                return 'game'
+                exit_code = 'game'
 
             elif event.key == K_MOVE_UP and 0 < selected_button:
                 selected_button -= 1
@@ -78,20 +87,6 @@ def render():
             elif event.key == K_MENU_PRESS:
                 buttons[selected_button].pressed()
 
-    decoration.draw_all()
-    buttons_group.draw_all()
-
-    # h: MainFrame
-    # draw_texture(MainFrame.textures[0].key, np.array([0, 0], dtype=np.float32),
-    # h.vertexesObj, h.vertexesTex, (1, 1, 1, 1))
-
-    buttons_group.update(event)
-    decoration.update()
-
-
-def update(dt):
-    pass
-
 
 class MainFrame(Gl.GLObjectBase):
     TEXTURES = [Ets['GUI/menu_frame'], ]
@@ -100,7 +95,7 @@ class MainFrame(Gl.GLObjectBase):
         super().__init__(decoration, WINDOW_RECT)
 
 
-# ---- Buttons ----
+# ---- BUTTONS----
 class ButtonText(Gl.GLObjectBase):
     TEXTURES = [Ets[x] for x in [
         'text:Новая игра', 'text:Загрузить игру', 'text:Сохранить игру', 'text:Настройки', 'text:Выйти'
@@ -109,24 +104,21 @@ class ButtonText(Gl.GLObjectBase):
     def __init__(self, number):
         self.texture = number
 
-        super().__init__(text_group, Button.rect.copy())
+        drawData = ButtonText.TEXTURES[number].makeDrawData()
+        super().__init__(None, [0, 0, *Button.size], no_vbo=True)
+        self.bindBuffer(drawData)
 
-        self.vertexesObj = ButtonText.TEXTURES[number].makeVertexes()
-        self.rect.setSize(*ButtonText.TEXTURES[number].size)
+        self.rect.size = ButtonText.TEXTURES[number].size
 
 
 class Button(Gl.GLObjectBase):
     # 0 - Non Selected Button, 1 - Selected
-    TEXTURES = [Ets['GUI/button_menu_default'], Ets['GUI/button_menu_selected']]
+    TEXTURES = (Ets['GUI/button_menu_default'], Ets['GUI/button_menu_selected'])
 
-    size = [720, 80]
-    center = WINDOW_MIDDLE[:]
-    rect = None
+    size = (960, 96)
 
     def __init__(self, y_pos):
-        rect = Button.rect.copy()
-        rect.setY(y_pos)
-        super().__init__(buttons_group, rect)
+        super().__init__(None, [WINDOW_MIDDLE[0], y_pos, *Button.size])
 
     @staticmethod
     def hover(this: int, prev: int):
@@ -136,10 +128,14 @@ class Button(Gl.GLObjectBase):
 
 
 class FullButton(Gl.GLObjectComposite):
+    """Button with text on it"""
+
     def __init__(self, y_pos, number):
         button = Button(y_pos)
+
         text = ButtonText(number)
-        text.align_center(button)
+        text.rect.pos = button.rect.pos
+
         super().__init__(buttons_group, button, text)
         self.number = number
 
@@ -165,7 +161,7 @@ class ButtonFunctions:
     @classmethod
     def loadGame(cls):
         global exit_code
-        buttons[selected_button].setRotation((buttons[selected_button][0].rotation + 1) % 2)
+        buttons[selected_button].rotY(-buttons[selected_button][0].y_Rotation)
 
 
 Bf = ButtonFunctions

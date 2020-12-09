@@ -1,3 +1,8 @@
+"""
+THIS MODULE CONTAINS ALL DATA DIRECTORIES OF THE GAME
+AND ALLOWS EASY ACCESS TO IT
+"""
+
 from os.path import join, dirname
 from core.Constants import *
 import pygame as pg
@@ -59,8 +64,6 @@ def load_image(name, pack=None):
         fullname = get_full_path(pack, name, file_type='tex')
     else:
         fullname = get_full_path(name, file_type='tex')
-
-    print(fullname)
 
     if os.path.exists(fullname):
         image = pg.image.load(fullname).convert_alpha()
