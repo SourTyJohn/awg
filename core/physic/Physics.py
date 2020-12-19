@@ -3,7 +3,6 @@ import pymunk
 from core.Math.DataTypes import vec_unit_to_degree
 from core.Constants import GRAVITY_VECTOR, COLL_TYPES, BODY_TYPES
 
-
 objects = {}
 """Includes all physic objects and triggers
 ::key       obj.body.__hash__()
@@ -17,8 +16,8 @@ new_triggers = set()
 """recently added Triggers. Check core.screens.game.update() for more info"""
 
 
-class PhysicObject(GLObjectBase):
-    __slots__ = ('shape', 'body', )
+class PhysicObject():
+    #__slots__ = ('shape', 'body', )
     """Main class of game object with physic body powered by pymunk
     Recommended to specify object's params in it's class attributes.
     """
@@ -47,8 +46,8 @@ class PhysicObject(GLObjectBase):
         size = cls.size if size is None else size
 
         #
-        self.texture = texture
-        super().__init__(group, rect=[*pos, *size], tex_offset=tex_offset)
+        #self.texture = texture
+        #super().__init__(group, rect=[*pos, *size], tex_offset=tex_offset)
 
         # Make points of shape from hitbox_data
         points = rect_points(hitbox[2] / 2, hitbox[3] / 2, hitbox[0], hitbox[1])
@@ -68,7 +67,7 @@ class PhysicObject(GLObjectBase):
         self.shape.collision_type = COLL_TYPES[collision_type]
 
         # Add to world (Physic simulation)
-        world.add(self.body, self.shape)
+        worldInterface.GetWorld().add(self.body, self.shape)
 
         # Add to objects dictionary
         objects[self.bhash] = self
@@ -87,21 +86,21 @@ class PhysicObject(GLObjectBase):
 
     def delete(self):
         # Fully deleting object from physic world
-        world.vanish(self)
+        worldInterface.GetWorld().vanish(self)
 
         #
-        super().delete()
+        #super().delete()
 
-    def draw(self, shader):
-        """Drawing of PhysicObject uses rotation of own pymunk.body
-        vec_unit_to_degree from DataTypes module"""
+    #def draw(self, shader):
+    #    """Drawing of PhysicObject uses rotation of own pymunk.body
+    #    vec_unit_to_degree from DataTypes module"""
 
-        if self.visible:
-            rotation = vec_unit_to_degree(self.body.rotation_vector) - 90
+    #    if self.visible:
+    #        rotation = vec_unit_to_degree(self.body.rotation_vector) - 90
 
-            self.__class__.TEXTURES[self.texture].draw(
-                self.body.position, self.vbo, shader, z_rotation=rotation
-            )
+    #        self.__class__.TEXTURES[self.texture].draw(
+    #            self.body.position, self.vbo, shader, z_rotation=rotation
+    #        )
 
     # physic
     @property
@@ -225,7 +224,7 @@ class Trigger(Sprite):
         self.shape.sensor = True
 
         # Add to world (Physic simulation)
-        world.add(self.body, self.shape)
+        worldInterface.GetWorld().add(self.body, self.shape)
 
         # Add to new triggers. Check core.screens.game.update() for more info
         new_triggers.add(self)
@@ -234,7 +233,7 @@ class Trigger(Sprite):
         objects[self.bhash] = self
 
     def delete(self):
-        world.vanish(self)
+        worldInterface.GetWorld().vanish(self)
         self.kill()
 
     @property
@@ -264,9 +263,9 @@ class Trigger(Sprite):
 
         if self.triggers_by:
             if actor.__class__ in self.triggers_by:
-                return self.function_enter(actor, self.bound_to, world, arbiter)
+                return self.function_enter(actor, self.bound_to, worldInterface.GetWorld(), arbiter)
         else:
-            return self.function_enter(actor, self.bound_to, world, arbiter)
+            return self.function_enter(actor, self.bound_to, worldInterface.GetWorld(), arbiter)
 
     def leave(self, actor, arbiter):
         if actor is self.bound_to or actor in self.ignore or not self.function_leave:
@@ -276,9 +275,9 @@ class Trigger(Sprite):
 
         if self.triggers_by:
             if actor.__class__ in self.triggers_by:
-                return self.function_leave(actor, self.bound_to, world, arbiter)
+                return self.function_leave(actor, self.bound_to, worldInterface.GetWorld(), arbiter)
         else:
-            return self.function_leave(actor, self.bound_to, world, arbiter)
+            return self.function_leave(actor, self.bound_to, worldInterface.GetWorld(), arbiter)
 
 
 def rect_points(w, h, x_=0, y_=0):
@@ -294,5 +293,18 @@ def rect_points(w, h, x_=0, y_=0):
         (+w + x_, -h + y_)
     )
 
+class WorldInterface():
+    """World interface"""
 
-world = World()
+    world: World
+
+    def __init__(self, IsServer: bool):
+        if IsServer:
+            self.world = World()
+        else:
+            self.world = None
+
+    def GetWorld(self):
+        return self.world
+
+worldInterface: WorldInterface = WorldInterface(False)

@@ -166,6 +166,7 @@ class ButtonFunctions:
 
 Bf = ButtonFunctions
 functions = [
+    # Here buttons in sorted by up -> down
     Bf.continueGame,
     0,
     Bf.loadGame,

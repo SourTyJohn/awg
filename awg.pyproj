@@ -1,0 +1,124 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" DefaultTargets="Build">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>{e50297e1-d55e-4be6-b2a1-0be8d17d54ab}</ProjectGuid>
+    <ProjectHome />
+    <StartupFile>main.py</StartupFile>
+    <SearchPath>core\Math\;core\Objects\;core\physic\;core\rendering\;core\screens\;user\;utils\</SearchPath>
+    <WorkingDirectory>.</WorkingDirectory>
+    <OutputPath>.</OutputPath>
+    <ProjectTypeGuids>{888888a0-9f3d-457c-b088-3a5042f75d52}</ProjectTypeGuids>
+    <LaunchProvider>Standard Python launcher</LaunchProvider>
+    <InterpreterId>MSBuild|VirtaulEnvirment|$(MSBuildProjectFullPath)</InterpreterId>
+    <CommandLineArguments>
+    </CommandLineArguments>
+    <EnableNativeCodeDebugging>False</EnableNativeCodeDebugging>
+    <IsWindowsApplication>False</IsWindowsApplication>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)' == 'Debug'" />
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'" />
+  <PropertyGroup>
+    <VisualStudioVersion Condition=" '$(VisualStudioVersion)' == '' ">10.0</VisualStudioVersion>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="core\Constants.py" />
+    <Compile Include="core\Math\DataTypes.py" />
+    <Compile Include="core\Math\Matrix.py" />
+    <Compile Include="core\Objects\GameObjects.py" />
+    <Compile Include="core\physic\CollisionHandlers.py" />
+    <Compile Include="core\physic\Physics.py" />
+    <Compile Include="core\rendering\Animations.py" />
+    <Compile Include="core\rendering\PyOGL.py" />
+    <Compile Include="core\rendering\Shaders.py" />
+    <Compile Include="core\rendering\Textures.py" />
+    <Compile Include="core\screens\base.py" />
+    <Compile Include="core\screens\game.py" />
+    <Compile Include="core\screens\game_sv.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="core\screens\menu.py" />
+    <Compile Include="main.py" />
+    <Compile Include="Networking\client.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Networking\network_packets.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Networking\server.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="setup.py" />
+    <Compile Include="user\KeyMapping.py" />
+    <Compile Include="utils\cookAnimations.py" />
+    <Compile Include="utils\files.py" />
+    <Compile Include="_MapTools\LoadSaveLevels.py" />
+    <Compile Include="_MapTools\MTTextures.py" />
+    <Compile Include="_MapTools\WorldEditor.py" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="data\Animations\base_pack\a_MainHero\walk.png" />
+    <Content Include="data\Animations\base_pack\a_MainHero\walk_dat.txt" />
+    <Content Include="data\Textures\base_pack\Backgrounds\back1.png" />
+    <Content Include="data\Textures\base_pack\Backgrounds\back2.png" />
+    <Content Include="data\Textures\base_pack\Backgrounds\back3.png" />
+    <Content Include="data\Textures\base_pack\Backgrounds\Courtyard.jpg" />
+    <Content Include="data\Textures\base_pack\Devs\error.png" />
+    <Content Include="data\Textures\base_pack\Devs\r_devs_1.png" />
+    <Content Include="data\Textures\base_pack\Devs\r_devs_2.png" />
+    <Content Include="data\Textures\base_pack\GUI\button_menu_default.png" />
+    <Content Include="data\Textures\base_pack\GUI\button_menu_selected.png" />
+    <Content Include="data\Textures\base_pack\GUI\button_menu_selected_refuse.png" />
+    <Content Include="data\Textures\base_pack\GUI\ingame_damage_frame.png" />
+    <Content Include="data\Textures\base_pack\GUI\ingame_death_frame.png" />
+    <Content Include="data\Textures\base_pack\GUI\ingame_green_bar_cell.png" />
+    <Content Include="data\Textures\base_pack\GUI\ingame_lower_menu.png" />
+    <Content Include="data\Textures\base_pack\GUI\ingame_red_bar_cell.png" />
+    <Content Include="data\Textures\base_pack\GUI\menu_frame.png" />
+    <Content Include="data\Textures\base_pack\LevelOne\r_magma_1.png" />
+    <Content Include="data\Textures\base_pack\LevelOne\r_orange_bricks_1.png" />
+    <Content Include="data\Textures\base_pack\LevelOne\r_pebble_grass_1.png" />
+    <Content Include="data\Textures\base_pack\LevelOne\r_tile_grey_1.png" />
+    <Content Include="data\Textures\error.png" />
+    <Content Include="requirements.txt" />
+    <Content Include="_MapTools\level.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="core" />
+    <Folder Include="core\Math" />
+    <Folder Include="core\Objects" />
+    <Folder Include="core\physic" />
+    <Folder Include="core\rendering" />
+    <Folder Include="core\screens" />
+    <Folder Include="data\" />
+    <Folder Include="data\Animations\" />
+    <Folder Include="data\Animations\base_pack\" />
+    <Folder Include="data\Animations\base_pack\a_MainHero" />
+    <Folder Include="data\Textures" />
+    <Folder Include="data\Textures\base_pack\" />
+    <Folder Include="data\Textures\base_pack\Backgrounds" />
+    <Folder Include="data\Textures\base_pack\Devs" />
+    <Folder Include="data\Textures\base_pack\GUI" />
+    <Folder Include="data\Textures\base_pack\LevelOne" />
+    <Folder Include="Networking\" />
+    <Folder Include="user" />
+    <Folder Include="utils" />
+    <Folder Include="_MapTools" />
+  </ItemGroup>
+  <ItemGroup>
+    <InterpreterReference Include="Global|PythonCore|3.7" />
+  </ItemGroup>
+  <ItemGroup>
+    <Interpreter Include="VirtaulEnvirment\">
+      <Id>VirtaulEnvirment</Id>
+      <Description>VirtaulEnvirment (Python 3.7 (64-bit))</Description>
+      <InterpreterPath>Scripts\python.exe</InterpreterPath>
+      <WindowsInterpreterPath>Scripts\pythonw.exe</WindowsInterpreterPath>
+      <Version>3.7</Version>
+      <Architecture>X64</Architecture>
+      <PathEnvironmentVariable>PYTHONPATH</PathEnvironmentVariable>
+    </Interpreter>
+  </ItemGroup>
+  <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />
+</Project>

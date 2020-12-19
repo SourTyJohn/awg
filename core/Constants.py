@@ -9,7 +9,7 @@ DEBUG = True
 
 # FPS
 FPS_LOCK = 60  # Do not set more than 60. Game only optimized for <=60
-FPS_SHOW = False  # Display FPS counter in console
+FPS_SHOW = True  # Display FPS counter in console
 PHYSIC_UPDATE_FREQUENCY = 0.017  # optimal with FPS_LOCK==60
 
 
@@ -22,9 +22,13 @@ MENU_FONT_COLOR = (52, 6, 52)
 # SCREEN
 WINDOW_SIZE = (1920, 1080)  # units
 WINDOW_RESOLUTIONS = {'16x10FHD': (1920, 1080), '16x10low': (1366, 768),
-                      '4x3low': (1280, 1024), 'Maks': (1024, 768)}  # pixels
+                      '4x3low': (1280, 1024), 'Maks': (1024, 768), '4:3': (800, 640)}  # pixels
 WINDOW_RESOLUTION = '16x10low'  # current
 WINDOW_RESOLUTION = WINDOW_RESOLUTIONS[WINDOW_RESOLUTION]
+
+DEDICATED_RESOLUTION = '4:3'
+DEDICATED_RESOLUTION = WINDOW_RESOLUTIONS[DEDICATED_RESOLUTION]
+
 FULL_SCREEN = False
 WINDOW_MIDDLE = [x // 2 for x in WINDOW_SIZE]
 WINDOW_RECT = [*WINDOW_MIDDLE, *WINDOW_SIZE]

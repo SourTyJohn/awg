@@ -1,11 +1,12 @@
 import pygame as pg
 import core.rendering.PyOGL as GL
-from core.Constants import WINDOW_RESOLUTION, FPS_LOCK, TITLE, FPS_SHOW
+from core.Constants import WINDOW_RESOLUTION, DEDICATED_RESOLUTION, FPS_LOCK, TITLE, FPS_SHOW
 from timeit import default_timer as timer
-
+import sys
 
 clock: pg.time.Clock
 
+ClientLaunch: bool = True
 
 def _main():
     global clock
@@ -15,7 +16,6 @@ def _main():
     pg.mixer.init(channels=3)
     pg.mouse.set_visible(False)
     pg.event.set_allowed([pg.QUIT, pg.KEYDOWN, pg.KEYUP])
-    clock = pg.time.Clock()
 
 
 running = True
@@ -32,14 +32,17 @@ def game_loop():
     #  Focus selected screen
     scr = screens[screen_type]
 
-    # Visualization
-    scr.render()
-
     # Update screen
     if start_time:
         exit_code = scr.update(timer() - start_time)
     else:
         exit_code = None
+
+    # Visualization
+    if ClientLaunch == True:
+        scr.render()
+    else:
+        scr.render_dedicated()
 
     # Timer
     start_time = timer()
@@ -62,16 +65,32 @@ def game_loop():
 
 
 if __name__ == '__main__':
-    GL.init_display(WINDOW_RESOLUTION)
+     for param in sys.argv:
+        if param == "-server":
+            GL.init_display(DEDICATED_RESOLUTION)
+            import core.screens.game as rgame
 
-    _main()
+            screens = {'game': rgame}
 
-    import core.screens.menu as rmenu
-    import core.screens.game as rgame
+            screen_type = 'game'
 
-    rmenu.init_screen(first_load=True)
+            clock = pg.time.Clock()
 
-    screens = {'menu': rmenu, 'game': rgame}
+            rgame.init_screen(is_dedicated=True)
+            ClientLaunch = False
+     
+     if ClientLaunch == True:
+        GL.init_display(WINDOW_RESOLUTION)
 
-    while running:
+        import core.screens.menu as rmenu
+        import core.screens.game as rgame
+
+        screens = {'menu': rmenu, 'game': rgame}
+
+        _main()
+        clock = pg.time.Clock()
+
+        rmenu.init_screen(first_load=True)
+
+     while running:
         game_loop()
