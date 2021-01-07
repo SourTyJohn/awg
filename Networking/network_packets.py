@@ -4,8 +4,7 @@ CONNECTION_REJECTED = 3
 DISCONNECT = 4
 FORCE_DISCONNECT = 5
 SYNC = 6
-YOU_ARE_HERE = 7
-YES = 8
+ADD_OBJECT = 7
 
 class NET_Packet(object):
     """Network packet class"""

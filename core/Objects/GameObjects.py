@@ -26,6 +26,8 @@ class DirectAccessObject:
 
 d = DirectAccessObject
 
+#Non living shit
+
 class WorldRectangleRigid(fixed):
     # This class represents base level geometry with rigid body
 
@@ -69,6 +71,8 @@ class BackgroundColor(GLObjectBase):
     def update(self, *args, **kwargs) -> None:
         # args[1] - camera
         self.rect.pos = args[1].getPos()
+
+# Characters
 
 class Mortal:
     """Mortal means that object have .health: int and if .health <= 0 object will .die()
@@ -245,7 +249,6 @@ class MainHero(Character, d, m):
         if self.jump_delay_current < MainHero.MANY_JUMPS_DELAY:
             self.jump_delay_current += args[0]
 
-#class MainHeroCl(CharacterCl, d, m, base):
 class MainHeroCl(d, m, base):
     #  static
     TEXTURES = [Ets['LevelOne/r_pebble_grass_1'], ]
@@ -270,6 +273,7 @@ class MainHeroCl(d, m, base):
 
     def __init__(self, gr, pos):
         #CharacterCl.__init__(self, gr, pos, 'mortal', MainHeroCl.size)
+        self.walk_direction = 0
         base.__init__(self, gr, rect=[*pos, *self.size])
         self.init_mortal(self.__class__)
 
@@ -281,17 +285,16 @@ class MainHeroCl(d, m, base):
 
     def update(self, *args, **kwargs):
         # args[0] - delta time
-        vector = kwargs['pos']
-        cur_pos = self.getPos()
-        if cur_pos[0] == vector[0] and cur_pos[1] == vector[1]:
-            #print("Curent pos and sv pos are same - do nothing")
+         vector = kwargs['pos']
+         cur_pos = self.getPos()
+         if cur_pos[0] == vector[0] and cur_pos[1] == vector[1]:
+            # print("Curent pos and sv pos are same - do nothing")
             return
-        self.move_to([vector[0], vector[1]])
+         self.move_to([vector[0], vector[1]])
 
-        super().update(*args, **kwargs)
-        # jump delay update
-        #if self.jump_delay_current < MainHeroCl.MANY_JUMPS_DELAY:
-        #    self.jump_delay_current += args[0]
+         super().update(*args, **kwargs)
+
+# Crates
 
 class WoodenCrate(dynamic, d, m):
     # static
@@ -308,9 +311,9 @@ class WoodenCrate(dynamic, d, m):
 
     def __init__(self, gr, pos):
         super().__init__(gr, pos, collision_type='mortal', size=self.__class__.size)
-        print("Created Crate on SV")
+        print("Created Wooden Crate on SV")
         self.init_mortal(self.__class__)
-        
+
 class WoodenCrateCl(d, m, base):
     # static
     TEXTURES = (Ets['LevelOne/r_tile_grey_1'], )
@@ -327,8 +330,65 @@ class WoodenCrateCl(d, m, base):
     def __init__(self, gr, id, pos):
         # super().__init__(gr, pos, collision_type='mortal', size=self.__class__.size)
         base.__init__(self, gr, rect=[*pos, *self.size])
-        self.id = id
-        print(f"Created Crate on CL with id {self.id}")
+        self.MyId = id
+        print(f"Created Wooden Crate on CL with id {self.MyId}")
+        self.init_mortal(self.__class__)
+
+    def update(self, *args, **kwargs):
+        # args[0] - delta time
+        objects = kwargs['objs']
+        
+        if objects == []:
+            return
+        if len(objects) <= self.MyId:
+            return
+
+        Pos = objects[self.MyId]
+
+        cur_pos = self.getPos()
+        if cur_pos[0] == Pos[0] and cur_pos[1] == Pos[1]:
+            # print("Curent pos and sv pos are same - do nothing")
+            return
+        # self.move_to([vector[0], vector[1]])
+
+        self.move_to([Pos[0], Pos[1]])
+
+class MetalCrate(dynamic, d, m):
+    # static
+    TEXTURES = (Ets['LevelOne/r_orange_bricks_1'], )
+    size = (128, 128)
+    hitbox_data = (0, 0, *size)
+
+    # dynamic
+    mass = 60.0
+
+    # mortal
+    max_health = 32
+    lethal_fall_velocity = 64
+
+    def __init__(self, gr, pos):
+        super().__init__(gr, pos, collision_type='mortal', size=self.__class__.size)
+        print("Created Metal Crate on SV")
+        self.init_mortal(self.__class__)
+
+class MetalCrateCl(d, m, base):
+    # static
+    TEXTURES = (Ets['LevelOne/r_orange_bricks_1'], )
+    size = (128, 128)
+    hitbox_data = (0, 0, *size)
+
+    # dynamic
+    mass = 60.0
+
+    # mortal
+    max_health = 32
+    lethal_fall_velocity = 64
+
+    def __init__(self, gr, id, pos):
+        # super().__init__(gr, pos, collision_type='mortal', size=self.__class__.size)
+        base.__init__(self, gr, rect=[*pos, *self.size])
+        self.MyId = id
+        print(f"Created Metal Crate on CL with id {self.MyId}")
         self.init_mortal(self.__class__)
 
     def update(self, *args, **kwargs):
@@ -336,39 +396,18 @@ class WoodenCrateCl(d, m, base):
         objects = kwargs['objs']
         if objects == []:
             return
-        Pos = objects[self.id]
+        if len(objects) <= self.MyId:
+            return
+
+        Pos = objects[self.MyId]
 
         cur_pos = self.getPos()
         if cur_pos[0] == Pos[0] and cur_pos[1] == Pos[1]:
-            #print("Curent pos and sv pos are same - do nothing")
+            # print("Curent pos and sv pos are same - do nothing")
             return
-        self.move_to([vector[0], vector[1]])
+        # self.move_to([vector[0], vector[1]])
 
         self.move_to([Pos[0], Pos[1]])
-
-class MetalCrate(WoodenCrate, d, m):
-    # static
-    TEXTURES = (Ets['LevelOne/r_orange_bricks_1'], )
-    size = (128, 128)
-    hitbox_data = (0, 0, *size)
-
-    # dynamic
-    mass = 60.0
-
-    # mortal
-    max_health = 32
-
-class MetalCrateCl(WoodenCrateCl, d, m):
-    # static
-    TEXTURES = (Ets['LevelOne/r_orange_bricks_1'], )
-    size = (128, 128)
-    hitbox_data = (0, 0, *size)
-
-    # dynamic
-    mass = 60.0
-
-    # mortal
-    max_health = 32
 
 
 """Storage of all Direct objects. Can be accessed by WorldEditor, LevelLoader and create_object() function"""

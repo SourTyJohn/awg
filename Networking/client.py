@@ -7,10 +7,10 @@ import Networking.network_packets as np
 class Client():
     """Client class"""
     def __init__(self, ip: bytes, port, timeout: int):
+        self.sv_addr = (ip, port)
         self.MySock = socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
-        self.MySock.connect((ip, port))
         self.MySock.settimeout(timeout)
-        self.MySock.setblocking(False)
+        self.MySock.setblocking(True)
 
     def __del__(self):
         NPacket = np.NET_Packet(None, np.DISCONNECT)
@@ -19,9 +19,9 @@ class Client():
 
     def ListenPort(self):
         try:
-            data = self.MySock.recv(1024)
+            data = self.MySock.recvfrom(1024)
 
-            dict_str = data.decode("UTF-8")
+            dict_str = data[0].decode("UTF-8")
             NPacket_dict = json.loads(dict_str)
             NPacket = namedtuple("NET_Packet", NPacket_dict.keys())(*NPacket_dict.values())
 
@@ -36,4 +36,4 @@ class Client():
 
     def SendPacket(self, packet: np.NET_Packet):
         np_dict = dict(packet)
-        self.MySock.send(json.dumps(np_dict).encode("UTF-8"))
+        self.MySock.sendto(json.dumps(np_dict).encode("UTF-8"), self.sv_addr)

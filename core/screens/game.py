@@ -38,6 +38,7 @@ hero: MainHero  # MainHero object
 heroSvPos: Vec2d
 heroCl: MainHeroCl # Cl main hero
 
+localScene = []
 scene = []
 sceneRecive = []
 
@@ -50,6 +51,9 @@ holding_keys = {
     K_MOVE_UP: False,
     K_MOVE_DOWN: False
 }
+
+SyncThread: threading.Thread
+SyncClThread: threading.Thread
 
 def render():
     camera.focusTo(*heroCl.getPos())
@@ -66,82 +70,84 @@ def update(dt):
         if exit_code:
             return exit_code
 
-    """new_triggers - set of Trigger objects from Physics.py,
-    that were added recently and needs to be added to object group
-    Physic.py module can't access object groups from game module
-    so it pass new triggers through new_triggers set, to add it to group here"""
+    #new_triggers - set of Trigger objects from Physics.py,
+    #that were added recently and needs to be added to object group
+    #Physic.py module can't access object groups from game module
+    #so it pass new triggers through new_triggers set, to add it to group here
     while new_triggers:
         triggers_gr.add(new_triggers.pop())
-
-    #if not IS_DEDICATED and not t.is_alive():
-    #    t = threading.Timer(0.5, Sync)
-    #    t.start()
-    #    t.join()
-    #else:
-    #    t = threading.Timer(0.5, Sync)
-    #    t.start()
-    #    t.join()
 
     if not IS_DEDICATED:
         update_groups(dt)
 
-    # PHYSIC AND UPDATE (VAX: WE ADD "IS SERVER")
-    if IS_SERVER:
-        Phys.worldInterface.GetWorld().step(dt)
-
 def Sync():
- while True:
+ t = threading.currentThread()
+ while getattr(t, "do_run", True):
     global sceneRecive, heroSvPos
 
-    if IS_SERVER:
-        vector = hero.getPos()
-        packet = sv.ListenPort([scene, [vector.x, vector.y]])
+    vector = hero.getPos()
+    packet = sv.ListenPort()
+    if packet != None:
         if packet.type == np.SYNC:
             for i in range(len(packet.Data)):
                 if packet.Data[i][0] == 'move_hero':
-                    if packet.Data[i][1] != 0:
-                        print('WALK PACKET RECIVED')
+                    #if packet.Data[i][1] != hero.walk_direction:
                     hero.walk_direction = packet.Data[i][1]
                 elif packet.Data[i][0] == 'jump':
-                    print('JUMP PACKET RECIVED')
                     hero.jump()
+                elif packet.Data[i][0] == 'add':
+                    if packet.Data[i][1] == 'wcrate':
+                        cr = WoodenCrate(obstacles_gr, pos = hero.getPos())
+                        vector = cr.getPos()
+                        scene.insert(len(scene), [vector.x, vector.y])
+                        localScene.insert(len(scene), cr)
+                    elif packet.Data[i][1] == 'mcrate':
+                        cr = MetalCrate(obstacles_gr, pos = hero.getPos())
+                        vector = cr.getPos()
+                        scene.insert(len(scene), [vector.x, vector.y])
+                        localScene.insert(len(scene), cr)
 
     NPacket = np.NET_Packet([scene, [vector.x, vector.y]], np.SYNC)
     sv.BroadCoast(NPacket)
 
-    time.sleep(0.2)
+    Phys.worldInterface.GetWorld().step(1 / 60.0)
 
-    NPacket = np.NET_Packet(None, np.YOU_ARE_HERE)
-    sv.BroadCoast(NPacket)
+    if len(scene) != len(localScene):
+        print("You are do it worng!")
 
+    for ids in range(len(localScene)):
+        objPos = localScene[ids].getPos()
+        scene[ids] = [objPos.x, objPos.y]
+
+
+def SyncClient():
+ t = threading.currentThread()
+ while getattr(t, "do_run", True):
+    global sceneRecive, heroSvPos
     if not IS_DEDICATED:
         packet = cl.ListenPort()
 
-        if packet.type == np.CONNECTION_ACCEPTED:
-            sceneRecive = copy.deepcopy(packet.Data[0])
-            heroSvPos = packet.Data[1]
-        elif packet.type == np.YOU_ARE_HERE:
-            NPacket = np.NET_Packet(None, np.YES)
-            cl.SendPacket(NPacket)
-        elif packet.type == np.SYNC:
-            sceneRecive = packet.Data[0]
-            heroSvPos = packet.Data[1]
-    else:
-        packet = cl.ListenPort()
-
-        if packet.type == np.CONNECTION_ACCEPTED:
-            # Here we need say somthing to server because server got stuck if we don't
-            NPacket = np.NET_Packet(None, np.YES)
-            cl.SendPacket(NPacket)
-        elif packet.type == np.YOU_ARE_HERE:
-            NPacket = np.NET_Packet(None, np.YES)
-            cl.SendPacket(NPacket)
-        elif packet.type == np.SYNC:
-            pass
-    time.sleep(0.05)
+        if packet != None:
+            if packet.type == np.CONNECTION_ACCEPTED:
+                # sceneRecive = copy.deepcopy(packet.Data[0])
+                # heroSvPos = packet.Data[1]
+                pass
+            elif packet.type == np.SYNC:
+                sceneRecive = packet.Data[0]
+                heroSvPos = packet.Data[1]
+        else:
+            packet = cl.ListenPort()
+            
+            if packet != None:
+                if packet.type == np.CONNECTION_ACCEPTED:
+                    # Here we need say somthing to server because server got stuck if we don't
+                    NPacket = np.NET_Packet(None, np.YES)
+                    cl.SendPacket(NPacket)
+                elif packet.type == np.SYNC:
+                    pass
 
 def user_input():
-    global backward_user_move
+    global backward_user_move, scene
 
     # USER INPUT
     SyncIds = 0
@@ -162,13 +168,16 @@ def user_input():
                 # NEED ID!
                 commands_for_sv.insert(SyncIds+1, ['jump'])
                 SyncIds =+ 1
-                #cl.SendPacket(NPacket)
 
             elif key == pygame.K_q:
-                cr = WoodenCrate(obstacles_gr, pos = hero.getPos())
-                vector = cr.getPos()
-                scene.insert(len(scene)+1, [vector.x, vector.y])
-                WoodenCrateCl(obstacles_gr, id = len(scene)+1, pos = heroCl.getPos())
+                commands_for_sv.insert(SyncIds+1, ['add', 'wcrate'])
+                SyncIds =+ 1
+                WoodenCrateCl(obstacles_gr, id = len(scene), pos = heroCl.getPos())
+
+            elif key == pygame.K_t:
+                commands_for_sv.insert(SyncIds+1, ['add', 'mcrate'])
+                SyncIds =+ 1
+                MetalCrateCl(obstacles_gr, id = len(scene), pos = heroCl.getPos())
 
             elif key == K_CLOSE:
                 close()
@@ -210,8 +219,8 @@ def draw_groups():
     # drawing all GLSprite groups
     drawGroups(background_gr, obstacles_gr, characters_gr, player_gr)
 
-def update_groups(dt):    
-    global sceneRecive
+def update_groups(dt):
+    global sceneRecive, heroSvPos
     # updating all GLSprite groups
     player_gr.update(dt, pos = heroSvPos)
     # Hero manualy update (I'm to lazy for solve this shit)
@@ -224,7 +233,7 @@ def init_screen(hero_life=False, first_load=False, is_server=False, is_dedicated
 
     InitNET(is_server, is_dedicated)
 
-    global hero, heroCl, heroSvPos, hero_inited, scene, sceneRecive
+    global hero, heroCl, heroSvPos, hero_inited, scene, sceneRecive, SyncClThread, SyncThread, localScene
 
     BackgroundColor(background_gr)
 
@@ -246,16 +255,22 @@ def init_screen(hero_life=False, first_load=False, is_server=False, is_dedicated
         WorldRectangleRigid(obstacles_gr, pos=[2000, 1000], size=[50, 900])
         WorldRectangleRigidCl(obstacles_gr, pos=[2000, 1000], size=[50, 900])
 
-        mc = MetalCrate(obstacles_gr, pos=[700, 800])
+
+        mc = MetalCrate(obstacles_gr, pos=[600, 800])
         vector = mc.getPos()
         scene.insert(OBJs, [vector.x, vector.y])
+        localScene.insert(OBJs, mc)
 
-        MetalCrateCl(obstacles_gr, OBJs, pos=[700, 800])
+        MetalCrateCl(obstacles_gr, OBJs, pos=[0, 0])
         OBJs += 1
+
 
         hero = MainHero(player_gr, pos=[500, 800])
         heroCl = MainHeroCl(player_gr, pos=[500, 800])
         heroSvPos = Vec2d(0, 0)
+
+        SyncThread.start()
+        SyncClThread.start()
     else:
         #CL
         WorldRectangleRigidCl(obstacles_gr, pos=[0, 500], size=[4100, 100])
@@ -278,27 +293,35 @@ def close():
 
 def InitNET(IsConnect: bool, IsDedicated=False):
     
-    global IS_DEDICATED, IS_SERVER, sv, cl
+    global IS_DEDICATED, IS_SERVER, sv, cl, SyncClThread, SyncThread
 
     IS_DEDICATED = IsDedicated
 
     if not IsConnect:
-        sv = Server(DEFAULT_PORT, 0)
+        sv = Server(DEFAULT_PORT, 0.3)
         IS_SERVER = True
     else:
         IS_SERVER = False
     
-    cl = Client('localhost', DEFAULT_PORT, 0.1)
+    cl = Client('localhost', DEFAULT_PORT, 0.3)
 
     Phys.worldInterface = WorldInterface(IS_SERVER)
 
     NPacket = np.NET_Packet(None, np.CONNECT)
     cl.SendPacket(NPacket)
 
-    t = threading.Timer(0.5, Sync)
-    t.start()
+    SyncThread = threading.Timer(0.5, Sync)
+
+    SyncClThread = threading.Timer(0.5, SyncClient)
 
 def DeinitNET():
-    global cl, sv
+    global cl, sv, SyncClThread, SyncThread
+
+    SyncClThread.do_run = False
+    SyncClThread.join()
+
+    SyncThread.do_run = False
+    SyncThread.join()
+
     del cl
     del sv

@@ -15,10 +15,11 @@ class Server():
 
     def __init__(self, port, timeout: int):
         self.sock = socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
-        self.sock.bind(('', port))
+        self.sock.bind(('localhost', port))
         self.sock.settimeout(timeout)
         self.currentPort = port
-        self.sock.setblocking(False)
+        self.sock.setblocking(True)
+        # self.sock.setblocking(False)
         # self.sock.listen(MaxPlayersRecive)
 
     def __del__(self):
@@ -26,7 +27,7 @@ class Server():
         self.BroadCoast(NPacket)
         self.sock.close()
 
-    def ListenPort(self, ConnectAcceptedData):
+    def ListenPort(self):
         try:
             data, address = self.sock.recvfrom(1024)
             
@@ -39,7 +40,7 @@ class Server():
                 self.clients.insert(self.IDs, address)
                 self.IDs += 1
 
-                NPacket = np.NET_Packet(ConnectAcceptedData, np.CONNECTION_ACCEPTED)
+                NPacket = np.NET_Packet(None, np.CONNECTION_ACCEPTED)
                 self.SendPacket(address, NPacket)
 
             elif NPacket.type == np.SYNC:

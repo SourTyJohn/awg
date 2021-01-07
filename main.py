@@ -34,7 +34,8 @@ def game_loop():
 
     # Update screen
     if start_time:
-        exit_code = scr.update(timer() - start_time)
+        delta = timer() - start_time
+        exit_code = scr.update(delta)
     else:
         exit_code = None
 
@@ -49,7 +50,7 @@ def game_loop():
 
     # Current FPS display
     if FPS_SHOW:
-        print(f'\rFPS: {1 / (timer() - start_time) // 1}', end='')
+        print(f'\rFPS: {1 / (timer() - start_time) // 10000}', end='')
 
     # Screen feedback
     if exit_code in ('menu', 'game'):
