@@ -1,21 +1,21 @@
-from core.physic.Physics import world, new_triggers
-from core.rendering.PyOGL import camera, GLObjectGroupRender, drawGroups
+from core.physic.physics import world, objects
 from user.KeyMapping import *
-from core.Objects.GameObjects import *
+from core.objects.gObjects import *
+from core.rendering.PyOGL import *
 
 import pygame
 
 
-background_gr = GLObjectGroupRender(g_name='g_background', shader='BackgroundShader')
-obstacles_gr = GLObjectGroupRender(g_name='g_obstacle')
-characters_gr = GLObjectGroupRender(g_name='g_characters')
-player_gr = GLObjectGroupRender(g_name='g_player')
-
-triggers_gr = GLObjectGroupRender(g_name='g_triggers')
+background_gr = RenderGroup(g_name='g_background', shader='BackgroundShader')
+obstacles_gr = RenderGroup(g_name='g_obstacle')
+characters_gr = RenderGroup(g_name='g_characters')
+player_gr = RenderGroup(g_name='g_player')
+front_gr = RenderGroup(g_name='g_front')
 
 
 hero_inited = False
 hero: MainHero  # MainHero object
+render_zone: Trigger
 
 
 #  Keys that player is holding
@@ -28,9 +28,13 @@ holding_keys = {
 
 
 def render():
-    camera.focusTo(*hero.getPos())
+    pre_render()
+
+    camera.focusTo(*hero.pos)
     background_gr.update(1, camera)
     draw_groups()
+
+    post_render()
 
 
 def update(dt):
@@ -41,14 +45,6 @@ def update(dt):
 
     # PHYSIC AND UPDATE
     world.step(dt)
-
-    """new_triggers - set of Trigger objects from Physics.py,
-    that were added recently and needs to be added to object group
-    Physic.py module can't access object groups from game module
-    so it pass new triggers through new_triggers set, to add it to group here"""
-    while new_triggers:
-        triggers_gr.add(new_triggers.pop())
-
     update_groups(dt)
 
 
@@ -68,7 +64,10 @@ def user_input():
                 hero.jump()
 
             elif key == pygame.K_q:
-                WoodenCrate(obstacles_gr, hero.getPos())
+                summon('WoodenCrate', obstacles_gr, hero.pos)
+
+            elif key == K_GRAB:
+                hero.grab_nearest_put(objects)
 
             elif key == K_CLOSE:
                 close()
@@ -79,6 +78,12 @@ def user_input():
 
             if key in holding_keys.keys():
                 holding_keys[key] = False
+
+        elif event.type == pygame.MOUSEBUTTONDOWN:
+            key = event.button
+
+            if key == K_ACTION1:
+                hero.throw_grabbed()
 
     update_hero_movement()
     return None
@@ -96,7 +101,7 @@ def update_hero_movement():
 
 def draw_groups():
     # drawing all GLSprite groups
-    drawGroups(background_gr, obstacles_gr, characters_gr, player_gr)
+    drawGroups(None, background_gr, obstacles_gr, characters_gr, player_gr, front_gr)
 
 
 def update_groups(dt):
@@ -104,26 +109,35 @@ def update_groups(dt):
     player_gr.update(dt)
     obstacles_gr.update(dt)
     background_gr.update(dt, camera)
-    triggers_gr.update(dt)
 
 
 def init_screen(hero_life=False, first_load=False):
-    global hero, hero_inited
-
+    global hero, hero_inited, render_zone
     BackgroundColor(background_gr)
-    WorldRectangleRigid(obstacles_gr, pos=[0, 500], size=[4100, 100])
+    # #  render distance
+    # render_zone = Trigger(None, 't_*', bound_to=camera, size=WINDOW_SIZE)
+    # render_zone.visible = False
+    #
+    # # TEST
+    WorldRectangleRigid(obstacles_gr, pos=[0, 500], size=[8192, 64])
     WorldRectangleRigid(obstacles_gr, pos=[850, 700], size=[200, 200])
-
+    #
     a = WorldRectangleRigid(obstacles_gr, pos=[-500, 575], size=[800, 50])
     a.bfriction = 0.0
-
-    WorldRectangleRigid(obstacles_gr, pos=[1600, 1200], size=[50, 900])
-    WorldRectangleRigid(obstacles_gr, pos=[2000, 1000], size=[50, 900])
-
+    #
+    # WorldRectangleRigid(obstacles_gr, pos=[1600, 1200], size=[50, 900])
+    # WorldRectangleRigid(obstacles_gr, pos=[2000, 1000], size=[50, 900])
+    #
+    # WorldRectangleSensor(obstacles_gr, pos=[-500, 575], size=[2000, 2000],
+    #                      texture='LevelOne/r_tile_grey_1', layer=0.7)
+    #
     MetalCrate(obstacles_gr, pos=[700, 800])
-    hero = MainHero(player_gr, pos=[500, 800])
+    # WorldRectangleSensor(front_gr, pos=[0, 640], size=[128, 256], texture='LevelOne/glass', layer=1)
+    # WorldRectangleSensor(obstacles_gr, pos=[100, 600], size=[32, 128], texture='LevelOne/test_alpha', layer=0.5)
+    #
+    #
+    hero = MainHero(player_gr, pos=[256, 800])
 
 
 def close():
     obstacles_gr.delete_all()
-    triggers_gr.delete_all()

@@ -2,9 +2,10 @@ from OpenGL.GL import *
 
 from utils.files import get_full_path
 
-from core.Math import Matrix as Mat
+from core.math import linear as lin
 
-import numpy as np
+from core.Constants import WINDOW_SIZE, BRIGHTNESS
+
 
 shaders = {}
 
@@ -52,8 +53,9 @@ class Shader:
         glLinkProgram(self.program)
 
         if not glGetProgramiv(self.program, GL_LINK_STATUS):
-            print(f'shader program error while creating')
+            print(f'Shader Program error:')
             print(glGetProgramInfoLog(self.program))
+            raise GLerror('Shader Program error')
 
         glDeleteShader(vertex)
         glDeleteShader(fragment)
@@ -68,47 +70,44 @@ class Shader:
     def use(self):
         glUseProgram(self.program)
 
-    def draw(self, pos, **kwargs):
-        pass
+    def draw(self, pos, **kw):
+        shader = self.p()
+
+        # ATTRIBUTES POINTERS
+        glGetAttribLocation(shader, 'position')
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 36, ctypes.c_void_p(0))
+        glEnableVertexAttribArray(0)
+
+        glGetAttribLocation(shader, 'color')
+        glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 36, ctypes.c_void_p(12))
+        glEnableVertexAttribArray(1)
+
+        glGetAttribLocation(shader, "InTexCoords")
+        glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 36, ctypes.c_void_p(28))
+        glEnableVertexAttribArray(2)
+
+        return shader
 
 
 class DefaultShader(Shader):
     """Basic Shader with no effects. Can use colors from VBO"""
 
     __instance = None
-    __name__ = 'default'
 
     def __init__(self):
         super().__init__('default_vert.glsl', 'default_frag.glsl')
 
     def draw(self, pos, **kw):
         #  reqires kw['rotation']
-        shader = self.p()
-
-        # ATTRIBUTES POINTERS
-        glGetAttribLocation(shader, 'position')
-        glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 32, ctypes.c_void_p(0))
-        glEnableVertexAttribArray(0)
-
-        glGetAttribLocation(shader, 'color')
-        glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 32, ctypes.c_void_p(8))
-        glEnableVertexAttribArray(1)
-
-        glGetAttribLocation(shader, "InTexCoords")
-        glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 32, ctypes.c_void_p(24))
-        glEnableVertexAttribArray(2)
+        shader = super().draw(pos, **kw)
 
         # ROTATION
-        rotationMZ = Mat.rotz(-kw['rotation'])
+        rotationMZ = lin.rotz(-kw['rotation'])
         loc = glGetUniformLocation(shader, "RotationZ")
         glUniformMatrix4fv(loc, 1, GL_FALSE, rotationMZ)
 
-        # rotationMY = Mat.reflectY()
-        # loc = glGetUniformLocation(shader, "RotationY")
-        # glUniformMatrix4fv(loc, 1, GL_FALSE, rotationMY)
-
         # TRANSLATE
-        translateM = Mat.translate(*pos)
+        translateM = lin.translate(*pos)
         loc = glGetUniformLocation(shader, "Translate")
         glUniformMatrix4fv(loc, 1, GL_FALSE, translateM)
 
@@ -117,31 +116,61 @@ class BackgroundShader(Shader):
     """Shader for fancy gradient background drawing"""
 
     __instance = None
-    __name__ = 'background'
 
     def __init__(self):
         super().__init__('back_vert.glsl', 'back_frag.glsl')
 
-    def draw(self, pos, **kwargs):
+    def draw(self, pos, **kw):
         shader = self.p()
 
-        # attribute pointers
+        # ATTRIBUTES POINTERS
         glGetAttribLocation(shader, 'position')
-        glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 32, ctypes.c_void_p(0))
+        glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 36, ctypes.c_void_p(0))
         glEnableVertexAttribArray(0)
 
         glGetAttribLocation(shader, 'color')
-        glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 32, ctypes.c_void_p(8))
+        glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 36, ctypes.c_void_p(12))
         glEnableVertexAttribArray(1)
 
-        # translate matrix
-        translateM = Mat.translate(*pos)
+        # TRANSLATE
+        translateM = lin.translate(*pos)
         loc = glGetUniformLocation(shader, "Translate")
         glUniformMatrix4fv(loc, 1, GL_FALSE, translateM)
 
-        cameraPos = kwargs['camera'].getPos()[1] / 2048 + 0.6
+        # CAMERA POSITION
+        cameraPos = kw['camera'].pos[1] / WINDOW_SIZE[1]
         loc = glGetUniformLocation(shader, "cameraPos")
         glUniform1f(loc, cameraPos)
+
+
+class ScreenShaderDefault(Shader):
+    """Post-effect shader"""
+
+    __instance = None
+
+    def __init__(self):
+        super().__init__('screen_vert.glsl', 'screen_frag.glsl')
+
+    def draw(self, pos, **kw):
+        shader = super().draw(pos, **kw)
+
+        # BRIGHTNESS
+        loc = glGetUniformLocation(shader, "brightness")
+        glUniform1f(loc, BRIGHTNESS)
+
+
+class ScreenShaderGrey(Shader):
+    __instance = None
+
+    def __init__(self):
+        super().__init__('screen_vert.glsl', 'screen_grey_frag.glsl')
+
+    def draw(self, pos, **kw):
+        shader = super().draw(pos, **kw)
+
+        # BRIGHTNESS
+        loc = glGetUniformLocation(shader, "brightness")
+        glUniform1f(loc, BRIGHTNESS)
 
 
 def init():

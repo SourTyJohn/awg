@@ -7,7 +7,7 @@ from os.path import basename, dirname, join
 
 # Main preparations
 pg.init()
-screen: pg.Surface = pg.display.set_mode((1366, 768))
+screen: pg.Surface = pg.display.set_mode((1920, 1080), flags=pg.FULLSCREEN)
 pg.display.set_caption('TheGameMapTools')
 pg.font.init()
 clock = pg.time.Clock()
@@ -30,16 +30,13 @@ Entities = pg.sprite.Group()
 highlight = pg.sprite.Group()
 
 # Grid Constants and variables
-MAX_GRID = 64
-MIN_GRID = 1
-grid = 16
+tile_size = 32
 GRID_COLOR = (255, 0, 0)
 GRID_ALPHA = 100
 MIN_GRID_DISPLAY = 8
 
 # Rect Constants
 """
-
 solid - Textured Shape with collision. Can be Fixed and Dynamic. 
 Dynamic Solid Rectangle is affected by Physics, Fixed is not.
 
@@ -49,7 +46,6 @@ front -
 
 trigger - Non-textured Shape with no collision. 
 If player touches Trigger, some event will happen
-
 """
 
 RECT_TYPES = ['solid', 'background', 'front']
@@ -60,6 +56,10 @@ show_textures = 1
 # Quill Data. [rect/focus, rect types: solid/back/front]
 quill = ['rect', 'solid']
 current_texture = textures['Devs/r_devs_1']
+
+
+class Sprite(pg.sprite.Sprite):
+    pass
 
 
 class Cursor(pg.sprite.Sprite):
@@ -87,12 +87,12 @@ class Cursor(pg.sprite.Sprite):
 
     # Drawing Rectangles
     def start_drawing(self):
-        self.rectStartPoint = [self.rect.center[0] // grid * grid,
-                               self.rect.center[1] // grid * grid + WorkSpace.pos[1]]
+        self.rectStartPoint = [self.rect.center[0] // tile_size * tile_size,
+                               self.rect.center[1] // tile_size * tile_size + WorkSpace.pos[1]]
 
     def finish_drawing(self, pos, tex_offset: bool):
         start_pos = self.rectStartPoint
-        end_pos = [(pos[0] + 10) // grid * grid, (pos[1] - 10) // grid * grid + WorkSpace.pos[1]]
+        end_pos = [(pos[0] + 10) // tile_size * tile_size, (pos[1] - 10) // tile_size * tile_size + WorkSpace.pos[1]]
         size = [abs(end_pos[x] - start_pos[x]) for x in range(2)]
 
         self.rectStartPoint = []
@@ -143,10 +143,10 @@ class Cursor(pg.sprite.Sprite):
 arrow: Cursor
 
 
-class Rectangle(pg.sprite.Sprite):
+class Rectangle(Sprite):
     texture = None
     __texture_surface_show = None
-    __texture_surface_grid = None
+    __texture_surface_tile_size = None
     texture_offset = None
 
     def __init__(self, pos, size, tex_offset=False, texture='current', rect_type='current'):
@@ -173,7 +173,7 @@ class Rectangle(pg.sprite.Sprite):
             self.setTextureGrid(RECT_COLORS[self.rect_type], self.texture.size)
 
     def move(self, amount):
-        new_pos = [self.rect[x] + amount[x] * grid for x in range(2)]
+        new_pos = [self.rect[x] + amount[x] * tile_size for x in range(2)]
 
         if new_pos[0] >= 0 and new_pos[0] + self.true_rect[2] <= WorkSpace.resolution[0] and\
                 new_pos[1] >= WorkSpace.pos[1] and \
@@ -188,7 +188,7 @@ class Rectangle(pg.sprite.Sprite):
         if show_textures:
             self.draw_texture()
         else:
-            self.draw_grid()
+            self.draw_tile_size()
 
         pg.draw.rect(screen, color, self.true_rect, 3)
 
@@ -210,42 +210,42 @@ class Rectangle(pg.sprite.Sprite):
         rect = self.true_rect
 
         if self.texture:
-            grid_surface = pg.Surface(size=(rect[2], rect[3])).convert_alpha()
-            grid_surface.fill([0, 0, 0, 0])
+            tile_size_surface = pg.Surface(size=(rect[2], rect[3])).convert_alpha()
+            tile_size_surface.fill([0, 0, 0, 0])
 
             offset_units = [int(self.texture_offset[x] * self.texture.size[x]) for x in range(2)]
 
             for x in range(int(offset_units[0]), rect[2], self.texture.size[0] // 2):
                 for y in range(int(offset_units[1]), rect[3], self.texture.size[1] // 2):
-                    grid_surface.blit(self.texture.image, [x, y])
+                    tile_size_surface.blit(self.texture.image, [x, y])
 
-            self.__texture_surface_show = grid_surface
+            self.__texture_surface_show = tile_size_surface
 
         return False
 
-    def setTextureGrid(self, color, size):
+    def setTextureGrid(self, color: tuple, size):
         rect = self.true_rect
-        grid_surface = pg.Surface(size=(rect[2], rect[3])).convert_alpha()
-        grid_surface.fill([0, 0, 0, 0])
+        tile_size_surface = pg.Surface(size=(rect[2], rect[3])).convert_alpha()
+        tile_size_surface.fill([0, 0, 0, 0])
 
         size = [x // 2 for x in size]
         offset_units = [int(self.texture_offset[x] * size[x]) for x in range(2)]
 
         for x in range(offset_units[0], rect[2], size[0]):
-            pg.draw.line(grid_surface, (*color, GRID_ALPHA + 50), [x, offset_units[1]], [x, rect[3]], 1)
+            pg.draw.line(tile_size_surface, (*color, GRID_ALPHA + 50), [x, offset_units[1]], [x, rect[3]], 1)
 
         for y in range(offset_units[1], rect[3], size[1]):
-            pg.draw.line(grid_surface, (*color, GRID_ALPHA + 50), [offset_units[0], y], [rect[2], y], 1)
+            pg.draw.line(tile_size_surface, (*color, GRID_ALPHA + 50), [offset_units[0], y], [rect[2], y], 1)
 
-        self.__texture_surface_grid = grid_surface
+        self.__texture_surface_tile_size = tile_size_surface
 
     def draw_texture(self):
         if self.texture:
             screen.blit(self.__texture_surface_show, self.rect)
 
-    def draw_grid(self):
+    def draw_tile_size(self):
         if self.texture:
-            screen.blit(self.__texture_surface_grid, self.rect)
+            screen.blit(self.__texture_surface_tile_size, self.rect)
 
     def getData(self):
         complete_obj_data = {
@@ -290,24 +290,12 @@ class ButtonsFunctions:
 
         for rct in data['geometry']:
             name, tex = addTexture(*rct['texture'].split('/'))
-            Rectangle(pos=rct['rect'][:2], size=rct['rect'][2:], texture=tex, tex_offset=rct['tex_offset'], rect_type=rct['type'])
+            Rectangle(pos=rct['rect'][:2], size=rct['rect'][2:],
+                      texture=tex, tex_offset=rct['tex_offset'], rect_type=rct['type'])
 
     @classmethod
     def save(cls):
         save(Rectangles, Entities)
-
-    # Grid change
-    @classmethod
-    def grid_m(cls):
-        global grid
-        if grid > MIN_GRID:
-            grid //= 2
-
-    @classmethod
-    def grid_b(cls):
-        global grid
-        if grid < MAX_GRID:
-            grid *= 2
 
     # Empty function. Does nothing
     @classmethod
@@ -346,18 +334,12 @@ class ButtonsFunctions:
         rect_type_highlight.set_button(buttons['rf'])
         quill[1] = 'front'
 
-    # Textures
-    # @classmethod
-    # def add_texture_pack(cls):
-    #     pack_name = diropenbox(msg='select texture pack directory',
-    #                            title='open tex pack', default=Sf.get_full_path('data/Textures'))
-    #     load_texPack(pack_name)
-
     @classmethod
     def add_texture(cls):
         global current_texture
 
-        file_path = fileopenbox(title='select texture', default=files.get_full_path('data/Textures'), filetypes=["*.png"])
+        file_path = fileopenbox(title='select texture',
+                                default=files.get_full_path('data/Textures'), filetypes=["*.png"])
 
         pack = basename(dirname(dirname(file_path)))
         texture = join(basename(dirname(file_path)), basename(file_path))
@@ -377,7 +359,7 @@ def addTexture(pack, texture):
     return fullname, textures[fullname]
 
 
-class _EditorButton(pg.sprite.Sprite):
+class _EditorButton(Sprite):
     image = files.load_image('GUI/button_menu_default.png', pack='base_pack')[1]
     size = [86, 16]
     image = pg.transform.scale(image, size)
@@ -413,20 +395,20 @@ class WorkSpace(pg.sprite.Sprite):
         super().__init__(workSp_group)
         self.rect = pg.rect.Rect(*WorkSpace.pos, *WorkSpace.resolution)
 
-    def grid_draw(self):
-        if grid < MIN_GRID_DISPLAY:
+    def tile_size_draw(self):
+        if tile_size < MIN_GRID_DISPLAY:
             return
 
-        grid_surface = pg.Surface(size=WorkSpace.resolution).convert_alpha()
-        grid_surface.fill([0, 0, 0, 0])
+        tile_size_surface = pg.Surface(size=WorkSpace.resolution).convert_alpha()
+        tile_size_surface.fill([0, 0, 0, 0])
 
-        for x in range(0, WorkSpace.resolution[0], grid):
-            pg.draw.line(grid_surface, (255, 0, 0, GRID_ALPHA), [x, 0], [x, WorkSpace.resolution[1]], 1)
+        for x in range(0, WorkSpace.resolution[0], tile_size):
+            pg.draw.line(tile_size_surface, (255, 0, 0, GRID_ALPHA), [x, 0], [x, WorkSpace.resolution[1]], 1)
 
-        for y in range(0, WorkSpace.resolution[1], grid):
-            pg.draw.line(grid_surface, (255, 0, 0, GRID_ALPHA), [0, y], [WorkSpace.resolution[0], y], 1)
+        for y in range(0, WorkSpace.resolution[1], tile_size):
+            pg.draw.line(tile_size_surface, (255, 0, 0, GRID_ALPHA), [0, y], [WorkSpace.resolution[0], y], 1)
 
-        screen.blit(grid_surface, self.rect)
+        screen.blit(tile_size_surface, self.rect)
 
     def draw(self):
         pg.draw.rect(screen, (255, 0, 0), self.rect, 2)
@@ -434,7 +416,7 @@ class WorkSpace(pg.sprite.Sprite):
     @staticmethod
     def draw_current_rect(pos):
         pos2 = arrow.rectStartPoint
-        pos = [(pos[0] + 10) // grid * grid, (pos[1] - 10) // grid * grid + WorkSpace.pos[1]]
+        pos = [(pos[0] + 10) // tile_size * tile_size, (pos[1] - 10) // tile_size * tile_size + WorkSpace.pos[1]]
 
         if pos2:
             size = [abs(pos[x] - pos2[x]) for x in range(2)]
@@ -442,12 +424,7 @@ class WorkSpace(pg.sprite.Sprite):
 
 
 workspace: WorkSpace
-gridSizeRect: pg.rect.Rect
-
-
-def drawGridSize():
-    sur = _EditorButton.font.render(str(grid * 2), True, (100, 10, 255))
-    screen.blit(sur, gridSizeRect)
+tile_sizeSizeRect: pg.rect.Rect
 
 
 WRITE_TEX_RECT = pg.rect.Rect(_EditorButton.size[0] * 11 + 26, _EditorButton.size[1] * 5 + 4, 100, 50)
@@ -475,17 +452,15 @@ def writeSelectedRectTex():
 
 
 def main():
-    global clock, buttons, arrow, workspace, gridSizeRect
+    global clock, buttons, arrow, workspace, tile_sizeSizeRect
     bf = ButtonsFunctions
 
     buttons = {
         # main editor buttons
-        'nl': _EditorButton((0, 0), 'new level', bf.new_level),
-        'll': _EditorButton((_EditorButton.size[0], 0), 'load level', bf.load),
-        'sl': _EditorButton((_EditorButton.size[0] * 2, 0), 'save level', bf.save),
-
-        'gm': _EditorButton((_EditorButton.size[0] * 4, 0), '--', bf.grid_m),
-        'gb': _EditorButton((_EditorButton.size[0] * 6, 0), '+', bf.grid_b),
+        'nl': _EditorButton((0, 0), '+ new', bf.new_level),
+        'll': _EditorButton((_EditorButton.size[0], 0), 'load', bf.load),
+        'sl': _EditorButton((_EditorButton.size[0] * 2, 0), 'save', bf.save),
+        'sht': _EditorButton((_EditorButton.size[0] * 3, 0), 'tex show:', bf.empty_func),
 
         # select or rect buttons
         # 'fm': _EditorButton((_EditorButton.size[0] * 14, 0), 'focus', bf.focus_mode, tags=['focus_mode', ]),
@@ -504,9 +479,6 @@ def main():
     rect_type_highlight.set_button(buttons['rs'])
     quill_type_highlight.set_button(buttons['rm'])
 
-    grid_display = _EditorButton((_EditorButton.size[0] * 5, 0), '  ', bf.grid_b)
-    gridSizeRect = grid_display.text_rect
-
     workspace = WorkSpace()
     arrow = Cursor()
 
@@ -523,8 +495,7 @@ def loop():
     buttons_group.draw(screen)
     buttons_group.update()
     workspace.draw()
-    workspace.grid_draw()
-    drawGridSize()
+    workspace.tile_size_draw()
     workspace.draw_current_rect(mouse_pos)
     # Display current textures
     writeCurrentTex()

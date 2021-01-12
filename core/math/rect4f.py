@@ -1,27 +1,4 @@
 import numpy as np
-from math import atan2, pi
-from pymunk.vec2d import Vec2d
-
-
-def vec_normalize(vec) -> Vec2d:
-    length = vec.length()
-    return Vec2d(vec.x / length, vec.y / length)
-
-
-def vec_dot(blue, red) -> float:
-    return blue.x * red.x + blue.y * red.y
-
-
-def vec_cross(blue, red) -> float:
-    return blue.x * red.y - blue.y * red.x
-
-
-def vec_orthogonal(vec) -> Vec2d:
-    return Vec2d(vec.x, -vec.y)
-
-
-def vec_unit_to_degree(vec) -> float:
-    return atan2(*vec) * 180 / pi
 
 
 class Rect4f:
@@ -64,23 +41,6 @@ class Rect4f:
     def size(self, value):
         self.values[2] = value[0]
         self.values[3] = value[1]
-
-    # # BORDERS
-    # @property
-    # def R(self):  # right
-    #     return self[0] + self[2]
-    #
-    # @property
-    # def L(self):  # left
-    #     return self[0]
-    #
-    # @property
-    # def T(self):  # top
-    #     return self[1] + self[3]
-    #
-    # @property
-    # def B(self):  # bottom
-    #     return self[1]
 
     # VALUES
     @property

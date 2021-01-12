@@ -5,9 +5,9 @@ from core.rendering.PyOGL import drawGroups
 from core.rendering.Textures import EssentialTextureStorage as Ets
 
 
-decoration = Gl.GLObjectGroupRender()
-back = Gl.GLObjectGroupRender()
-buttons_group = Gl.GLObjectGroupRender()
+decoration = Gl.RenderGroup()
+back = Gl.RenderGroup()
+buttons_group = Gl.RenderGroup()
 
 buttons_count = 4
 selected_button = 0
@@ -49,7 +49,7 @@ exit_code = None
 
 
 def render():
-    drawGroups(decoration, buttons_group)
+    drawGroups(None, decoration, buttons_group)
 
 
 def update(dt):
@@ -88,7 +88,7 @@ def user_input():
                 buttons[selected_button].pressed()
 
 
-class MainFrame(Gl.GLObjectBase):
+class MainFrame(Gl.RenderObject):
     TEXTURES = [Ets['GUI/menu_frame'], ]
 
     def __init__(self):
@@ -96,7 +96,7 @@ class MainFrame(Gl.GLObjectBase):
 
 
 # ---- BUTTONS----
-class ButtonText(Gl.GLObjectBase):
+class ButtonText(Gl.RenderObject):
     TEXTURES = [Ets[x] for x in [
         'text:Новая игра', 'text:Загрузить игру', 'text:Сохранить игру', 'text:Настройки', 'text:Выйти'
     ]]
@@ -111,7 +111,7 @@ class ButtonText(Gl.GLObjectBase):
         self.rect.size = ButtonText.TEXTURES[number].size
 
 
-class Button(Gl.GLObjectBase):
+class Button(Gl.RenderObject):
     # 0 - Non Selected Button, 1 - Selected
     TEXTURES = (Ets['GUI/button_menu_default'], Ets['GUI/button_menu_selected'])
 
@@ -127,7 +127,7 @@ class Button(Gl.GLObjectBase):
         buttons[this].setTexture(1)
 
 
-class FullButton(Gl.GLObjectComposite):
+class FullButton(Gl.RenderObjectComposite):
     """Button with text on it"""
 
     def __init__(self, y_pos, number):

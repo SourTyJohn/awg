@@ -1,8 +1,30 @@
 import math
 import numpy as np
+from math import atan2, pi
+from pymunk.vec2d import Vec2d
 
-"""Matrix math for Shaders
-*Shaders use fortran matrix"""
+
+# VECTOR
+def vec_normalize(vec) -> Vec2d:
+    length = vec.length()
+    return Vec2d(vec.x / length, vec.y / length)
+
+
+def vec_dot(blue, red) -> float:
+    return blue.x * red.x + blue.y * red.y
+
+
+def vec_cross(blue, red) -> float:
+    return blue.x * red.y - blue.y * red.x
+
+
+def vec_orthogonal(vec) -> Vec2d:
+    return Vec2d(vec.x, -vec.y)
+
+
+def vec_unit_to_degree(vec) -> float:
+    return atan2(*vec) * 180 / pi
+#
 
 
 # unused
