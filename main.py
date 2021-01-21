@@ -32,25 +32,26 @@ def game_loop():
     #  Focus selected screen
     scr = screens[screen_type]
 
-    # Update screen
-    if start_time:
-        delta = timer() - start_time
-        exit_code = scr.update(delta)
-    else:
-        exit_code = None
-
     # Visualization
     if ClientLaunch == True:
         scr.render()
     else:
         scr.render_dedicated()
 
+    # Update screen
+    if start_time:
+        dt = timer() - start_time
+        exit_code = scr.update(dt)
+    else:
+        dt = 1
+        exit_code = None
+
     # Timer
     start_time = timer()
 
     # Current FPS display
     if FPS_SHOW:
-        print(f'\rFPS: {1 / (timer() - start_time) // 10000}', end='')
+        print(f'\rFPS: {1 / dt // 1}', end='')
 
     # Screen feedback
     if exit_code in ('menu', 'game'):

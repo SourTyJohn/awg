@@ -8,7 +8,7 @@ DEBUG = True
 
 
 # FPS
-FPS_LOCK = 60  # Do not set more than 60. Game only optimized for <=60
+FPS_LOCK = 60.0  # Do not set more than 60. Game only optimized for <=60
 FPS_SHOW = True  # Display FPS counter in console
 PHYSIC_UPDATE_FREQUENCY = 0.017  # optimal with FPS_LOCK==60
 

@@ -415,3 +415,7 @@ allObjects = {}
 
 for x in DirectAccessObject.__subclasses__():
     allObjects[x.__name__] = x
+
+def summon(entity_type, *args, **kwargs):
+    new = allObjects[entity_type](*args, **kwargs)
+    return new

@@ -6,6 +6,7 @@ from core.rendering.PyOGL import camera, GLObjectGroupRender, drawGroups
 from user.KeyMapping import *
 
 from core.Objects.GameObjects import *
+from core.Constants import FPS_LOCK
 
 from Networking.server import Server
 from Networking.client import Client
@@ -80,6 +81,12 @@ def update(dt):
     if not IS_DEDICATED:
         update_groups(dt)
 
+def CreateSv(entity_type, cur_pos):
+    new = summon(entity_type, obstacles_gr, pos = cur_pos)
+    vector = new.getPos()
+    scene.insert(len(scene), [vector.x, vector.y])
+    localScene.insert(len(scene), new)
+
 def Sync():
  t = threading.currentThread()
  while getattr(t, "do_run", True):
@@ -96,21 +103,12 @@ def Sync():
                 elif packet.Data[i][0] == 'jump':
                     hero.jump()
                 elif packet.Data[i][0] == 'add':
-                    if packet.Data[i][1] == 'wcrate':
-                        cr = WoodenCrate(obstacles_gr, pos = hero.getPos())
-                        vector = cr.getPos()
-                        scene.insert(len(scene), [vector.x, vector.y])
-                        localScene.insert(len(scene), cr)
-                    elif packet.Data[i][1] == 'mcrate':
-                        cr = MetalCrate(obstacles_gr, pos = hero.getPos())
-                        vector = cr.getPos()
-                        scene.insert(len(scene), [vector.x, vector.y])
-                        localScene.insert(len(scene), cr)
+                    CreateSv(packet.Data[i][1], hero.getPos())
 
     NPacket = np.NET_Packet([scene, [vector.x, vector.y]], np.SYNC)
     sv.BroadCoast(NPacket)
 
-    Phys.worldInterface.GetWorld().step(1 / 60.0)
+    Phys.worldInterface.GetWorld().step(1 / FPS_LOCK)
 
     if len(scene) != len(localScene):
         print("You are do it worng!")
@@ -118,7 +116,6 @@ def Sync():
     for ids in range(len(localScene)):
         objPos = localScene[ids].getPos()
         scene[ids] = [objPos.x, objPos.y]
-
 
 def SyncClient():
  t = threading.currentThread()
@@ -170,12 +167,12 @@ def user_input():
                 SyncIds =+ 1
 
             elif key == pygame.K_q:
-                commands_for_sv.insert(SyncIds+1, ['add', 'wcrate'])
+                commands_for_sv.insert(SyncIds+1, ['add', 'WoodenCrate'])
                 SyncIds =+ 1
                 WoodenCrateCl(obstacles_gr, id = len(scene), pos = heroCl.getPos())
 
             elif key == pygame.K_t:
-                commands_for_sv.insert(SyncIds+1, ['add', 'mcrate'])
+                commands_for_sv.insert(SyncIds+1, ['add', 'MetalCrate'])
                 SyncIds =+ 1
                 MetalCrateCl(obstacles_gr, id = len(scene), pos = heroCl.getPos())
 
