@@ -26,9 +26,6 @@ DIRECTORIES = {'main': MAIN_DIRECTORY,
                'dll': DLLS_DIRECTORY}
 
 
-ERROR_TEXTURE_FILE = join(TEXTURES_DIRECTORY, 'error.png')
-
-
 def get_full_path(*path, file_type='main'):
     return join(DIRECTORIES[file_type], *path)
 
@@ -60,17 +57,14 @@ def load_sound(name, volume=None):
     return sound
 
 
-def load_image(name, pack=None):
+def load_image(name, pack):
     if pack:
         fullname = get_full_path(pack, name, file_type='tex')
     else:
         fullname = get_full_path(name, file_type='tex')
 
     if os.path.exists(fullname):
-        image = pg.image.load(fullname).convert_alpha()
-        return 0, image
-
+        image = pg.image.load(fullname)
+        return 0, image.convert_alpha()
     else:
-        # Default ERROR texture
-        image = load_image(ERROR_TEXTURE_FILE)[1].convert()
-        return 404, image
+        return 404, None

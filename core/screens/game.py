@@ -2,15 +2,18 @@ from core.physic.physics import world, objects
 from user.KeyMapping import *
 from core.objects.gObjects import *
 from core.rendering.PyOGL import *
+from core.rendering.Lighting import add_light
 
 import pygame
 
 
-background_gr = RenderGroup(g_name='g_background', shader='BackgroundShader')
-obstacles_gr = RenderGroup(g_name='g_obstacle')
-characters_gr = RenderGroup(g_name='g_characters')
-player_gr = RenderGroup(g_name='g_player')
-front_gr = RenderGroup(g_name='g_front')
+# GROUPS
+background_gr = RenderGroup(shader='BackgroundShader')
+background_near_gr = RenderGroup()
+obstacles_gr = RenderGroup()
+characters_gr = RenderGroup()
+player_gr = RenderGroup()
+front_gr = RenderGroup()
 
 
 hero_inited = False
@@ -28,12 +31,11 @@ holding_keys = {
 
 
 def render():
-    pre_render()
-
     camera.focusTo(*hero.pos)
     background_gr.update(1, camera)
-    draw_groups()
 
+    pre_render()
+    draw_groups()
     post_render()
 
 
@@ -65,6 +67,7 @@ def user_input():
 
             elif key == pygame.K_q:
                 summon('WoodenCrate', obstacles_gr, hero.pos)
+                # add_light(hero.pos, 12, 'round_smooth')
 
             elif key == K_GRAB:
                 hero.grab_nearest_put(objects)
@@ -101,7 +104,7 @@ def update_hero_movement():
 
 def draw_groups():
     # drawing all GLSprite groups
-    drawGroups(None, background_gr, obstacles_gr, characters_gr, player_gr, front_gr)
+    drawGroups(None, characters_gr, player_gr, obstacles_gr, front_gr, background_near_gr, background_gr)
 
 
 def update_groups(dt):
@@ -137,6 +140,10 @@ def init_screen(hero_life=False, first_load=False):
     #
     #
     hero = MainHero(player_gr, pos=[256, 800])
+
+    WorldRectangleSensor(background_near_gr, (1300, 600), (900, 256), layer=6)
+
+    add_light([800, 700], 12, 'round_smooth', 1)
 
 
 def close():

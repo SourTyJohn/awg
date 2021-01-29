@@ -3,7 +3,7 @@ THIS MODUlE CONTAINS ALL GAME OBJECTS THAT CAN BE USED IN GAME (screens.game)
 """
 
 from core.objects.gObjectTools import *
-from core.physic.physics import triggers
+from core.physic.physics import triggers, rey_cast
 
 from core.rendering.Textures import EssentialTextureStorage as Ets
 from core.Constants import *
@@ -24,7 +24,7 @@ class WorldRectangleRigid(image, phys, direct):
     body_type = 'static'
     collision_type = 'obstacle'
 
-    def __init__(self, gr, pos, size, tex_offset=(0, 0), texture='Devs/r_devs_1', shape_f=None, layer=0.6):
+    def __init__(self, gr, pos, size, tex_offset=(0, 0), texture='Devs/r_devs_1', shape_f=None, layer=4):
         # IMAGE
         self.texture = texture
         super().__init__(gr, pos, size, tex_offset=tex_offset, layer=layer)
@@ -48,9 +48,6 @@ class WorldGeometry(image, phys, direct):
     # All textures
     TEXTURES = Ets
 
-    def __init__(self, gr, pos, points):
-        pass
-
 
 class BackgroundColor(image):
     # Texture is not actually visible. Only color
@@ -71,7 +68,7 @@ class BackgroundColor(image):
             BackgroundColor.color2,
             BackgroundColor.color
         ]
-        super().__init__(gr, pos=(0, 0), size=WINDOW_SIZE, layer=0)
+        super().__init__(gr, pos=(0, 0), size=WINDOW_SIZE, layer=10)
 
     def __new__(cls, *args, **kwargs):
         cls.__instance = super(BackgroundColor, cls).__new__(cls)
@@ -189,15 +186,6 @@ class Trigger(phys):
                 return self.function_leave(actor, self.bound_to, None, arbiter)
 
 
-# LIGHT
-class LightSourceStatic:
-    def __init__(self, pos, power):
-        self.body = 0
-
-    def update(self):
-        pass
-
-
 #
 class Character(image, phys):
     body_type = 'dynamic'
@@ -212,6 +200,11 @@ class Character(image, phys):
     THROW_POWER = Vec2d(4000, 500)
 
     __grabbed_filter: ShapeFilter
+    grabbed_item_offset = np.array([70, 0], dtype=np.float32)
+
+    # Index of vertices from engine will ReyCast to decide is Character on ground
+    # Must be length of 2, otherwise something can go wrong :)
+    legs = (0, 1)
 
     def __init__(self, group, pos, *args, **kwargs):
         super().__init__(group, pos, *args, **kwargs)
@@ -238,10 +231,6 @@ class Character(image, phys):
         # Blocks rotation. Characters stand on their feet
         self.body.moment = inf
 
-        # Standing on ground trigger
-        self.on_ground_trigger = Trigger(self.touch_ground, 't_obstacle&&mortal', self.untouch_ground,
-                                         bound_to=self, offset=(0, -self.size[1] // 2),
-                                         size=(self.size[0] - 2, 6))
         self.on_ground = False  # is Character standing on solid floor
         self.in_air = 0  # How long din't Character touch solid flour
 
@@ -254,14 +243,30 @@ class Character(image, phys):
 
         # Grabbed object update
         if self.grabbed_object:
-            self.grabbed_object.pos = self.pos + np.array([70 * self.y_Rotation, 0])
+            self.grabbed_object.pos = self.pos + self.grabbed_item_offset * self.y_Rotation
             self.grabbed_object.body.velocity = (0, 0)
 
+        # Standing on ground
+        self.check_on_ground()
         if not self.on_ground:
             self.in_air += dt
 
         # Walking
         self.walk(dt)
+
+    def check_on_ground(self):
+        # if not self.body.is_sleeping:
+        legs = self.shape.get_vertices()
+        legs = [self.pos + legs[j] for j in self.__class__.legs]
+
+        # Casting reys from legs
+        collide = rey_cast(legs[0] - Vec2d(0, 2), legs[1] - Vec2d(0, 2), self.shape_filter, True)
+        if collide:  # and abs(int(collide.normal.angle)) != 3:
+            self.touch_ground()
+            return True
+
+        self.untouch_ground()
+        return False
 
     # Moving around
     def walk(self, dt):
@@ -342,18 +347,15 @@ class Character(image, phys):
             obj.body.apply_impulse_at_local_point(self.THROW_POWER * self.y_Rotation)
 
     # Legs Trigger
-    def touch_ground(self, *args):
-        # actor - ground, owner - self, world - world
-        if 1.0 >= abs(args[3].normal[1]) >= 0.3:
-            self.jumps = 0
-            self.on_ground = True
-            self.in_air = 0
+    def touch_ground(self):
+        self.jumps = 0
+        self.on_ground = True
+        self.in_air = 0
 
-    def untouch_ground(self, *args):
-        if len(self.on_ground_trigger.entities) == 0:
-            self.on_ground = False
-            if self.jumps == 0:
-                self.jumps = 1
+    def untouch_ground(self):
+        self.on_ground = False
+        if self.jumps == 0:
+            self.jumps = 1
 
 
 # vvv INSERT YOUR CLASSES HERE vvv #

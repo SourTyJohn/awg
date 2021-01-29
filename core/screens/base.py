@@ -12,7 +12,7 @@ class Screen:
     def update_and_draw(self):
         for x in self.groups:
             x.update()
-            x.draw()
+            x.prepareDraw()
 
     def close(self):
         pass

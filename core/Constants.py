@@ -30,6 +30,7 @@ MENU_FONT_COLOR = (52, 6, 52)
 # SCREEN
 WINDOW_SIZE = (1920, 1080)  # units
 BRIGHTNESS = settings['Brightness']
+TILE_SIZE = 32
 
 # resolution
 WINDOW_RESOLUTIONS = {'16x10FHD': (1920, 1080), '16x10low': (1366, 768),
@@ -87,3 +88,8 @@ COLL_TYPES = {
     't_item': 14,
     't_*': 15,
 }
+
+
+# SHADERS
+AMBIENT_LIGHT = 0.4
+LIGHT_MULTIPLY = 2.0

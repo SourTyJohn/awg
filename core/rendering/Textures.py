@@ -5,7 +5,7 @@ from os import listdir
 from utils.files import get_full_path
 
 from core.Constants import *
-T_ERROR_TEXTURE = Gl.GlTexture.load_image('devs/error.png', repeat=True)
+T_ERROR_TEXTURE = Gl.GlTexture.load_image('Devs/r_error.png', repeat=True)
 
 
 def loadTexturePack(name):

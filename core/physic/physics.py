@@ -190,4 +190,10 @@ def make_shape(body, points, collision_type, friction=0.0, sensor=False, shape_f
     return shape
 
 
+def rey_cast(start, end, shape_filter: pymunk.ShapeFilter = None, first_only=False, radius=1):
+    if first_only:
+        return world.space.segment_query_first(start, end, shape_filter=shape_filter, radius=radius)
+    return world.space.segment_query(start, end, shape_filter=shape_filter, radius=radius)
+
+
 world = World()

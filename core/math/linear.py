@@ -91,7 +91,10 @@ def frustum(x0, x1, y0, y1, z0, z1):
 
 # MOVING
 def translate(x, y, z=0):
-    return np.asfortranarray([[1, 0, 0, x], [0, 1, 0, y], [0, 0, 1, z], [0, 0, 0, 1]])
+    return np.asfortranarray([[1, 0, 0, x],
+                              [0, 1, 0, y],
+                              [0, 0, 1, z],
+                              [0, 0, 0, 1]])
 
 
 # SCALING
@@ -162,3 +165,10 @@ def viewport(x, y, w, h):
                      [0, h / 2, 0, y + h / 2],
                      [0, 0, 1, 0],
                      [0, 0, 0, 1]])
+
+
+def FullTransformMat(x, y, camera, z_rotation):
+    t = translate(x, y)
+    o = camera.getMatrix()
+    r = rotz(-z_rotation)
+    return np.matmul(np.matmul(o, t), r)

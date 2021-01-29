@@ -1,33 +1,47 @@
 from OpenGL.GL import *
-
 from utils.files import get_full_path
-
-from core.math import linear as lin
-
-from core.Constants import WINDOW_SIZE, BRIGHTNESS
-
+import core.Constants as Const
 
 shaders = {}
 
 
+def shader_load(path):
+    with open(get_full_path(path, file_type='shd')) as file:
+        code = file.readlines()
+        for i, line in enumerate(code):
+            if line[0] != '#':
+                break
+
+            tags = line.split()
+            if tags[0] == '#constant':
+                code[i] = f'{tags[1]} {tags[2]} = {getattr(Const, tags[2])};\n'
+
+    return ''.join(code)
+
+
 class Shader:
-    """Abstraction of compiled and linked .glsl files
+    __doc__ = """
+    Abstraction of compiled and linked .glsl files
     Each Shader class is a Singleton.
     To start rendering using this Shader call .use()
-    Shader class can't be used on it's own, use only child-classes"""
+    Shader class can't be used on it's own, use only child-classes
+    
+    In .glsl shader files you can write after version define:
+    #constant <constant type> <constant name>
+    This line, while compiling, will be replaced with:
+    <constant type> <constant name> = <constant value from Constants.py>
+    You should you use this, instead of regular in-glsl define,
+    if this constant are used in multiple shaders, 
+    otherwise you you have to rewrite constant value in every shader separately
+    """
 
     __instance = None
 
     def __init__(self, vertex_path: str, fragment_path: str):
 
         #  Reading shader code
-        v = open(get_full_path(vertex_path, file_type='shd'))
-        vertx_code = v.read()
-        v.close()
-
-        f = open(get_full_path(fragment_path, file_type='shd'))
-        fragm_code = f.read()
-        f.close()
+        vertx_code = shader_load(vertex_path)
+        fragm_code = shader_load(fragment_path)
 
         #  Compiling shaders
         vertex = glCreateShader(GL_VERTEX_SHADER)
@@ -57,6 +71,7 @@ class Shader:
             print(glGetProgramInfoLog(self.program))
             raise GLerror('Shader Program error')
 
+        #  Cleaning up
         glDeleteShader(vertex)
         glDeleteShader(fragment)
 
@@ -64,29 +79,48 @@ class Shader:
         cls.__instance = super(Shader, cls).__new__(cls)
         return cls.__instance
 
-    def p(self):
-        return self.program
-
     def use(self):
         glUseProgram(self.program)
 
-    def draw(self, pos, **kw):
-        shader = self.p()
+    def prepareDraw(self, pos, **kw):
+        stride = 36 # 44 - with normals
+        shader = self.program
 
         # ATTRIBUTES POINTERS
         glGetAttribLocation(shader, 'position')
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 36, ctypes.c_void_p(0))
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, ctypes.c_void_p(0))
         glEnableVertexAttribArray(0)
 
         glGetAttribLocation(shader, 'color')
-        glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 36, ctypes.c_void_p(12))
+        glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, stride, ctypes.c_void_p(12))
         glEnableVertexAttribArray(1)
 
         glGetAttribLocation(shader, "InTexCoords")
-        glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 36, ctypes.c_void_p(28))
+        glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, stride, ctypes.c_void_p(28))
         glEnableVertexAttribArray(2)
 
+        # glGetAttribLocation(shader, "InNormalCoords")
+        # glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, stride, ctypes.c_void_p(36))
+        # glEnableVertexAttribArray(3)
+
         return shader
+
+    # PASS UNIFORMS TO SHADER
+    def passMat4(self, name_, value) -> None:
+        loc = glGetUniformLocation(self.program, name_)
+        glUniformMatrix4fv(loc, 1, GL_FALSE, value)
+
+    def passFloat(self, name_, value):
+        loc = glGetUniformLocation(self.program, name_)
+        glUniform1f(loc, value)
+
+    def passTexture(self, name_, value):
+        frame = glGetUniformLocation(self.program, name_)
+        glUniform1i(frame, value)
+
+    def passVec2(self, name_, value):
+        loc = glGetUniformLocation(self.program, name_)
+        glUniform2f(loc, *value)
 
 
 class DefaultShader(Shader):
@@ -97,19 +131,9 @@ class DefaultShader(Shader):
     def __init__(self):
         super().__init__('default_vert.glsl', 'default_frag.glsl')
 
-    def draw(self, pos, **kw):
-        #  reqires kw['rotation']
-        shader = super().draw(pos, **kw)
-
-        # ROTATION
-        rotationMZ = lin.rotz(-kw['rotation'])
-        loc = glGetUniformLocation(shader, "RotationZ")
-        glUniformMatrix4fv(loc, 1, GL_FALSE, rotationMZ)
-
-        # TRANSLATE
-        translateM = lin.translate(*pos)
-        loc = glGetUniformLocation(shader, "Translate")
-        glUniformMatrix4fv(loc, 1, GL_FALSE, translateM)
+    def prepareDraw(self, pos, **kw):
+        super().prepareDraw(pos, **kw)
+        self.passMat4('Transform', kw['transform'])
 
 
 class BackgroundShader(Shader):
@@ -120,27 +144,21 @@ class BackgroundShader(Shader):
     def __init__(self):
         super().__init__('back_vert.glsl', 'back_frag.glsl')
 
-    def draw(self, pos, **kw):
-        shader = self.p()
+    def prepareDraw(self, pos, **kw):
+        super().prepareDraw(pos, **kw)
 
-        # ATTRIBUTES POINTERS
-        glGetAttribLocation(shader, 'position')
-        glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 36, ctypes.c_void_p(0))
-        glEnableVertexAttribArray(0)
+        self.passMat4('Transform', kw['transform'])
+        self.passFloat('cameraPos', kw['camera'].pos[1] / Const.WINDOW_SIZE[1])
 
-        glGetAttribLocation(shader, 'color')
-        glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 36, ctypes.c_void_p(12))
-        glEnableVertexAttribArray(1)
 
-        # TRANSLATE
-        translateM = lin.translate(*pos)
-        loc = glGetUniformLocation(shader, "Translate")
-        glUniformMatrix4fv(loc, 1, GL_FALSE, translateM)
+class LightShader(Shader):
+    def __init__(self):
+        super().__init__('light_round_vert.glsl', 'light_round_frag.glsl')
 
-        # CAMERA POSITION
-        cameraPos = kw['camera'].pos[1] / WINDOW_SIZE[1]
-        loc = glGetUniformLocation(shader, "cameraPos")
-        glUniform1f(loc, cameraPos)
+    def prepareDraw(self, pos, **kw):
+        super().prepareDraw(pos, **kw)
+        self.passMat4('Transform', kw['transform'])
+        self.passFloat('Smooth', kw['smooth'])
 
 
 class ScreenShaderDefault(Shader):
@@ -151,26 +169,11 @@ class ScreenShaderDefault(Shader):
     def __init__(self):
         super().__init__('screen_vert.glsl', 'screen_frag.glsl')
 
-    def draw(self, pos, **kw):
-        shader = super().draw(pos, **kw)
-
-        # BRIGHTNESS
-        loc = glGetUniformLocation(shader, "brightness")
-        glUniform1f(loc, BRIGHTNESS)
-
-
-class ScreenShaderGrey(Shader):
-    __instance = None
-
-    def __init__(self):
-        super().__init__('screen_vert.glsl', 'screen_grey_frag.glsl')
-
-    def draw(self, pos, **kw):
-        shader = super().draw(pos, **kw)
-
-        # BRIGHTNESS
-        loc = glGetUniformLocation(shader, "brightness")
-        glUniform1f(loc, BRIGHTNESS)
+    def prepareDraw(self, pos, **kw):
+        super().prepareDraw(pos, **kw)
+        self.passTexture("lightMap", 1)
+        self.passTexture("depthMap", 2)
+        self.passFloat('brightness', Const.BRIGHTNESS)
 
 
 def init():

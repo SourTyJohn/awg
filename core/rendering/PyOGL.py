@@ -79,12 +79,17 @@ class Camera:
         )
 
 
+def blank():
+    pass
+
+
 camera: Camera
+renderLights = blank
 
 
 # DISPLAY
 def init_display(size=WINDOW_RESOLUTION):
-    global camera, frameBuffer
+    global camera, frameBuffer, renderLights, lightBuffer, r
 
     # Display flags
     flags = pygame.OPENGL | pygame.DOUBLEBUF | pygame.HWSURFACE | pygame.SRCALPHA
@@ -100,7 +105,7 @@ def init_display(size=WINDOW_RESOLUTION):
         raise GLerror('You need OpenGL 3.2 or higher to run')
 
     Shaders.init()
-    frameBuffer = FrameBuffer()
+    frameBuffer = FrameBuffer(depth_buff=True)
     clear_display()
     camera = Camera()
     glClearColor(*clear_color)
@@ -110,6 +115,16 @@ def init_display(size=WINDOW_RESOLUTION):
     ebo = glGenBuffers(1)
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo)
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices, GL_STATIC_DRAW)
+
+    # Does not allow deprecated gl functions
+    pygame.display.gl_set_attribute(
+        pygame.GL_CONTEXT_PROFILE_MASK, pygame.GL_CONTEXT_PROFILE_CORE
+    )
+
+    # LIGHTING IMPORT
+    from core.rendering.Lighting import renderLights as Rl
+    from core.rendering.Lighting import lightBuffer as Lb
+    renderLights, lightBuffer = Rl, Lb
 
 
 def clear_display():
@@ -129,29 +144,44 @@ def pre_render():
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
     glEnable(GL_BLEND)
     glEnable(GL_DEPTH_TEST)
-    glEnable(GL_MULTISAMPLE)
+    # glEnable(GL_MULTISAMPLE)
+
+    # PREPARING SHADER USAGE
+    # calculating matrixes for scale and camera
+    scaleM = lin.scale(DEFAULT_SCALE, DEFAULT_SCALE)
+    orthoM = camera.getMatrix()
+    return orthoM, scaleM
+
+
+#  pre_render()
+#  draw_groups()
+#  post_render()
 
 
 def post_render():
     # MY FRAME BUFFER
-    fb = frameBuffer
+    fbuff = frameBuffer
+    lbuff = lightBuffer
 
     # DEFAULT FRAME BUFFER
-    glBindFramebuffer(GL_FRAMEBUFFER, 0)
+    renderLights()
+
     clear_display()
 
-    fb.shader.use()
-    glBindBuffer(GL_ARRAY_BUFFER, fb.vbo)
+    fbuff.shader.use()
+    glBindBuffer(GL_ARRAY_BUFFER, fbuff.vbo)
 
     # DISABLE STUFF 1
     glDisable(GL_DEPTH_TEST)
     glDisable(GL_MULTISAMPLE)
 
     # SHADER
-    fb.shader.draw(None, )
+    fbuff.shader.prepareDraw(None, )
 
     # DRAW
-    fb.bind_texture()
+    fbuff.bind_texture(0)
+    lbuff.bind_texture(1)
+    fbuff.bind_depth_buffer(2)
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, None)
 
     # DISABLE STUFF 2
@@ -194,21 +224,9 @@ class RenderGroup(pygame.sprite.Group):
 
         shader = Shaders.shaders[self.shader]
         if shader_load:
-            # PREPARING SHADER USAGE
-            # calculating and binding matrixes of scale and camera
-            scaleM = lin.scale(DEFAULT_SCALE, DEFAULT_SCALE)
-            orthoM = camera.getMatrix()
-
-            # getting current shader class from Shaders.py and it's GL ShaderProgram
             shader.use()
-            prg = shader.p()
-
-            # pass to shader scale and camera params
-            loc = glGetUniformLocation(prg, "Scale")
-            glUniformMatrix4fv(loc, 1, GL_FALSE, scaleM)
-
-            loc = glGetUniformLocation(prg, "Ortho")
-            glUniformMatrix4fv(loc, 1, GL_FALSE, orthoM)
+            scaleM = lin.scale(DEFAULT_SCALE, DEFAULT_SCALE)
+            shader.passMat4('Scale', scaleM)
 
         # DRAWING
         for obj in self.sprites():
@@ -231,17 +249,11 @@ class RenderGroup(pygame.sprite.Group):
 class GlTexture:
     __slots__ = ('size', 'key', 'repeat', 'name', 'normals')
 
-    def __init__(self, image, tex_name, repeat=False, normal_map=None):
+    def __init__(self, image, tex_name, repeat=False):
         self.size = image.get_size()  # units
         self.key = make_GL2D_texture(image, *self.size, repeat=repeat)
         self.repeat = repeat
         self.name = tex_name.replace('.png', '')
-
-        # NORMAL MAP
-        if normal_map is not None:
-            self.normals = make_GL2D_texture(normal_map, *self.size, repeat=repeat)
-        else:
-            self.normals = 0
 
         # DEBUG
         if DEBUG:
@@ -254,11 +266,8 @@ class GlTexture:
     def load_image(cls, image_name, repeat=False):
         code, texture = load_image(image_name, TEXTURE_PACK)
 
-        if not code:
-            pass
-            # print(f'texture: {image_name} loading success')
-        else:
-            print(f'texture: {image_name} error -{code}')
+        if code:
+            print(f'texture: {image_name} error - {code}')
 
         return GlTexture(texture, image_name, repeat)
 
@@ -295,18 +304,21 @@ class GlTexture:
         texture_data = (0, 1, 1, 1, 1, 0, 0, 0)
         return object_data, texture_data, color_data
 
-    def draw(self, pos, vbo, shader, z_rotation=0):
+    def draw(self, pos, vbo, shader, z_rotation=0, **kwargs):
         """pos - where to draw
-        vbo - key of VertexBufferObject in memory
+
+        vbos - keys of VertexBufferObject in memory
+        [0] - base object vertexes
+        [1] - normal map vertexes
+
         shader - currently active shader program"""
 
-        # BINDING BUFFERS
         glBindBuffer(GL_ARRAY_BUFFER, vbo)
 
-        # drawing using Shader
-        shader.draw(pos, rotation=z_rotation, camera=camera)
+        mat = lin.FullTransformMat(*pos, camera, -z_rotation)
+        shader.prepareDraw(pos, camera=camera, transform=mat, fbuffer=frameBuffer, **kwargs)
 
-        # drawing
+        glActiveTexture(GL_TEXTURE0)
         glBindTexture(GL_TEXTURE_2D, self.key)
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, None)
 
@@ -375,7 +387,7 @@ class RenderObject(Sprite):
     # should object be rendered
     visible = True
 
-    def __init__(self, group, pos, size=None, rotation=1, tex_offset=(0, 0), drawdata='auto', layer=0.5):
+    def __init__(self, group, pos, size=None, rotation=1, tex_offset=(0, 0), drawdata='auto', layer=5):
         pass
         """If no group provided, than this object won't be rendered,
         unless it is part of GLObjectComposite"""
@@ -546,7 +558,7 @@ class RenderObjectComposite(Sprite):
 
     def draw(self, shader):
         for obj in self.objects:
-            obj.draw(shader)
+            obj.prepareDraw(shader)
 
     def rotY(self, rotation):
         for obj in self.objects:
@@ -588,50 +600,53 @@ def make_GL2D_texture(image, w: int, h: int, repeat=False) -> int:
 
 
 # DRAW DATA
-def make_draw_data(size, tex, colors, rotation=1, layer=0.5):
-    w_t, h_t = 1, 1
-    if tex.repeat:
-        # if texture is repeating
-        w_t = size[0] / tex.size[0]
-        h_t = size[1] / tex.size[1]
+def make_draw_data(size, tex, colors, shininess=(), rotation=1, layer=5):
+    # ::arg layer - value from 0 to 10
+    # lower it is, nearer object to a camera
+    assert 0 <= layer <= 10 and isinstance(layer, int), f'Wrong layer param: {layer}. ' \
+                                                        f'Should be integer from 1 to 10'
+    layer = (10 - layer) / 10
 
+    w_t, h_t = 1, 1
     w_o, h_o = size[0] / 2, size[1] / 2
 
     # right (base)
     if rotation == 1:
         data = np.array([
             # obj cords         # color      # tex cords
-            -w_o, -h_o, layer,  *colors[0],  0.0, h_t,
-            +w_o, -h_o, layer,  *colors[1],  w_t, h_t,
-            +w_o, +h_o, layer,  *colors[2],  w_t, 0.0,
-            -w_o, +h_o, layer,  *colors[3],  0.0, 0.0,
+            -w_o, -h_o, layer, *colors[0],   0.0, h_t,
+            +w_o, -h_o, layer, *colors[1],   w_t, h_t,
+            +w_o, +h_o, layer, *colors[2],   w_t, 0.0,
+            -w_o, +h_o, layer, *colors[3],   0.0, 0.0,
         ], dtype=np.float32)
 
     # left (mirrored)
     else:
         data = np.array([
             # obj cords         # color      # tex cords
-            -w_o, -h_o, layer,  *colors[0],  w_t, h_t,
-            +w_o, -h_o, layer,  *colors[1],  0.0, h_t,
-            +w_o, +h_o, layer,  *colors[2],  0.0, 0.0,
-            -w_o, +h_o, layer,  *colors[3],  w_t, 0.0,
+            -w_o, -h_o, layer, *colors[0],   w_t, h_t,
+            +w_o, -h_o, layer, *colors[1],   0.0, h_t,
+            +w_o, +h_o, layer, *colors[2],   0.0, 0.0,
+            -w_o, +h_o, layer, *colors[3],   w_t, 0.0,
         ], dtype=np.float32)
 
     return data
 
 
-def make_draw_data_for_screen(colors, layer=1.0):
+def make_draw_data_for_screen(colors):
+    layer = 1
     w_t, h_t = 1.0, 1.0
+    w_o, h_o = 1.0, 1.0
 
-    data = np.array([
-        # obj cords         # color      # tex cords
-        -1.0, -1.0, layer,  *colors[0],  0.0, h_t,
-        +1.0, -1.0, layer,  *colors[1],  w_t, h_t,
-        +1.0, +1.0, layer,  *colors[2],  w_t, 0.0,
-        -1.0, +1.0, layer,  *colors[3],  0.0, 0.0,
+    data_base = np.array([
+        # obj cords         # color       # texture
+        -w_o, -h_o, layer, *colors[0], 0.0, h_t,
+        +w_o, -h_o, layer, *colors[1], w_t, h_t,
+        +w_o, +h_o, layer, *colors[2], w_t, 0.0,
+        -w_o, +h_o, layer, *colors[3], 0.0, 0.0,
     ], dtype=np.float32)
 
-    return data
+    return data_base
 
 
 def bufferize(data, vbo=None):
@@ -674,27 +689,21 @@ class FrameBuffer:
     vbo: int
     shader: Shaders.Shader
 
-    def __init__(self, anti_alias=settings['Anti-Alias']):
+    def __init__(self, anti_alias=settings['Anti-Alias'], depth_buff=False):
         size = WINDOW_RESOLUTION
 
         self.key = glGenFramebuffers(1)
         self.bind()
 
         # TEXTURE FOR IMAGE BUFFER
-        self.tex = glGenTextures(1)
         self.anti_alias = anti_alias
 
         if anti_alias != 0:
             # TODO: ANTI-ALIAS
             raise ValueError('Anti-Alias does not work yet')
-            # TEXTURE WITH ANTI-ALIASING
-            # glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, self.tex)
-            # glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, anti_alias, GL_RGBA, *size, False)
-            # glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, 0)
-            # glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D_MULTISAMPLE, self.tex, 0)
 
         else:
-            # TEXTURE WITHOUT ANTI-ALIASING
+            self.tex = glGenTextures(1)
             glBindTexture(GL_TEXTURE_2D, self.tex)
             glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, *size, 0, GL_RGBA, GL_UNSIGNED_BYTE, None)
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
@@ -703,11 +712,22 @@ class FrameBuffer:
             glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, self.tex, 0)
 
         # DEPTH + STENCIL BUFFER
-        self.rbo = glGenRenderbuffers(1)
-        glBindRenderbuffer(GL_RENDERBUFFER, self.rbo)
-        glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, *size)
-        glBindRenderbuffer(GL_RENDERBUFFER, 0)
-        glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, self.rbo)
+        # self.rbo = glGenRenderbuffers(1)
+        # glBindRenderbuffer(GL_RENDERBUFFER, self.rbo)
+        # glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, *size)
+        # glBindRenderbuffer(GL_RENDERBUFFER, 0)
+        # glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, self.rbo)
+
+        self.rbo = 0
+        if depth_buff:
+            self.rbo = glGenTextures(1)
+            glBindTexture(GL_TEXTURE_2D, self.rbo)
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, *size, 0, GL_DEPTH_COMPONENT, GL_FLOAT, None)
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_NONE)
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST)
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST)
+            glBindTexture(GL_TEXTURE_2D, 0)
+            glFramebufferTexture(GL_DRAW_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, self.rbo, 0)
 
         # SHADER
         color = ((1.0, 1.0, 1.0, 1.0),
@@ -720,7 +740,7 @@ class FrameBuffer:
 
         # CHECK COMPLETE
         self.check()
-        self.unbind()
+        unbind_framebuff()
 
     def set_shader(self, shader='Default'):
         self.shader = Shaders.shaders['ScreenShader' + shader]
@@ -728,14 +748,9 @@ class FrameBuffer:
     def bind(self):
         glBindFramebuffer(GL_FRAMEBUFFER, self.key)
 
-    def bind_texture(self):
+    def bind_texture(self, slot=0):
+        glActiveTexture(GL_TEXTURE0 + slot)
         glBindTexture(GL_TEXTURE_2D, self.tex)
-        # if self.anti_alias:
-        #     glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, self.tex)
-
-    @staticmethod
-    def unbind():
-        glBindFramebuffer(GL_FRAMEBUFFER, 0)
 
     def check(self):
         """If buffer incomplete raises error.
@@ -746,5 +761,14 @@ class FrameBuffer:
             return True
         raise GLerror(f'FrameBuffer[{self.key}] Buffer Incomplete; Status: {status}')
 
+    def bind_depth_buffer(self, slot=2):
+        glActiveTexture(GL_TEXTURE0 + slot)
+        glBindTexture(GL_TEXTURE_2D, self.rbo)
+
+
+def unbind_framebuff():
+    glBindFramebuffer(GL_FRAMEBUFFER, 0)
+
 
 frameBuffer: FrameBuffer
+lightBuffer: FrameBuffer
