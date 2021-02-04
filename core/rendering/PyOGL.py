@@ -144,7 +144,6 @@ def pre_render():
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
     glEnable(GL_BLEND)
     glEnable(GL_DEPTH_TEST)
-    # glEnable(GL_MULTISAMPLE)
 
     # PREPARING SHADER USAGE
     # calculating matrixes for scale and camera
@@ -178,10 +177,10 @@ def post_render():
     # SHADER
     fbuff.shader.prepareDraw(None, )
 
-    # DRAW
-    fbuff.bind_texture(0)
-    lbuff.bind_texture(1)
-    fbuff.bind_depth_buffer(2)
+    # DRAW SCENE AND GUI
+    fbuff.bind_texture(0)        # bind scene texture
+    lbuff.bind_texture(1)        # bind light texture
+    fbuff.bind_depth_texture(2)  # bind depth texture
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, None)
 
     # DISABLE STUFF 2
@@ -386,6 +385,9 @@ class RenderObject(Sprite):
 
     # should object be rendered
     visible = True
+
+    # TODO: UNIFORMS THAT WILL BE SENDED TO SHADER WHILE RENDERING THIS OBJECT
+    uniforms = ('Transform', )
 
     def __init__(self, group, pos, size=None, rotation=1, tex_offset=(0, 0), drawdata='auto', layer=5):
         pass
@@ -605,7 +607,7 @@ def make_draw_data(size, tex, colors, shininess=(), rotation=1, layer=5):
     # lower it is, nearer object to a camera
     assert 0 <= layer <= 10 and isinstance(layer, int), f'Wrong layer param: {layer}. ' \
                                                         f'Should be integer from 1 to 10'
-    layer = (10 - layer) / 10
+    layer = (5 - layer) / 10
 
     w_t, h_t = 1, 1
     w_o, h_o = size[0] / 2, size[1] / 2
@@ -689,27 +691,20 @@ class FrameBuffer:
     vbo: int
     shader: Shaders.Shader
 
-    def __init__(self, anti_alias=settings['Anti-Alias'], depth_buff=False):
+    def __init__(self, depth_buff=False):
         size = WINDOW_RESOLUTION
 
         self.key = glGenFramebuffers(1)
         self.bind()
 
         # TEXTURE FOR IMAGE BUFFER
-        self.anti_alias = anti_alias
-
-        if anti_alias != 0:
-            # TODO: ANTI-ALIAS
-            raise ValueError('Anti-Alias does not work yet')
-
-        else:
-            self.tex = glGenTextures(1)
-            glBindTexture(GL_TEXTURE_2D, self.tex)
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, *size, 0, GL_RGBA, GL_UNSIGNED_BYTE, None)
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
-            glBindTexture(GL_TEXTURE_2D, 0)
-            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, self.tex, 0)
+        self.tex = glGenTextures(1)
+        glBindTexture(GL_TEXTURE_2D, self.tex)
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, *size, 0, GL_RGBA, GL_UNSIGNED_BYTE, None)
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
+        glBindTexture(GL_TEXTURE_2D, 0)
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, self.tex, 0)
 
         # DEPTH + STENCIL BUFFER
         # self.rbo = glGenRenderbuffers(1)
@@ -761,7 +756,7 @@ class FrameBuffer:
             return True
         raise GLerror(f'FrameBuffer[{self.key}] Buffer Incomplete; Status: {status}')
 
-    def bind_depth_buffer(self, slot=2):
+    def bind_depth_texture(self, slot=2):
         glActiveTexture(GL_TEXTURE0 + slot)
         glBindTexture(GL_TEXTURE_2D, self.rbo)
 

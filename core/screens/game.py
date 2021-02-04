@@ -1,6 +1,7 @@
 from core.physic.physics import world, objects
 from user.KeyMapping import *
 from core.objects.gObjects import *
+from core.objects.gGUI import *
 from core.rendering.PyOGL import *
 from core.rendering.Lighting import add_light
 
@@ -14,6 +15,7 @@ obstacles_gr = RenderGroup()
 characters_gr = RenderGroup()
 player_gr = RenderGroup()
 front_gr = RenderGroup()
+gui_gr = RenderGroup(shader='GUIShader')
 
 
 hero_inited = False
@@ -104,7 +106,7 @@ def update_hero_movement():
 
 def draw_groups():
     # drawing all GLSprite groups
-    drawGroups(None, characters_gr, player_gr, obstacles_gr, front_gr, background_near_gr, background_gr)
+    drawGroups(None, characters_gr, player_gr, obstacles_gr, front_gr, background_near_gr, background_gr, gui_gr)
 
 
 def update_groups(dt):
@@ -120,30 +122,29 @@ def init_screen(hero_life=False, first_load=False):
     # #  render distance
     # render_zone = Trigger(None, 't_*', bound_to=camera, size=WINDOW_SIZE)
     # render_zone.visible = False
-    #
-    # # TEST
+
+    # --- TEST LEVEL ---
     WorldRectangleRigid(obstacles_gr, pos=[0, 500], size=[8192, 64])
     WorldRectangleRigid(obstacles_gr, pos=[850, 700], size=[200, 200])
-    #
     a = WorldRectangleRigid(obstacles_gr, pos=[-500, 575], size=[800, 50])
     a.bfriction = 0.0
     #
     # WorldRectangleRigid(obstacles_gr, pos=[1600, 1200], size=[50, 900])
     # WorldRectangleRigid(obstacles_gr, pos=[2000, 1000], size=[50, 900])
     #
-    # WorldRectangleSensor(obstacles_gr, pos=[-500, 575], size=[2000, 2000],
-    #                      texture='LevelOne/r_tile_grey_1', layer=0.7)
+    # WorldRectangleSensor(obstacles_gr, pos=[-500, 575], size=[2000, 2000], texture='LevelOne/r_tile_grey_1', layer=0.7)
     #
     MetalCrate(obstacles_gr, pos=[700, 800])
     # WorldRectangleSensor(front_gr, pos=[0, 640], size=[128, 256], texture='LevelOne/glass', layer=1)
-    # WorldRectangleSensor(obstacles_gr, pos=[100, 600], size=[32, 128], texture='LevelOne/test_alpha', layer=0.5)
-    #
-    #
-    hero = MainHero(player_gr, pos=[256, 800])
+    WorldRectangleSensor(background_near_gr, pos=[100, 600], size=[32, 32], texture='LevelOne/glass', layer=4)
 
     WorldRectangleSensor(background_near_gr, (1300, 600), (900, 256), layer=6)
+    add_light([800, 700], 18, 'round_smooth', 1)
+    add_light([800, 700], 18, 'round_smooth', 1)
+    # --- TEST LEVEL ---
 
-    add_light([800, 700], 12, 'round_smooth', 1)
+    hero = MainHero(player_gr, pos=[256, 800])
+    # GUIHeroHealthBar(gui_gr, [256, 800], layer=0)
 
 
 def close():

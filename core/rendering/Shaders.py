@@ -136,6 +136,7 @@ class DefaultShader(Shader):
         self.passMat4('Transform', kw['transform'])
 
 
+# SHADERS
 class BackgroundShader(Shader):
     """Shader for fancy gradient background drawing"""
 
@@ -158,7 +159,6 @@ class LightShader(Shader):
     def prepareDraw(self, pos, **kw):
         super().prepareDraw(pos, **kw)
         self.passMat4('Transform', kw['transform'])
-        self.passFloat('Smooth', kw['smooth'])
 
 
 class ScreenShaderDefault(Shader):
@@ -174,6 +174,16 @@ class ScreenShaderDefault(Shader):
         self.passTexture("lightMap", 1)
         self.passTexture("depthMap", 2)
         self.passFloat('brightness', Const.BRIGHTNESS)
+
+
+class GUIShader(Shader):
+    def __init__(self):
+        super().__init__('gui_vert.glsl', 'gui_frag.glsl')
+
+    def prepareDraw(self, pos, **kw):
+        super().prepareDraw(pos, **kw)
+        self.passMat4('Transform', kw['transform'])
+#
 
 
 def init():

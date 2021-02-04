@@ -260,8 +260,11 @@ class Character(image, phys):
         legs = [self.pos + legs[j] for j in self.__class__.legs]
 
         # Casting reys from legs
-        collide = rey_cast(legs[0] - Vec2d(0, 2), legs[1] - Vec2d(0, 2), self.shape_filter, True)
-        if collide:  # and abs(int(collide.normal.angle)) != 3:
+        left = rey_cast(legs[0] - Vec2d(0, 2), legs[0] - Vec2d(0, 6), self.shape_filter, True)
+        right = rey_cast(legs[1] - Vec2d(0, 2), legs[1] - Vec2d(0, 6), self.shape_filter, True)
+
+        if (left and 10 < abs(left.normal.angle_degrees) < 170)\
+                or (right and 10 < abs(right.normal.angle_degrees) < 170):
             self.touch_ground()
             return True
 
@@ -395,6 +398,23 @@ class MainHero(Character, direct, mortal):
         if self.jump_delay_current < MainHero.MANY_JUMPS_DELAY:
             self.jump_delay_current += args[0]
 
+    def check_on_ground(self):
+        # if not self.body.is_sleeping:
+        legs = self.shape.get_vertices()
+        legs = [self.pos + legs[j] for j in self.__class__.legs]
+
+        # Casting reys from legs
+        left = rey_cast(legs[0] - Vec2d(0, 2), legs[0] - Vec2d(0, 6), self.shape_filter, True)
+        right = rey_cast(legs[1] - Vec2d(0, 2), legs[1] - Vec2d(0, 6), self.shape_filter, True)
+
+        if (left and 10 < abs(left.normal.angle_degrees) < 170)\
+                or (right and 10 < abs(right.normal.angle_degrees) < 170):
+            self.touch_ground()
+            return True
+
+        self.untouch_ground()
+        return False
+
     def jump(self):
         if self.jump_delay_current >= MainHero.MANY_JUMPS_DELAY:
             if super().jump():
@@ -408,13 +428,11 @@ class WoodenCrate(image, phys, direct, mortal):
 
     # static
     TEXTURES = (Ets['LevelOne/crate'], )
-    size = (64, 64)
+    size = (72, 72)
     points = rect_points(*size)
 
-    # shape_filter = shape_filter('player', )
-
     # dynamic
-    mass = 8.0
+    mass = 20.0
 
     # mortal
     max_health = 10

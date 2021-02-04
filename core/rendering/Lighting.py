@@ -14,14 +14,18 @@ class LightSource(RenderObjectStatic):
         'round_smooth': Ets['Light/round_smooth_light']
     }
 
-    def __init__(self, pos, power, layer=1, form='round', smooth=1.5):
+    def __init__(self, pos, power, layer=1, form='round', color=(1.0, 1.0, 1.0, 1.0)):
         self.texture = form
-        self.smooth = smooth
+        self.colors = [color,
+                       color,
+                       color,
+                       color]
+
         super().__init__(lights_gr, pos, (power, power), layer=layer)
 
     def draw(self, shader, z_rotation=0):
         if self.visible:
-            self.curr_image.draw(self.rect.pos, self.vbo, shader, z_rotation=z_rotation, smooth=self.smooth)
+            self.curr_image.draw(self.rect.pos, self.vbo, shader, z_rotation=z_rotation)
 
 
 class PulstatingLightSource(LightSource):
@@ -31,9 +35,9 @@ class PulstatingLightSource(LightSource):
         super().__init__(pos, power, layer, form, smooth)
 
 
-def add_light(pos, power, light_form, layer=1):
+def add_light(pos, power, light_form, layer=1, color=(0.1, 0.1, 0.1, 0.1)):
     power *= TILE_SIZE
-    return LightSource(pos, power, layer, light_form)
+    return LightSource(pos, power, layer, light_form, color=color)
 
 
 def renderLights():

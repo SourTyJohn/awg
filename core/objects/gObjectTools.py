@@ -140,16 +140,6 @@ class Mortal:
         pass
 
 
-class Actor:
-    components = {}
-
-    def __init__(self, **kwargs):
-        self.components = kwargs.copy()
-
-    def getComponent(self, key):
-        return self.components[key]
-
-
 animated = RenderObjectAnimated
 image = RenderObjectStatic
 phys = PhysicObject

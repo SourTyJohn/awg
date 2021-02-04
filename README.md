@@ -27,4 +27,4 @@
     
     VERSION
     
-    version: 0.9
+    version: 0.12

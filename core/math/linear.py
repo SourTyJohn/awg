@@ -170,5 +170,5 @@ def viewport(x, y, w, h):
 def FullTransformMat(x, y, camera, z_rotation):
     t = translate(x, y)
     o = camera.getMatrix()
-    r = rotz(-z_rotation)
+    r = rotz(z_rotation)
     return np.matmul(np.matmul(o, t), r)
