@@ -139,8 +139,10 @@ def init_screen(hero_life=False, first_load=False):
     WorldRectangleSensor(background_near_gr, pos=[100, 600], size=[32, 32], texture='LevelOne/glass', layer=4)
 
     WorldRectangleSensor(background_near_gr, (1300, 600), (900, 256), layer=6)
-    add_light([800, 700], 18, 'round_smooth', 1)
-    add_light([800, 700], 18, 'round_smooth', 1)
+    add_light([1400, 700], 10, 'round_smooth', layer=1, color='fire')
+    add_light([1000, 700], 18, 'round_smooth', 1)
+    add_light([600, 700], 18, 'round_smooth', 1)
+    add_light([900, 700], 18, 'round_smooth', 1)
     # --- TEST LEVEL ---
 
     hero = MainHero(player_gr, pos=[256, 800])

@@ -6,6 +6,10 @@ from core.Constants import TILE_SIZE
 lights_gr = RenderGroup(shader='LightShader', )
 lightBuffer = FrameBuffer()
 
+light_colors_presets = {
+    'fire': (1.0, 0.1, 0.2, 0.0)
+}
+
 
 class LightSource(RenderObjectStatic):
     __slots__ = ('texture', )
@@ -36,6 +40,13 @@ class PulstatingLightSource(LightSource):
 
 
 def add_light(pos, power, light_form, layer=1, color=(0.1, 0.1, 0.1, 0.1)):
+    if isinstance(color, str):
+        try:
+            color = light_colors_presets[color]
+        except KeyError:
+            raise KeyError(f'No such color preset, '
+                           f'Chose from {light_colors_presets.keys()}')
+
     power *= TILE_SIZE
     return LightSource(pos, power, layer, light_form, color=color)
 

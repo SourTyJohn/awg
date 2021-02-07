@@ -147,9 +147,8 @@ def pre_render():
 
     # PREPARING SHADER USAGE
     # calculating matrixes for scale and camera
-    scaleM = lin.scale(DEFAULT_SCALE, DEFAULT_SCALE)
     orthoM = camera.getMatrix()
-    return orthoM, scaleM
+    return orthoM
 
 
 #  pre_render()
@@ -214,7 +213,7 @@ class RenderGroup(pygame.sprite.Group):
         return f'<RenderGroup({len(self.sprites())}) {self.name}>'
 
     """drawing all of this group objects"""
-    def draw_all(self, shader_load, to_draw=None):
+    def draw_all(self, to_draw=None):
         """Set of Physic Objects body hash, that should be rendered
         If None, all object will be rendered"""
 
@@ -222,10 +221,7 @@ class RenderGroup(pygame.sprite.Group):
             return
 
         shader = Shaders.shaders[self.shader]
-        if shader_load:
-            shader.use()
-            scaleM = lin.scale(DEFAULT_SCALE, DEFAULT_SCALE)
-            shader.passMat4('Scale', scaleM)
+        shader.use()
 
         # DRAWING
         for obj in self.sprites():
@@ -672,9 +668,7 @@ def splitDrawData(data: np.array):
 # DRAWING FUNCTION
 def drawGroups(render_zone, *groups):
     # THE ONLY WAY TO DRAW ON SCREEN
-
     # Drawing each object in each group
-    prev_shader = None
 
     # Getting objects that should be rendered
     to_draw = None
@@ -682,8 +676,7 @@ def drawGroups(render_zone, *groups):
     #     to_draw = render_zone.entities
 
     for group in groups:
-        group.draw_all(to_draw=to_draw, shader_load=(prev_shader is None or prev_shader != group.shader))
-        prev_shader = group.shader
+        group.draw_all(to_draw=to_draw)
 
 
 # FRAME BUFFER
