@@ -1,21 +1,21 @@
 from core.physic.physics import world, objects
 from user.KeyMapping import *
 from core.objects.gObjects import *
-from core.objects.gGUI import *
+# from core.objects.gGUI import *
 from core.rendering.PyOGL import *
-from core.rendering.Lighting import add_light
+from core.rendering.Lighting import add_light, LightSource, FireLight, lights_gr
 
 import pygame
 
 
 # GROUPS
-background_gr = RenderGroup(shader='BackgroundShader')
+background_gr = RenderGroup()
 background_near_gr = RenderGroup()
 obstacles_gr = RenderGroup()
 characters_gr = RenderGroup()
 player_gr = RenderGroup()
 front_gr = RenderGroup()
-gui_gr = RenderGroup(shader='GUIShader')
+gui_gr = RenderGroup()
 
 
 hero_inited = False
@@ -114,6 +114,7 @@ def update_groups(dt):
     player_gr.update(dt)
     obstacles_gr.update(dt)
     background_gr.update(dt, camera)
+    lights_gr.update(dt)
 
 
 def init_screen(hero_life=False, first_load=False):
@@ -138,11 +139,11 @@ def init_screen(hero_life=False, first_load=False):
     # WorldRectangleSensor(front_gr, pos=[0, 640], size=[128, 256], texture='LevelOne/glass', layer=1)
     WorldRectangleSensor(background_near_gr, pos=[100, 600], size=[32, 32], texture='LevelOne/glass', layer=4)
 
-    WorldRectangleSensor(background_near_gr, (1300, 600), (900, 256), layer=6)
-    add_light([1400, 700], 10, 'round_smooth', layer=1, color='fire')
-    add_light([1000, 700], 18, 'round_smooth', 1)
-    add_light([600, 700], 18, 'round_smooth', 1)
-    add_light([900, 700], 18, 'round_smooth', 1)
+    WorldRectangleSensor(background_near_gr, (1300, 600), (2600, 900), layer=6)
+    add_light(FireLight, [1400, 700], 16, 'RoundFlat', layer=1, color='fire')
+    add_light(LightSource, [800, 700], 32, 'Round', 1)
+    add_light(LightSource, [600, 700], 18, 'Round', 1)
+    add_light(LightSource, [900, 700], 18, 'Round', 1)
     # --- TEST LEVEL ---
 
     hero = MainHero(player_gr, pos=[256, 800])

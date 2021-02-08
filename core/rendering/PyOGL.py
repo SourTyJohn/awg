@@ -10,6 +10,9 @@ import core.math.linear as lin
 import core.rendering.Shaders as Shaders
 from core.math.rect4f import Rect4f
 
+# from core.rendering.Textures import EssentialTextureStorage as Ets
+
+
 # background color
 clear_color = (0.0, 0.0, 0.0, 0.0)
 
@@ -189,43 +192,29 @@ def post_render():
 
 # RENDER GROUP
 class RenderGroup(pygame.sprite.Group):
-    __slots__ = ('do_draw', 'name', 'shader')
+    __slots__ = ('_visible', )
     """Container of GlObjects
-    Can be named for debug output
-    
-    shader - Shader object from rendering.Shaders.py
-    To __init__ pass only key of Shader, not Shader
-    This shader will be used for drawing objects from this group
     """
 
-    def __init__(self, *args, g_name='no-name', do_draw=True, shader='DefaultShader'):
+    def __init__(self, *args, visible=True):
         super().__init__(*args)
-        self.do_draw = do_draw
-        self.name = g_name
-
-        if shader not in Shaders.shaders.keys():
-            raise KeyError(f'There is no Shader with key: {shader}.'
-                           f'\nCheck Shader initialization in DEBUG output')
-        self.shader = shader
+        self.visible = visible
 
     def __repr__(self):
         #  Memory: {asizeof(self)}
-        return f'<RenderGroup({len(self.sprites())}) {self.name}>'
+        return f'<RenderGroup({len(self.sprites())})>'
 
     """drawing all of this group objects"""
     def draw_all(self, to_draw=None):
         """Set of Physic Objects body hash, that should be rendered
         If None, all object will be rendered"""
 
-        if not self.do_draw:
+        if not self.visible:
             return
-
-        shader = Shaders.shaders[self.shader]
-        shader.use()
 
         # DRAWING
         for obj in self.sprites():
-            obj.smart_draw(shader)
+            obj.smart_draw()
 
     """Clearing storage"""
     def empty(self):
@@ -300,27 +289,23 @@ class GlTexture:
         return object_data, texture_data, color_data
 
     def draw(self, pos, vbo, shader, z_rotation=0, **kwargs):
-        """pos - where to draw
-
-        vbos - keys of VertexBufferObject in memory
-        [0] - base object vertexes
-        [1] - normal map vertexes
-
-        shader - currently active shader program"""
-
-        glBindBuffer(GL_ARRAY_BUFFER, vbo)
-
-        mat = lin.FullTransformMat(*pos, camera, -z_rotation)
-        shader.prepareDraw(pos, camera=camera, transform=mat, fbuffer=frameBuffer, **kwargs)
-
-        glActiveTexture(GL_TEXTURE0)
-        glBindTexture(GL_TEXTURE_2D, self.key)
-        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, None)
+        draw(self.key, pos, vbo, shader, z_rotation, **kwargs)
 
     """Удаление текстуры из памяти"""
     def delete(self):
         glDeleteTextures(1, [self.key, ])
         del self
+
+
+def draw(tex, pos, vbo, shader, z_rotation=0, tex_slot=0, **kwargs):
+    glBindBuffer(GL_ARRAY_BUFFER, vbo)
+
+    mat = lin.FullTransformMat(*pos, camera, -z_rotation)
+    shader.prepareDraw(pos, camera=camera, transform=mat, fbuffer=frameBuffer, **kwargs)
+
+    glActiveTexture(GL_TEXTURE0 + tex_slot)
+    glBindTexture(GL_TEXTURE_2D, tex)
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, None)
 
 
 # ANIMATION
@@ -361,7 +346,7 @@ class AttackAnimation(Animation):
 class Sprite(pygame.sprite.Sprite):
     rect: Rect4f
 
-    def smart_draw(self, shader):
+    def smart_draw(self):
         pass
 
 
@@ -382,8 +367,7 @@ class RenderObject(Sprite):
     # should object be rendered
     visible = True
 
-    # TODO: UNIFORMS THAT WILL BE SENDED TO SHADER WHILE RENDERING THIS OBJECT
-    uniforms = ('Transform', )
+    shader = 'DefaultShader'
 
     def __init__(self, group, pos, size=None, rotation=1, tex_offset=(0, 0), drawdata='auto', layer=5):
         pass
@@ -407,13 +391,16 @@ class RenderObject(Sprite):
         """Load and bufferize (load to gl buffer) all data, that is required for drawing
         This data includes: texture coords, object coords and color"""
         if drawdata == 'auto':
-            drawdata = make_draw_data(self.rect.size, self.curr_image, self.colors, rotation=rotation, layer=layer)
+            drawdata = make_draw_data(self.rect.size, self.colors, rotation=rotation, layer=layer)
         self.vbo = bufferize(drawdata)
 
         """If set to False, it will set glDepthMask to False when rendering ->
         this object won't hide overlapped objects behind it. 
         Should be set False, if this object's texture has alpha channel other than 255"""
         # self.depth_mask = depth_mask
+
+        """Shader that will be used to draw this object"""
+        self.shader = Shaders.shaders[self.shader]
 
     def __repr__(self):
         return f'<{self.__class__.__name__} {self.rect}. In {len(self.groups())} groups>'
@@ -435,7 +422,7 @@ class RenderObject(Sprite):
     def rotY(self, new_rotation):
         if self.y_Rotation != new_rotation:
             self.y_Rotation = new_rotation
-            drawdata = make_draw_data(self.rect.size, self.curr_image, self.colors, new_rotation)
+            drawdata = make_draw_data(self.rect.size, self.colors, new_rotation)
             bufferize(drawdata, self.vbo)
 
     # MOVE
@@ -454,15 +441,19 @@ class RenderObject(Sprite):
         self.kill()
 
     # DRAW
-    def smart_draw(self, shader):
+    def smart_draw(self, ):
+        if not self.visible:
+            return
+
+        self.shader.use()
+
         if hasattr(self, 'body') and hasattr(self, 'z_rotation'):
             # DRAW OBJECTS WITH PHYSIC BODY
-            if self.visible:
-                frame = self.curr_image
-                frame.draw(self.body.pos, self.vbo, shader, z_rotation=self.z_rotation)
+            frame = self.curr_image
+            frame.draw(self.body.pos, self.vbo, self.shader, z_rotation=self.z_rotation)
         else:
             # DRAW BASE RENDER OBJECTS
-            self.__class__.draw(self, shader)
+            self.__class__.draw(self, self.shader)
 
     def draw(self, shader, z_rotation):
         return self.visible
@@ -598,7 +589,7 @@ def make_GL2D_texture(image, w: int, h: int, repeat=False) -> int:
 
 
 # DRAW DATA
-def make_draw_data(size, tex, colors, shininess=(), rotation=1, layer=5):
+def make_draw_data(size, colors, shininess=(), rotation=1, layer=5):
     # ::arg layer - value from 0 to 10
     # lower it is, nearer object to a camera
     assert 0 <= layer <= 10 and isinstance(layer, int), f'Wrong layer param: {layer}. ' \

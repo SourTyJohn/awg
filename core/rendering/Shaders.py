@@ -83,7 +83,7 @@ class Shader:
         glUseProgram(self.program)
 
     def prepareDraw(self, pos, **kw):
-        stride = 36 # 44 - with normals
+        stride = 36
         shader = self.program
 
         # ATTRIBUTES POINTERS
@@ -98,10 +98,6 @@ class Shader:
         glGetAttribLocation(shader, "InTexCoords")
         glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, stride, ctypes.c_void_p(28))
         glEnableVertexAttribArray(2)
-
-        # glGetAttribLocation(shader, "InNormalCoords")
-        # glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, stride, ctypes.c_void_p(36))
-        # glEnableVertexAttribArray(3)
 
         return shader
 
@@ -152,13 +148,25 @@ class BackgroundShader(Shader):
         self.passFloat('cameraPos', kw['camera'].pos[1] / Const.WINDOW_SIZE[1])
 
 
-class LightShader(Shader):
+# light shaders
+class RoundLightShader(Shader):
     def __init__(self):
         super().__init__('light_round_vert.glsl', 'light_round_frag.glsl')
 
     def prepareDraw(self, pos, **kw):
         super().prepareDraw(pos, **kw)
         self.passMat4('Transform', kw['transform'])
+
+
+class RoundFlatLightShader(Shader):
+    def __init__(self):
+        super().__init__('light_round_vert.glsl', 'light_fire_frag.glsl')
+
+    def prepareDraw(self, pos, **kw):
+        super().prepareDraw(pos, **kw)
+        self.passMat4('Transform', kw['transform'])
+        self.passFloat('RandK', kw['noise'])
+#
 
 
 class ScreenShaderDefault(Shader):

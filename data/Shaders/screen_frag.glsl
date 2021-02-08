@@ -13,7 +13,7 @@ uniform float brightness;
 void main() {
    vec4 lightColor = texture(lightMap, TexCoords);
    float power = lightColor.a;
-   lightColor = vec4(lightColor.xyz * power, 0);
+   lightColor = vec4(lightColor.xyz, 0);
 
    vec4 color = texture(samplerTex, TexCoords) * Color;
    float depth = texture(depthMap, TexCoords).x;

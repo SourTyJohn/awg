@@ -60,6 +60,8 @@ class BackgroundColor(image):
     # Singleton
     __instance = None
 
+    shader = 'BackgroundShader'
+
     def __init__(self, gr):
         self.texture = 0
         self.colors = [
