@@ -169,7 +169,7 @@ class RoundFlatLightShader(Shader):
 #
 
 
-class ScreenShaderDefault(Shader):
+class ScreenShaderGame(Shader):
     """Post-effect shader"""
 
     __instance = None
@@ -181,6 +181,15 @@ class ScreenShaderDefault(Shader):
         super().prepareDraw(pos, **kw)
         self.passTexture("lightMap", 1)
         self.passTexture("depthMap", 2)
+        self.passFloat('brightness', Const.BRIGHTNESS)
+
+
+class ScreenShaderMenu(Shader):
+    def __init__(self):
+        super().__init__('screen_vert.glsl', 'screen_nolight_frag.glsl')
+
+    def prepareDraw(self, pos, **kw):
+        super().prepareDraw(pos, **kw)
         self.passFloat('brightness', Const.BRIGHTNESS)
 
 

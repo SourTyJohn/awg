@@ -18,7 +18,7 @@ def _main():
 
 
 running = True
-screen_type = 'game'
+screen_type = 'menu'
 start_time = None
 
 
@@ -67,10 +67,8 @@ if __name__ == '__main__':
     import core.screens.menu as rmenu
     import core.screens.game as rgame
 
-    # rmenu.init_screen(first_load=True)
-    rgame.init_screen(True)
-
     screens = {'menu': rmenu, 'game': rgame}
+    screens[screen_type].init_screen(first_load=True)
 
     while running:
         game_loop()

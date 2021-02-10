@@ -43,6 +43,8 @@ def from_shape(arbiter: pymunk.Arbiter, i=0):
     # Get physic object by it's shape from pymunk.Arbiter
     # len(Arbiter.shapes) == 2. i must be 0 or 1
     key = arbiter.shapes[i].body.get_key
+    if key not in objects.keys():
+        return None, None
     return objects[key], key
     # objects is a dict from Physics.py
 
@@ -64,5 +66,7 @@ def trigger_enter(arbiter, space, data):
 def trigger_leave(arbiter, space, data):
     actor, key = from_shape(arbiter, i=0)
     trigger, _ = from_shape(arbiter, i=1)
-    trigger.leave(actor, key, arbiter)
+
+    if actor:
+        trigger.leave(actor, key, arbiter)
     return False

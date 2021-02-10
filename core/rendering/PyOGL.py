@@ -82,8 +82,7 @@ class Camera:
         )
 
 
-def blank():
-    pass
+def blank(): pass
 
 
 camera: Camera
@@ -92,7 +91,7 @@ renderLights = blank
 
 # DISPLAY
 def init_display(size=WINDOW_RESOLUTION):
-    global camera, frameBuffer, renderLights, lightBuffer, r
+    global camera, frameBuffer, renderLights, lightBuffer
 
     # Display flags
     flags = pygame.OPENGL | pygame.DOUBLEBUF | pygame.HWSURFACE | pygame.SRCALPHA
@@ -159,7 +158,10 @@ def pre_render():
 #  post_render()
 
 
-def post_render():
+def post_render(screen_shader):
+    """screen shader - Shader from Shaders module with 'ScreenShader' prefix
+    Shader that will be used to render full scene to screen"""
+
     # MY FRAME BUFFER
     fbuff = frameBuffer
     lbuff = lightBuffer
@@ -169,15 +171,14 @@ def post_render():
 
     clear_display()
 
-    fbuff.shader.use()
+    screen_shader.use()
     glBindBuffer(GL_ARRAY_BUFFER, fbuff.vbo)
 
     # DISABLE STUFF 1
     glDisable(GL_DEPTH_TEST)
-    glDisable(GL_MULTISAMPLE)
 
     # SHADER
-    fbuff.shader.prepareDraw(None, )
+    screen_shader.prepareDraw(None, )
 
     # DRAW SCENE AND GUI
     fbuff.bind_texture(0)        # bind scene texture
@@ -278,15 +279,15 @@ class GlTexture:
 
         return GlTexture(texture, f'text:{text}')
 
-    def makeDrawData(self, color=(1.0, 1.0, 1.0, 1.0)):
+    def makeDrawData(self, layer, colors=None):
         """Make draw data with size of this texture
         Usually GlObjects have their own drawData, but you can calculate drawData,
-        which will perfect for this texture"""
-        w_o, h_o = self.size[0] / 2, self.size[1] / 2
-        object_data = (-w_o, -h_o, w_o, -h_o, w_o, h_o, -w_o, h_o)
-        color_data = (color, color, color, color)
-        texture_data = (0, 1, 1, 1, 1, 0, 0, 0)
-        return object_data, texture_data, color_data
+        which will perfectly match this texture"""
+        if colors is None:
+            colors = ((1.0, 1.0, 1.0, 1.0), ) * 4
+
+        make_draw_data(self.size, colors, layer=layer)
+        return make_draw_data(self.size, colors, layer=layer)
 
     def draw(self, pos, vbo, shader, z_rotation=0, **kwargs):
         draw(self.key, pos, vbo, shader, z_rotation, **kwargs)
@@ -390,9 +391,10 @@ class RenderObject(Sprite):
 
         """Load and bufferize (load to gl buffer) all data, that is required for drawing
         This data includes: texture coords, object coords and color"""
-        if drawdata == 'auto':
+        if isinstance(drawdata, str) and drawdata == 'auto':
             drawdata = make_draw_data(self.rect.size, self.colors, rotation=rotation, layer=layer)
         self.vbo = bufferize(drawdata)
+        self._layer = layer
 
         """If set to False, it will set glDepthMask to False when rendering ->
         this object won't hide overlapped objects behind it. 
@@ -422,7 +424,7 @@ class RenderObject(Sprite):
     def rotY(self, new_rotation):
         if self.y_Rotation != new_rotation:
             self.y_Rotation = new_rotation
-            drawdata = make_draw_data(self.rect.size, self.colors, new_rotation)
+            drawdata = make_draw_data(self.rect.size, self.colors, rotation=new_rotation, layer=self._layer)
             bufferize(drawdata, self.vbo)
 
     # MOVE
@@ -442,6 +444,10 @@ class RenderObject(Sprite):
 
     # DRAW
     def smart_draw(self, ):
+        """This method decides if object should be rendered as object with physic body
+        or as regular RenderObject.
+        PhysicObjects will be rendered with same position and z_rotation as it's ph.body"""
+
         if not self.visible:
             return
 
@@ -453,7 +459,7 @@ class RenderObject(Sprite):
             frame.draw(self.body.pos, self.vbo, self.shader, z_rotation=self.z_rotation)
         else:
             # DRAW BASE RENDER OBJECTS
-            self.__class__.draw(self, self.shader)
+            self.__class__.draw(self, self.shader, 0)
 
     def draw(self, shader, z_rotation):
         return self.visible
@@ -545,9 +551,9 @@ class RenderObjectComposite(Sprite):
     def __getitem__(self, item):
         return self.objects[item]
 
-    def draw(self, shader):
+    def smart_draw(self):
         for obj in self.objects:
-            obj.prepareDraw(shader)
+            obj.smart_draw()
 
     def rotY(self, rotation):
         for obj in self.objects:
@@ -690,13 +696,6 @@ class FrameBuffer:
         glBindTexture(GL_TEXTURE_2D, 0)
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, self.tex, 0)
 
-        # DEPTH + STENCIL BUFFER
-        # self.rbo = glGenRenderbuffers(1)
-        # glBindRenderbuffer(GL_RENDERBUFFER, self.rbo)
-        # glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, *size)
-        # glBindRenderbuffer(GL_RENDERBUFFER, 0)
-        # glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, self.rbo)
-
         self.rbo = 0
         if depth_buff:
             self.rbo = glGenTextures(1)
@@ -715,14 +714,10 @@ class FrameBuffer:
                  (1.0, 1.0, 1.0, 1.0))
         screen_quad = make_draw_data_for_screen(color)
         self.vbo = bufferize(screen_quad)
-        self.set_shader()
 
         # CHECK COMPLETE
         self.check()
         unbind_framebuff()
-
-    def set_shader(self, shader='Default'):
-        self.shader = Shaders.shaders['ScreenShader' + shader]
 
     def bind(self):
         glBindFramebuffer(GL_FRAMEBUFFER, self.key)
@@ -741,6 +736,8 @@ class FrameBuffer:
         raise GLerror(f'FrameBuffer[{self.key}] Buffer Incomplete; Status: {status}')
 
     def bind_depth_texture(self, slot=2):
+        if not self.rbo:
+            raise ReferenceError('FrameBuffer has no render buffer (depth buffer)')
         glActiveTexture(GL_TEXTURE0 + slot)
         glBindTexture(GL_TEXTURE_2D, self.rbo)
 

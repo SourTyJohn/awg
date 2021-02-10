@@ -1,13 +1,12 @@
 from user.KeyMapping import K_CLOSE, K_MOVE_UP, K_MOVE_DOWN, K_MENU_PRESS
 
-from core.rendering.Textures import *
-from core.rendering.PyOGL import drawGroups
+from core.rendering.PyOGL import *
 from core.rendering.Textures import EssentialTextureStorage as Ets
 
 
-decoration = Gl.RenderGroup()
-back = Gl.RenderGroup()
-buttons_group = Gl.RenderGroup()
+decoration = RenderGroup()
+back = RenderGroup()
+buttons_group = RenderGroup()
 
 buttons_count = 4
 selected_button = 0
@@ -22,21 +21,17 @@ hero_is_alive = True
 
 def init_screen(hero_life=True, first_load=False):
     global buttons, selected_button
+    selected_button = 0
 
-    Gl.camera.setField(WINDOW_RECT)
+    camera.setField(WINDOW_RECT)
 
-    global first
-    global exit_code
-    global hero_is_alive
+    global first, exit_code, hero_is_alive
+    exit_code, first, hero_is_alive = None, first_load, hero_is_alive
 
-    exit_code = None
-    first = first_load
-
-    MainFrame()
+    # MainFrame()
 
     buttons = [FullButton(700 - x * 100, x) for x in range(5)]
     Button.hover(0, -1)
-    selected_button = 0
 
 
 def close_menu():
@@ -49,7 +44,9 @@ exit_code = None
 
 
 def render():
-    drawGroups(None, decoration, buttons_group)
+    pre_render()
+    drawGroups(None, back, decoration, buttons_group)
+    post_render(Shaders.shaders['ScreenShaderMenu'], )
 
 
 def update(dt):
@@ -88,37 +85,37 @@ def user_input():
                 buttons[selected_button].pressed()
 
 
-class MainFrame(Gl.RenderObject):
-    TEXTURES = [Ets['GUI/menu_frame'], ]
+class MainFrame(RenderObjectStatic):
+    TEXTURES = (Ets['GUI/menu_frame'], )
+    size = WINDOW_SIZE
 
     def __init__(self):
-        super().__init__(decoration, WINDOW_RECT)
+        super().__init__(back, WINDOW_MIDDLE)
 
 
 # ---- BUTTONS----
-class ButtonText(Gl.RenderObject):
+class ButtonText(RenderObjectStatic):
     TEXTURES = [Ets[x] for x in [
         'text:Новая игра', 'text:Загрузить игру', 'text:Сохранить игру', 'text:Настройки', 'text:Выйти'
     ]]
+    size = (960, 96)
 
     def __init__(self, number):
         self.texture = number
 
-        drawData = ButtonText.TEXTURES[number].makeDrawData()
-        super().__init__(None, [0, 0, *Button.size], no_vbo=True)
-        self.bindBuffer(drawData)
-
+        drawData = ButtonText.TEXTURES[number].makeDrawData(layer=0)
+        super().__init__(None, (0, 0), drawdata=drawData, layer=0)
         self.rect.size = ButtonText.TEXTURES[number].size
 
 
-class Button(Gl.RenderObject):
+class Button(RenderObjectStatic):
     # 0 - Non Selected Button, 1 - Selected
     TEXTURES = (Ets['GUI/button_menu_default'], Ets['GUI/button_menu_selected'])
 
     size = (960, 96)
 
     def __init__(self, y_pos):
-        super().__init__(None, [WINDOW_MIDDLE[0], y_pos, *Button.size])
+        super().__init__(None, (WINDOW_MIDDLE[0], y_pos))
 
     @staticmethod
     def hover(this: int, prev: int):
@@ -127,7 +124,7 @@ class Button(Gl.RenderObject):
         buttons[this].setTexture(1)
 
 
-class FullButton(Gl.RenderObjectComposite):
+class FullButton(RenderObjectComposite):
     """Button with text on it"""
 
     def __init__(self, y_pos, number):
@@ -140,7 +137,7 @@ class FullButton(Gl.RenderObjectComposite):
         self.number = number
 
     def setTexture(self, tex):
-        self[0].setTexture(tex)
+        self[0].texture = tex
 
     def pressed(self, *args):
         return functions[self.number](*args)

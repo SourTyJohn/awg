@@ -1,9 +1,9 @@
 from core.physic.physics import world, objects
 from user.KeyMapping import *
 from core.objects.gObjects import *
-# from core.objects.gGUI import *
+from core.objects.gGUI import *
 from core.rendering.PyOGL import *
-from core.rendering.Lighting import add_light, LightSource, FireLight, lights_gr
+from core.rendering.Lighting import add_light, LightSource, FireLight, clearLights, lights_gr
 
 import pygame
 
@@ -38,7 +38,12 @@ def render():
 
     pre_render()
     draw_groups()
-    post_render()
+    post_render(Shaders.shaders['ScreenShaderGame'], )
+
+
+def draw_groups():
+    # drawing all GLSprite groups
+    drawGroups(None, characters_gr, player_gr, obstacles_gr, front_gr, background_near_gr, background_gr, gui_gr)
 
 
 def update(dt):
@@ -104,11 +109,6 @@ def update_hero_movement():
         hero.walk_direction = 0
 
 
-def draw_groups():
-    # drawing all GLSprite groups
-    drawGroups(None, characters_gr, player_gr, obstacles_gr, front_gr, background_near_gr, background_gr, gui_gr)
-
-
 def update_groups(dt):
     # updating all GLSprite groups
     player_gr.update(dt)
@@ -133,7 +133,8 @@ def init_screen(hero_life=False, first_load=False):
     # WorldRectangleRigid(obstacles_gr, pos=[1600, 1200], size=[50, 900])
     # WorldRectangleRigid(obstacles_gr, pos=[2000, 1000], size=[50, 900])
     #
-    # WorldRectangleSensor(obstacles_gr, pos=[-500, 575], size=[2000, 2000], texture='LevelOne/r_tile_grey_1', layer=0.7)
+    # WorldRectangleSensor(obstacles_gr, pos=[-500, 575],
+    # size=[2000, 2000], texture='LevelOne/r_tile_grey_1', layer=0.7)
     #
     MetalCrate(obstacles_gr, pos=[700, 800])
     # WorldRectangleSensor(front_gr, pos=[0, 640], size=[128, 256], texture='LevelOne/glass', layer=1)
@@ -151,4 +152,17 @@ def init_screen(hero_life=False, first_load=False):
 
 
 def close():
+    # Delete images
+    background_gr.delete_all()
+    background_near_gr.delete_all()
     obstacles_gr.delete_all()
+    characters_gr.delete_all()
+    player_gr.delete_all()
+    front_gr.delete_all()
+    gui_gr.delete_all()
+
+    # Delete physic bodies
+    world.clear()
+
+    # Delete light sources
+    clearLights()

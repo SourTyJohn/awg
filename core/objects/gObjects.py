@@ -141,16 +141,12 @@ class Trigger(phys):
         # Add to new triggers. Check core.screens.game.update() for more info
         triggers.append(self)
 
-        #
-        if bound_to:
-            bound_to.triggers.add(self)
-
     def __repr__(self):
         return f'<Trigger Pos: {self.body.pos}. Bounded to: {self.bound_to}>'
 
-    def delete(self):
-        self.bound_to.triggers.remove(self)
-        super().delete()
+    def delete_physic(self):
+        triggers.remove(self)
+        super().delete_physic()
 
     def update(self, *args, **kwargs):
         # Trigger static and won't move
@@ -448,7 +444,7 @@ class WoodenCrate(image, phys, direct, mortal):
 
 class MetalCrate(WoodenCrate, direct, mortal):
     # static
-    TEXTURES = (Ets['LevelOne/r_orange_bricks_1'], )
+    TEXTURES = (Ets['LevelOne/crate_metal'], )
     size = (128, 128)
     points = rect_points(*size)
 

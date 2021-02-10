@@ -44,7 +44,7 @@ class TextureStorage:
 
     def empty(self):
         for x in self.textures.keys():
-            self.textures[x].delete()
+            self.textures[x].delete_physic()
         self.textures.clear()
 
     def keys(self):

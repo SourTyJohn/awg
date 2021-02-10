@@ -85,9 +85,6 @@ class PhysicObject:
         # Add to world (Physic simulation)
         world.add(self, self.body, self.shape)
 
-        # Set of Trigger objects that are bounded to this object
-        self.triggers = set()
-
     @property
     def bhash(self):
         return self.body.hash_key
@@ -95,16 +92,9 @@ class PhysicObject:
     def update(self, *args, **kwargs) -> None:
         pass
 
-    def delete(self):
+    def delete_physic(self):
         # Fully deleting object from physic world
         world.vanish(self)
-
-        # Deleting all triggers that are bounded to this object
-        for x in self.triggers:
-            x.delete()
-
-        #
-        # super().delete()
 
     # PHYSIC
     @property
@@ -141,7 +131,6 @@ class World:
     """Pymunk.World singleton abstraction"""
 
     def __init__(self):
-
         # setting up space
         self.space = pymunk.Space()
         self.space.gravity = GRAVITY_VECTOR
@@ -153,6 +142,12 @@ class World:
 
     def vanish(self, obj):
         # Delete object from world
+        del objects[obj.bhash]
+        self.space.remove(obj.body, obj.shape)
+
+    def vanish_by_key(self, key):
+        # Same with vanish, but deletion is made by key
+        obj = objects.pop(key)
         self.space.remove(obj.body, obj.shape)
 
     def add(self, obj, body, *shapes):
@@ -168,6 +163,14 @@ class World:
     def update_triggers(dt):
         for tr in triggers:
             tr.update(dt)
+
+    @staticmethod
+    def clear():
+        # Clearing physic world
+        while objects.values():
+            obj = list(objects.values())[0]
+            # Physically delete object
+            obj.__class__.delete_physic(obj, )
 
 
 def make_body(pos, points, body_type, mass=0.0, moment=0):

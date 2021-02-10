@@ -69,3 +69,7 @@ def renderLights():
     lights_gr.draw_all(True, )
 
     unbind_framebuff()
+
+
+def clearLights():
+    lights_gr.delete_all()
