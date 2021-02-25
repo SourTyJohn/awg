@@ -141,7 +141,10 @@ def init_screen(hero_life=False, first_load=False):
     WorldRectangleSensor(background_near_gr, pos=[100, 600], size=[32, 32], texture='LevelOne/glass', layer=4)
 
     WorldRectangleSensor(background_near_gr, (1300, 600), (2600, 900), layer=6)
+    # add_light(LightSource, [1400, 700], 32, 'Round', 1)
     add_light(FireLight, [1400, 700], 16, 'RoundFlat', layer=1, color='fire')
+
+
     add_light(LightSource, [800, 700], 32, 'Round', 1)
     add_light(LightSource, [600, 700], 18, 'Round', 1)
     add_light(LightSource, [900, 700], 18, 'Round', 1)

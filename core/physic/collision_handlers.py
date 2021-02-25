@@ -67,6 +67,6 @@ def trigger_leave(arbiter, space, data):
     actor, key = from_shape(arbiter, i=0)
     trigger, _ = from_shape(arbiter, i=1)
 
-    if actor:
+    if actor and trigger:
         trigger.leave(actor, key, arbiter)
     return False

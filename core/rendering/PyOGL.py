@@ -147,11 +147,6 @@ def pre_render():
     glEnable(GL_BLEND)
     glEnable(GL_DEPTH_TEST)
 
-    # PREPARING SHADER USAGE
-    # calculating matrixes for scale and camera
-    orthoM = camera.getMatrix()
-    return orthoM
-
 
 #  pre_render()
 #  draw_groups()

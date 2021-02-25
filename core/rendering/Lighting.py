@@ -7,8 +7,11 @@ lights_gr = RenderGroup()
 lightBuffer = FrameBuffer()
 
 light_colors_presets = {
-    'fire': (1.0, 0.4, 0.0, 0.0)
+    'fire': (1.0, 0.3, 0.0, 0.0)
 }
+
+
+do_render_light = True
 
 
 class LightSource(RenderObjectStatic):
@@ -64,10 +67,14 @@ def add_light(ltype, pos, power, light_form, layer=1, color=(0.1, 0.1, 0.1, 0.1)
 
 def renderLights():
     lightBuffer.bind()
-
     clear_display()
-    lights_gr.draw_all(True, )
 
+    # glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE)
+
+    if do_render_light:
+        lights_gr.draw_all(True, )
+
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
     unbind_framebuff()
 
 
