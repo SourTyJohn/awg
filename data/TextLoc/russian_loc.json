@@ -1,0 +1,10 @@
+{
+  "key": "rus",
+  "tokens": {
+    "menu_newgame": "Новая игра",
+    "menu_loadgame": "Загрузить игру",
+    "menu_savegame": "Сохранить игру",
+    "menu_settings": "Настройки",
+    "menu_exit": "Выйти"
+  }
+}

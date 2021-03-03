@@ -28,7 +28,7 @@ def init_screen(hero_life=True, first_load=False):
     global first, exit_code, hero_is_alive
     exit_code, first, hero_is_alive = None, first_load, hero_is_alive
 
-    # MainFrame()
+    MainFrame()
 
     buttons = [FullButton(700 - x * 100, x) for x in range(5)]
     Button.hover(0, -1)
@@ -44,7 +44,7 @@ exit_code = None
 
 
 def render():
-    pre_render()
+    pre_render(do_depth_test=False)
     drawGroups(None, back, decoration, buttons_group)
     post_render(Shaders.shaders['ScreenShaderMenu'], )
 
@@ -96,7 +96,7 @@ class MainFrame(RenderObjectStatic):
 # ---- BUTTONS----
 class ButtonText(RenderObjectStatic):
     TEXTURES = [Ets[x] for x in [
-        'text:Новая игра', 'text:Загрузить игру', 'text:Сохранить игру', 'text:Настройки', 'text:Выйти'
+        'txt_menu_newgame', 'txt_menu_loadgame', 'txt_menu_savegame', 'txt_menu_settings', 'txt_menu_exit'
     ]]
     size = (960, 96)
 

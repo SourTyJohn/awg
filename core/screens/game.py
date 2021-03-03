@@ -1,9 +1,10 @@
 from core.physic.physics import world, objects
 from user.KeyMapping import *
 from core.objects.gObjects import *
-from core.objects.gGUI import *
 from core.rendering.PyOGL import *
 from core.rendering.Lighting import add_light, LightSource, FireLight, clearLights, lights_gr
+
+from core.rendering.TextRender import TextObject, DefaultFont
 
 import pygame
 
@@ -83,6 +84,9 @@ def user_input():
                 close()
                 return 'menu'
 
+            else:
+                t.set_text(str(event.key), DefaultFont)
+
         elif event.type == pygame.KEYUP:
             key = event.key
 
@@ -118,7 +122,7 @@ def update_groups(dt):
 
 
 def init_screen(hero_life=False, first_load=False):
-    global hero, hero_inited, render_zone
+    global hero, hero_inited, render_zone, t
     BackgroundColor(background_gr)
     # #  render distance
     # render_zone = Trigger(None, 't_*', bound_to=camera, size=WINDOW_SIZE)
@@ -144,13 +148,14 @@ def init_screen(hero_life=False, first_load=False):
     # add_light(LightSource, [1400, 700], 32, 'Round', 1)
     add_light(FireLight, [1400, 700], 16, 'RoundFlat', layer=1, color='fire')
 
-
     add_light(LightSource, [800, 700], 32, 'Round', 1)
     add_light(LightSource, [600, 700], 18, 'Round', 1)
     add_light(LightSource, [900, 700], 18, 'Round', 1)
     # --- TEST LEVEL ---
 
     hero = MainHero(player_gr, pos=[256, 800])
+    t = TextObject(background_gr, [256, 800], ['text?', 'text indeed...'], DefaultFont, layer=6, depth_mask=True)
+
     # GUIHeroHealthBar(gui_gr, [256, 800], layer=0)
 
 

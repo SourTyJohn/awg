@@ -1,11 +1,12 @@
 from core.rendering import PyOGL as Gl
+from core.rendering.TextRender import GlText, LocalizedText, MenuFont
 
 from os import listdir
 
 from utils.files import get_full_path
 
 from core.Constants import *
-T_ERROR_TEXTURE = Gl.GlTexture.load_image('Devs/r_error.png', repeat=True)
+T_ERROR_TEXTURE = Gl.GlTexture.load_file('Devs/r_error.png', repeat=True)
 
 
 def loadTexturePack(name):
@@ -19,7 +20,7 @@ def loadTexturePack(name):
         textures = listdir(f'data/Textures/{name}/{dr}')
 
         for tex in textures:
-            t = Gl.GlTexture.load_image(f'{dr}/{tex}', (tex[0] == 'r'))
+            t = Gl.GlTexture.load_file(f'{dr}/{tex}', (tex[0] == 'r'))
             pack.append(t)
 
     print(f'-- Texture Pack: {name} loaded\n')
@@ -60,11 +61,11 @@ def load_essential():
     EssentialTextureStorage.load(pack)
 
     buttons_text = [
-        Gl.GlTexture.load_text('Новая игра', MENU_FONT_COLOR, FONT),
-        Gl.GlTexture.load_text('Загрузить игру', MENU_FONT_COLOR, FONT),
-        Gl.GlTexture.load_text('Сохранить игру', MENU_FONT_COLOR, FONT),
-        Gl.GlTexture.load_text('Настройки', MENU_FONT_COLOR, FONT),
-        Gl.GlTexture.load_text('Выйти', MENU_FONT_COLOR, FONT)
+        GlText(LocalizedText('txt_menu_newgame'), font=MenuFont),
+        GlText(LocalizedText('txt_menu_loadgame'), font=MenuFont),
+        GlText(LocalizedText('txt_menu_savegame'), font=MenuFont),
+        GlText(LocalizedText('txt_menu_settings'), font=MenuFont),
+        GlText(LocalizedText('txt_menu_exit'), font=MenuFont)
     ]
 
     EssentialTextureStorage.load(buttons_text)

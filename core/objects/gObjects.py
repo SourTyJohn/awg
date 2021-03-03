@@ -384,8 +384,8 @@ class MainHero(Character, direct, mortal):
     max_health = 200
     lethal_fall_velocity = 256
 
-    def __init__(self, gr, pos):
-        Character.__init__(self, gr, pos, MainHero.size)
+    def __init__(self, gr, pos, layer=4):
+        Character.__init__(self, gr, pos, MainHero.size, layer=layer)
         self.init_mortal(self.__class__)
 
     def update(self, *args, **kwargs):

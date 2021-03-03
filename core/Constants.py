@@ -1,12 +1,20 @@
-import pygame
 import pymunk
 
 from utils.files import SETTINGS_FILE
 import json
 
 # LOAD SETTINGS
-with open(SETTINGS_FILE) as f:
-    settings = json.load(f)
+settings = {}
+
+
+def load_settings():
+    global settings
+    with open(SETTINGS_FILE) as f:
+        settings = json.load(f)
+
+
+load_settings()
+
 
 # BASE
 TITLE = 'AWG 2'  # window name
@@ -22,8 +30,7 @@ PHYSIC_UPDATE_FREQUENCY = 0.017  # optimal with FPS_LOCK==60
 
 
 # FONT
-pygame.font.init()
-FONT = pygame.font.SysFont(settings['Font'], 42)
+FONT_SETTINGS = ('font.ttf', 48)
 MENU_FONT_COLOR = (52, 6, 52)
 
 
@@ -90,5 +97,5 @@ COLL_TYPES = {
 
 
 # SHADERS
-AMBIENT_LIGHT = 1.0
+AMBIENT_LIGHT = 1.5
 LIGHT_MULTIPLY = 1.0

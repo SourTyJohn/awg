@@ -1,6 +1,7 @@
 from OpenGL.GL import *
 
 import numpy as np
+import pygame
 from collections import namedtuple
 
 from core.Constants import *
@@ -111,6 +112,7 @@ def init_display(size=WINDOW_RESOLUTION):
     clear_display()
     camera = Camera()
     glClearColor(*clear_color)
+    glDepthFunc(GL_LEQUAL)
 
     # Order of vertexes when drawing
     indices = np.array([0, 1, 2, 2, 3, 0], dtype=np.uint32)
@@ -136,7 +138,7 @@ def clear_display():
 
 
 # RENDER
-def pre_render():
+def pre_render(do_depth_test=True):
     # MY FRAME BUFFER
     frameBuffer.bind()
     clear_display()
@@ -145,7 +147,9 @@ def pre_render():
     glEnable(GL_TEXTURE_2D)
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
     glEnable(GL_BLEND)
-    glEnable(GL_DEPTH_TEST)
+
+    if do_depth_test:
+        glEnable(GL_DEPTH_TEST)
 
 
 #  pre_render()
@@ -229,9 +233,9 @@ class RenderGroup(pygame.sprite.Group):
 class GlTexture:
     __slots__ = ('size', 'key', 'repeat', 'name', 'normals')
 
-    def __init__(self, image, tex_name, repeat=False):
-        self.size = image.get_size()  # units
-        self.key = make_GL2D_texture(image, *self.size, repeat=repeat)
+    def __init__(self, data: np.ndarray, size, tex_name, repeat=False):
+        self.size = size  # units
+        self.key = make_GL2D_texture(data, *self.size, repeat=repeat)
         self.repeat = repeat
         self.name = tex_name.replace('.png', '')
 
@@ -243,36 +247,20 @@ class GlTexture:
         return f'<GLTexture[{self.key}] \t size: {self.size[0]}x{self.size[1]}px. \t name: "{self.name}">'
 
     @classmethod
-    def load_image(cls, image_name, repeat=False):
-        code, texture = load_image(image_name, TEXTURE_PACK)
+    def load_file(cls, image_name, repeat=False):
+        data, size = load_image(image_name, TEXTURE_PACK)
 
-        if code:
-            print(f'texture: {image_name} error - {code}')
+        if data is None:
+            print(f'texture: {image_name} error. Not loaded')
 
-        return GlTexture(texture, image_name, repeat)
+        return GlTexture(data, size, image_name, repeat)
 
-    # TODO: TEXT, TEXT STORAGE, TEXT DELETE WHEN NOT USED
-    @classmethod  # Генерация текста по готовому объекту шрифта
-    def load_text(cls, text, color, font=None, font_settings=None):
-        if len(color) == 3:
-            color = (color[0], color[1], color[2], 255)
+    @classmethod
+    def load_image(cls, image_name, image, repeat=False):
+        data = np.fromstring(image.tobytes(), np.uint8)
+        size = image.size
 
-        """Средствами pygame генерируем текстуру с текстом"""
-        if font_settings:
-            font = pygame.font.SysFont(*font_settings)
-
-        texture = font.render(text, False, color, (0, 0, 0, 255)).convert_alpha()
-
-        w, h = texture.get_size()
-
-        """Переносим текст на новую поверхность и работаем с ней"""
-        tmp = pygame.Surface((w, h), flags=pygame.SRCALPHA)
-        tmp.blit(texture, (0, 0))
-        tmp.set_colorkey((0, 0, 0, 255))
-        tmp.set_alpha(color[3])
-        texture = tmp.convert_alpha(tmp)
-
-        return GlTexture(texture, f'text:{text}')
+        return GlTexture(data, size, image_name, repeat)
 
     def makeDrawData(self, layer, colors=None):
         """Make draw data with size of this texture
@@ -383,6 +371,8 @@ class RenderObject(Sprite):
 
         #  -1 for left   1 for right
         self.y_Rotation = rotation
+        assert abs(rotation) <= 1 and isinstance(rotation, int),\
+            ValueError(f'Wrong rotation value: {rotation}. Must be -1, 0 or 1')
 
         """Load and bufferize (load to gl buffer) all data, that is required for drawing
         This data includes: texture coords, object coords and color"""
@@ -560,13 +550,11 @@ class RenderObjectComposite(Sprite):
 
 
 # MAKE && BIND TEXTURE
-def make_GL2D_texture(image, w: int, h: int, repeat=False) -> int:
+def make_GL2D_texture(image_data: np.ndarray, w: int, h: int, repeat=False) -> int:
     """Loading pygame.Surface as OpenGL texture
     :return New Texture key"""
 
     # getting data from pygame.Surface
-    raw_data = image.get_buffer().raw
-    data = np.fromstring(raw_data, np.uint8)
 
     # bind new texture
     key = glGenTextures(1)
@@ -580,7 +568,7 @@ def make_GL2D_texture(image, w: int, h: int, repeat=False) -> int:
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT)
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT)
 
-    glTexImage2D(GL_TEXTURE_2D, GL_ZERO, GL_RGBA, w, h, GL_ZERO, GL_BGRA, GL_UNSIGNED_BYTE, data)
+    glTexImage2D(GL_TEXTURE_2D, GL_ZERO, GL_RGBA, w, h, GL_ZERO, GL_RGBA, GL_UNSIGNED_BYTE, image_data)
     #
 
     # unbind new texture
