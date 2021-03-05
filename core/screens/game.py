@@ -6,8 +6,11 @@ from core.rendering.Lighting import add_light, LightSource, FireLight, clearLigh
 
 from core.rendering.TextRender import TextObject, DefaultFont
 
+from core.audio.PyOAL import AudioManager
+
 import pygame
 
+audio_manager = AudioManager()
 
 # GROUPS
 background_gr = RenderGroup()
@@ -56,6 +59,7 @@ def update(dt):
     # PHYSIC AND UPDATE
     world.step(dt)
     update_groups(dt)
+    audio_manager.update()
 
 
 def user_input():
@@ -158,8 +162,14 @@ def init_screen(hero_life=False, first_load=False):
 
     # GUIHeroHealthBar(gui_gr, [256, 800], layer=0)
 
+    audio_manager.play_sound('test.ogg')
+
 
 def close():
+
+    # Stop sounds
+    audio_manager.stop_all_sounds()
+
     # Delete images
     background_gr.delete_all()
     background_near_gr.delete_all()

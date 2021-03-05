@@ -7,3 +7,5 @@ pip==21.0.1
 pygame==2.0.1
 setuptools==54.0.0
 cython==0.29.22  # only for setup.py
+PyOpenAL
+pyogg
