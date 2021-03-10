@@ -1,11 +1,11 @@
 pymunk==6.0.0
 Pillow==8.1.1
 PyOpenGL==3.1.5
-easygui==0.98.2  # only for _mapTools module
+easygui==0.98.2      # only for _mapTools module
 numpy==1.20.1
 pip==21.0.1
 pygame==2.0.1
 setuptools==54.0.0
-# cython==0.29.22  # only for setup.py (disabled as unnecessary)
+# cython==0.29.22   # only for setup.py (disabled as unnecessary)
 PyOpenAL
 pyogg

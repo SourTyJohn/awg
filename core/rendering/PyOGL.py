@@ -11,8 +11,6 @@ import core.math.linear as lin
 import core.rendering.Shaders as Shaders
 from core.math.rect4f import Rect4f
 
-# from core.rendering.Textures import EssentialTextureStorage as Ets
-
 
 # background color
 clear_color = (0.0, 0.0, 0.0, 0.0)
@@ -88,6 +86,7 @@ def blank(): pass
 
 camera: Camera
 renderLights = blank
+
 
 def clear_display():
     # fully clearing display
@@ -536,7 +535,7 @@ def make_GL2D_texture(image_data: np.ndarray, w: int, h: int, repeat=False) -> i
 
 
 # DRAW DATA
-def make_draw_data(size, colors, shininess=(), rotation=1, layer=5):
+def make_draw_data(size, colors, rotation=1, layer=5):
     # ::arg layer - value from 0 to 10
     # lower it is, nearer object to a camera
     assert 0 <= layer <= 10 and isinstance(layer, int), f'Wrong layer param: {layer}. ' \
@@ -691,7 +690,6 @@ frameBuffer: FrameBuffer
 lightBuffer: FrameBuffer
 
 
-
 # DISPLAY
 def init_display(size=WINDOW_RESOLUTION):
     global camera, frameBuffer, renderLights, lightBuffer
@@ -703,15 +701,9 @@ def init_display(size=WINDOW_RESOLUTION):
         flags |= pygame.FULLSCREEN
     pygame.display.set_mode(size, flags=flags)
     
-    #Correct OpenGL Version requierment
+    #  Correct OpenGL Version requierment
     pygame.display.gl_set_attribute(pygame.GL_CONTEXT_MAJOR_VERSION, 3)
     pygame.display.gl_set_attribute(pygame.GL_CONTEXT_MINOR_VERSION, 2)
-
-    # Check Version
-    # glMajorVersion = [int(x) for x in glGetString(GL_VERSION).decode('utf-8').split(' - ')[0].split('.')]
-    # if glMajorVersion[0] < 3 or (glMajorVersion[0] == 3 and glMajorVersion[1] < 2):
-        # TODO NOTIFICATION WINDOW
-    #    raise GLerror('You need OpenGL 3.2 or higher to run')
 
     Shaders.init()
     frameBuffer = FrameBuffer(depth_buff=True)

@@ -4,8 +4,6 @@ AND ALLOWS EASY ACCESS TO IT
 """
 
 from os.path import join, dirname
-from core.Constants import *
-import pygame as pg
 from PIL import Image, ImageFont
 import numpy as np
 import json
@@ -52,18 +50,11 @@ def copy_files(source, where):
             shutil.copy(filePath, where)
 
 
-def load_sound(name, volume=None):
+def load_sound(name, ):
     fullname = get_full_path(name, file_type='snd')
-    if volume is None:
-        volume = VOLUME
-
     if os.path.exists(fullname):
-        pass
-    else:
-        pass
-
-    sound = None
-    return sound
+        return fullname
+    raise FileExistsError(f'Not Found: {fullname}')
 
 
 def load_image(name, pack):
