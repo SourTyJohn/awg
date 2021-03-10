@@ -1,6 +1,5 @@
-import math
 import numpy as np
-from math import atan2, pi
+from math import atan2, pi, sin, cos, radians, sqrt, tan
 from pymunk.vec2d import Vec2d
 
 
@@ -32,8 +31,8 @@ def transform(m, v):
     return np.asarray(m * np.asmatrix(v).T)[:, 0]
 
 
-def magnitude(v):
-    return math.sqrt(np.sum(v ** 2))
+def magnitude(v: np.ndarray):
+    return sqrt((v ** 2).sum())
 
 
 def normalize(v):
@@ -44,8 +43,8 @@ def normalize(v):
 
 
 def sincos(a):
-    a = math.radians(a)
-    return math.sin(a), math.cos(a)
+    a = radians(a)
+    return sin(a), cos(a)
 
 
 # CAMERA
@@ -65,7 +64,7 @@ def ortho(l_, r, b, t, n=-1, f=1):
 
 # unused
 def perspective(fovy, aspect, n, f):
-    s = 1.0 / math.tan(math.radians(fovy) / 2.0)
+    s = 1.0 / tan(radians(fovy) / 2.0)
     sx, sy = s / aspect, s
     zz = (f + n) / (n - f)
     zw = 2 * f * n / (n - f)

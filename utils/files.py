@@ -21,6 +21,7 @@ SHADERS_DIRECTORY = join(MAIN_DIRECTORY, 'data/Shaders')
 DLLS_DIRECTORY = join(MAIN_DIRECTORY, 'data/DLLs')
 FONTS_DIRECTORY = join(MAIN_DIRECTORY, 'data/Fonts')
 TEXT_LOC_DIRECTORY = join(MAIN_DIRECTORY, 'data/TextLoc')
+SOUNDS_DIRECTORY = join(MAIN_DIRECTORY, 'data/Sounds')
 SETTINGS_FILE = join(MAIN_DIRECTORY, 'data/settings.json')
 
 
@@ -29,7 +30,8 @@ DIRECTORIES = {'main': MAIN_DIRECTORY,
                'anm': ANIMATIONS_DIRECTORY,
                'shd': SHADERS_DIRECTORY,
                'dll': DLLS_DIRECTORY,
-               'font': FONTS_DIRECTORY}
+               'font': FONTS_DIRECTORY,
+               'snd': SOUNDS_DIRECTORY}
 
 
 def get_full_path(*path, file_type='main'):
@@ -51,15 +53,16 @@ def copy_files(source, where):
 
 
 def load_sound(name, volume=None):
+    fullname = get_full_path(name, file_type='snd')
     if volume is None:
         volume = VOLUME
-    fullname = get_full_path(f'data/Sounds/{name}')
-    if os.path.exists(fullname):
-        sound = pg.mixer.Sound(fullname)
-    else:
-        sound = pg.mixer.Sound(os.path.join('data', 'Defaults/bruh.wav'))
 
-    sound.set_volume(volume)
+    if os.path.exists(fullname):
+        pass
+    else:
+        pass
+
+    sound = None
     return sound
 
 
