@@ -89,48 +89,6 @@ def blank(): pass
 camera: Camera
 renderLights = blank
 
-
-# DISPLAY
-def init_display(size=WINDOW_RESOLUTION):
-    global camera, frameBuffer, renderLights, lightBuffer
-
-    # Display flags
-    flags = pygame.OPENGL | pygame.DOUBLEBUF | pygame.HWSURFACE | pygame.SRCALPHA
-
-    if FULL_SCREEN:
-        flags |= pygame.FULLSCREEN
-    pygame.display.set_mode(size, flags=flags)
-
-    # Check Version
-    glMajorVersion = [int(x) for x in glGetString(GL_VERSION).decode('utf-8').split(' - ')[0].split('.')]
-    if glMajorVersion[0] < 3 or (glMajorVersion[0] == 3 and glMajorVersion[1] < 2):
-        # TODO NOTIFICATION WINDOW
-        raise GLerror('You need OpenGL 3.2 or higher to run')
-
-    Shaders.init()
-    frameBuffer = FrameBuffer(depth_buff=True)
-    clear_display()
-    camera = Camera()
-    glClearColor(*clear_color)
-    glDepthFunc(GL_LEQUAL)
-
-    # Order of vertexes when drawing
-    indices = np.array([0, 1, 2, 2, 3, 0], dtype=np.uint32)
-    ebo = glGenBuffers(1)
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo)
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices, GL_STATIC_DRAW)
-
-    # Does not allow deprecated gl functions
-    pygame.display.gl_set_attribute(
-        pygame.GL_CONTEXT_PROFILE_MASK, pygame.GL_CONTEXT_PROFILE_CORE
-    )
-
-    # LIGHTING IMPORT
-    from core.rendering.Lighting import renderLights as Rl
-    from core.rendering.Lighting import lightBuffer as Lb
-    renderLights, lightBuffer = Rl, Lb
-
-
 def clear_display():
     # fully clearing display
     glClearColor(*clear_color)
@@ -731,3 +689,49 @@ def unbind_framebuff():
 
 frameBuffer: FrameBuffer
 lightBuffer: FrameBuffer
+
+
+
+# DISPLAY
+def init_display(size=WINDOW_RESOLUTION):
+    global camera, frameBuffer, renderLights, lightBuffer
+
+    # Display flags
+    flags = pygame.OPENGL | pygame.DOUBLEBUF | pygame.HWSURFACE | pygame.SRCALPHA
+
+    if FULL_SCREEN:
+        flags |= pygame.FULLSCREEN
+    pygame.display.set_mode(size, flags=flags)
+    
+    #Correct OpenGL Version requierment
+    pygame.display.gl_set_attribute(pygame.GL_CONTEXT_MAJOR_VERSION, 3)
+    pygame.display.gl_set_attribute(pygame.GL_CONTEXT_MINOR_VERSION, 2)
+
+    # Check Version
+    # glMajorVersion = [int(x) for x in glGetString(GL_VERSION).decode('utf-8').split(' - ')[0].split('.')]
+    # if glMajorVersion[0] < 3 or (glMajorVersion[0] == 3 and glMajorVersion[1] < 2):
+        # TODO NOTIFICATION WINDOW
+    #    raise GLerror('You need OpenGL 3.2 or higher to run')
+
+    Shaders.init()
+    frameBuffer = FrameBuffer(depth_buff=True)
+    clear_display()
+    camera = Camera()
+    glClearColor(*clear_color)
+    glDepthFunc(GL_LEQUAL)
+
+    # Order of vertexes when drawing
+    indices = np.array([0, 1, 2, 2, 3, 0], dtype=np.uint32)
+    ebo = glGenBuffers(1)
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo)
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices, GL_STATIC_DRAW)
+
+    # Does not allow deprecated gl functions
+    pygame.display.gl_set_attribute(
+        pygame.GL_CONTEXT_PROFILE_MASK, pygame.GL_CONTEXT_PROFILE_CORE
+    )
+
+    # LIGHTING IMPORT
+    from core.rendering.Lighting import renderLights as Rl
+    from core.rendering.Lighting import lightBuffer as Lb
+    renderLights, lightBuffer = Rl, Lb

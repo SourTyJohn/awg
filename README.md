@@ -6,7 +6,7 @@
     Yet another awg, but this time with no mistakes, that were in previous games
     
     Graphic engine: OpenGL 3+ (PyOpenGL), glsl shaders 4.6
-    Sound engine: not implemented (OpenAL planned)
+    Sound engine: OpenAL (PyOpenAL)
     Physic engine: PyMunk
     
     
