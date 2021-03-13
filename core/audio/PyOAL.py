@@ -3,8 +3,8 @@ from utils.files import load_sound
 
 
 class AudioManager:
-    """Вот тут вот ебани описание класса пожалуйста.
-    Можешь на русском, я перевду потом"""
+    """That class provides correct loading and using sounds in game.
+       For now it has a 3 sounds buffers what allows us to use 3 sounds at one time"""
 
     def __init__(self):
         pyoggSetStreamBufferSize(4096*4)
