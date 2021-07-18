@@ -73,7 +73,7 @@ class LocalizedText:
 class GlText(GlTexture):
     __slots__ = ()
 
-    def __init__(self, text, font=DefaultFont):
+    def __init__(self, text='', font=DefaultFont):
         if isinstance(text, LocalizedText):
             name = text.token
             text = text()
