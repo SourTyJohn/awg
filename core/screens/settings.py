@@ -1,4 +1,4 @@
-from user.KeyMapping import K_CLOSE, K_MOVE_UP, K_MOVE_DOWN, K_MENU_PRESS
+from user.KeyMapping import K_MOVE_UP, K_MOVE_DOWN, K_MENU_PRESS
 
 from core.rendering.PyOGL import *
 from core.rendering.Textures import EssentialTextureStorage as Ets
@@ -66,14 +66,10 @@ def user_input():
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             close_menu()
-            exit_code = 'Quit'
+            exit_code = 'menu'
 
         if event.type == pygame.KEYDOWN:
-            if event.key == K_CLOSE and not first:
-                close_menu()
-                exit_code = 'game'
-
-            elif event.key == K_MOVE_UP and 0 < selected_button:
+            if event.key == K_MOVE_UP and 0 < selected_button:
                 selected_button -= 1
                 Button.hover(selected_button, selected_button + 1)
 
@@ -96,7 +92,7 @@ class MainFrame(RenderObjectStatic):
 # ---- BUTTONS----
 class ButtonText(RenderObjectStatic):
     TEXTURES = [Ets[x] for x in [
-        'txt_menu_newgame', 'txt_menu_loadgame', 'txt_menu_savegame', 'txt_menu_settings', 'txt_menu_exit'
+        'txt_settings_brightness', 'txt_settings_resolution', 'txt_settings_volume', 'txt_settings_language', 'txt_settings_menu'
     ]]
     size = (960, 96)
 
@@ -150,31 +146,16 @@ class ButtonFunctions:
         pass
 
     @classmethod
-    def continueGame(cls):
-        global exit_code
-        exit_code = 'game'
-
-    @classmethod
     def exitPressed(cls):
         global exit_code
-        exit_code = 'Quit'
-
-    @classmethod
-    def loadGame(cls):
-        global exit_code
-        buttons[selected_button].rotY(-buttons[selected_button][0].y_Rotation)
-
-    @classmethod
-    def openSettings(cls):
-        global exit_code
-        exit_code = 'settings'
+        exit_code = 'menu'
 
 
 Bf = ButtonFunctions
 functions = [
-    Bf.continueGame,
     Bf.nullPressed,
-    Bf.loadGame,
-    Bf.openSettings,
+    Bf.nullPressed,
+    Bf.nullPressed,
+    Bf.nullPressed,
     Bf.exitPressed
 ]

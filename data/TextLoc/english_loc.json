@@ -5,6 +5,12 @@
     "menu_loadgame": "Load Game",
     "menu_savegame": "Save Game",
     "menu_settings": "Settings",
-    "menu_exit": "Quit"
+    "menu_exit": "Quit",
+	
+	"settings_brightness": "Brightness",
+	"settings_resolution": "Resolution",
+	"settings_volume": "Volume",
+	"settings_language": "Language",
+	"settings_menu": "Back"
   }
 }

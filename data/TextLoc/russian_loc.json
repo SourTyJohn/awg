@@ -5,6 +5,12 @@
     "menu_loadgame": "Загрузить игру",
     "menu_savegame": "Сохранить игру",
     "menu_settings": "Настройки",
-    "menu_exit": "Выйти"
+    "menu_exit": "Выйти",
+	
+	"txt_settings_brightness": "Яркость",
+	"txt_settings_resolution": "Разрешение",
+	"txt_settings_volume": "Громкость",
+	"txt_settings_language": "Язык",
+	"txt_settings_menu": "Назад"
   }
 }

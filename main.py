@@ -47,7 +47,7 @@ def game_loop():
         print(f'\rFPS: {1 / dt // 1}', end='')
 
     # Screen feedback
-    if exit_code in ('menu', 'game'):
+    if exit_code in ('menu', 'game', 'settings'):
         if exit_code != screen_type:
             screen_type = exit_code
             screens[exit_code].init_screen()
@@ -66,8 +66,9 @@ if __name__ == '__main__':
 
     import core.screens.menu as rmenu
     import core.screens.game as rgame
+    import core.screens.settings as setts
 
-    screens = {'menu': rmenu, 'game': rgame}
+    screens = {'menu': rmenu, 'game': rgame, 'settings': setts}
     screens[screen_type].init_screen(first_load=True)
 
     while running:

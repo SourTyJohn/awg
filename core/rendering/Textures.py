@@ -65,7 +65,13 @@ def load_essential():
         GlText(LocalizedText('txt_menu_loadgame'), font=MenuFont),
         GlText(LocalizedText('txt_menu_savegame'), font=MenuFont),
         GlText(LocalizedText('txt_menu_settings'), font=MenuFont),
-        GlText(LocalizedText('txt_menu_exit'), font=MenuFont)
+        GlText(LocalizedText('txt_menu_exit'), font=MenuFont),
+
+        GlText(LocalizedText('txt_settings_brightness'), font=MenuFont),
+        GlText(LocalizedText('txt_settings_resolution'), font=MenuFont),
+        GlText(LocalizedText('txt_settings_volume'), font=MenuFont),
+        GlText(LocalizedText('txt_settings_language'), font=MenuFont),
+        GlText(LocalizedText('txt_settings_menu'), font=MenuFont),
     ]
 
     EssentialTextureStorage.load(buttons_text)

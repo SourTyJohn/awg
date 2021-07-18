@@ -21,6 +21,7 @@ FONTS_DIRECTORY = join(MAIN_DIRECTORY, 'data/Fonts')
 TEXT_LOC_DIRECTORY = join(MAIN_DIRECTORY, 'data/TextLoc')
 SOUNDS_DIRECTORY = join(MAIN_DIRECTORY, 'data/Sounds')
 SETTINGS_FILE = join(MAIN_DIRECTORY, 'data/settings.json')
+MAPS_DIRECTORY = join(MAIN_DIRECTORY, 'data/Maps')
 
 
 DIRECTORIES = {'main': MAIN_DIRECTORY,
@@ -29,7 +30,8 @@ DIRECTORIES = {'main': MAIN_DIRECTORY,
                'shd': SHADERS_DIRECTORY,
                'dll': DLLS_DIRECTORY,
                'font': FONTS_DIRECTORY,
-               'snd': SOUNDS_DIRECTORY}
+               'snd': SOUNDS_DIRECTORY,
+               'maps': MAPS_DIRECTORY}
 
 
 def get_full_path(*path, file_type='main'):

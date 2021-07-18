@@ -476,6 +476,9 @@ class RenderObjectStatic(RenderObject):
     def curr_image(self):
         return self.__class__.TEXTURES[self.texture]
 
+    def set_image(self, text):
+        self.curr_image = self.__class__.TEXTURES[text]
+
 
 class RenderObjectComposite(Sprite):
     """Multiple GLObjects drawn, moved and rotated together.
