@@ -63,6 +63,7 @@ RENDER_RECT_FOR_FIXED = [0, 0, int(DEFAULT_FOV_W * 3), int(DEFAULT_FOV_W * 3)]
 
 # SOUND
 VOLUME = settings['Volume']
+SOUND_STREAMS_AMOUNT = 4
 
 
 # PHYSICS
@@ -84,9 +85,10 @@ COLL_TYPES = {
     'item': 2,
     'obstacle': 3,
     'trigger': 4,
+    'particle': 5,
 
     # Triggers. Must be named t_<coll_type>&&<coll_type>...
-    # Check CollisionHandles.triggers_setup() for more info
+    # Check CollisionHandles.triggersSetup() for more info
     't_obstacle': 10,
     't_obstacle&&mortal': 11,
     't_player': 12,
@@ -97,5 +99,5 @@ COLL_TYPES = {
 
 
 # SHADERS
-AMBIENT_LIGHT = 1.0
-LIGHT_MULTIPLY = 1.0
+AMBIENT_LIGHT = 2.0  # default: 1.0
+LIGHT_MULTIPLY = 1.0  # default: 1.0

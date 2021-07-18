@@ -1,8 +1,9 @@
-from core.physic.physics import world, objects
+from core.physic.physics import MainPhysicSpace, objects
 from user.KeyMapping import *
 from core.objects.gObjects import *
 from core.rendering.PyOGL import *
 from core.rendering.Lighting import add_light, LightSource, FireLight, clearLights, lights_gr
+from core.rendering.Particles import Particle
 
 from core.rendering.TextRender import TextObject, DefaultFont
 
@@ -10,12 +11,12 @@ from core.audio.PyOAL import AudioManager
 
 import pygame
 
-audio_manager = AudioManager()
 
 # GROUPS
 background_gr = RenderGroup()
 background_near_gr = RenderGroup()
 obstacles_gr = RenderGroup()
+items_gr = RenderGroup(use_depth=False)
 characters_gr = RenderGroup()
 player_gr = RenderGroup()
 front_gr = RenderGroup()
@@ -37,32 +38,37 @@ holding_keys = {
 
 
 def render():
-    camera.focusTo(*hero.pos)
+    camera.focus_to(*hero.pos)
     background_gr.update(1, camera)
 
-    pre_render()
-    draw_groups()
-    post_render(Shaders.shaders['ScreenShaderGame'], )
+    preRender()
+    drawGroups()
+    postRender(Shaders.shaders['ScreenShaderGame'], )
 
 
-def draw_groups():
+def drawGroups():
     # drawing all GLSprite groups
-    drawGroups(None, characters_gr, player_gr, obstacles_gr, front_gr, background_near_gr, background_gr, gui_gr)
+    drawGroupsFinally(None, characters_gr, player_gr, obstacles_gr,
+                      front_gr, background_near_gr, background_gr, items_gr, gui_gr)
 
 
 def update(dt):
     # USER EVENTS
-    exit_code = user_input()
+    exit_code = userInput()
     if exit_code:
         return exit_code
 
-    # PHYSIC AND UPDATE
-    world.step(dt)
-    update_groups(dt)
-    audio_manager.update()
+    # PHYSIC AND UPDATE [!!! PHYSICS UPDATE FIXED AND NOT BASED ON FPS !!!]
+    # TODO: JUST WARNING ^
+    puf = PHYSIC_UPDATE_FREQUENCY
+    MainPhysicSpace.step(dt=puf)
+    updateGroups(dt=puf)
+
+    # SOUND
+    AudioManager.update_listener(hero.pos, hero.body.velocity)
 
 
-def user_input():
+def userInput():
     # USER INPUT
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
@@ -80,6 +86,9 @@ def user_input():
             elif key == pygame.K_q:
                 summon('WoodenCrate', obstacles_gr, hero.pos)
                 # add_light(hero.pos, 12, 'round_smooth')
+
+            elif key == pygame.K_p:
+                Particle.create(items_gr, 'Particle/fire', hero.pos, (10, 24), (600, 1200), (0, 45))
 
             elif key == K_GRAB:
                 hero.grab_nearest_put(objects)
@@ -103,11 +112,11 @@ def user_input():
             if key == K_ACTION1:
                 hero.throw_grabbed()
 
-    update_hero_movement()
+    updateHeroMovement()
     return None
 
 
-def update_hero_movement():
+def updateHeroMovement():
     # update direction hero's walking based on USER INPUT from user_events()
     if holding_keys[K_MOVE_RIGHT]:
         hero.walk_direction = 1
@@ -117,15 +126,16 @@ def update_hero_movement():
         hero.walk_direction = 0
 
 
-def update_groups(dt):
+def updateGroups(dt):
     # updating all GLSprite groups
     player_gr.update(dt)
     obstacles_gr.update(dt)
     background_gr.update(dt, camera)
     lights_gr.update(dt)
+    items_gr.update(dt)
 
 
-def init_screen(hero_life=False, first_load=False):
+def initScreen(hero_life=False, first_load=False):
     global hero, hero_inited, render_zone, t
     BackgroundColor(background_gr)
     # #  render distance
@@ -145,6 +155,7 @@ def init_screen(hero_life=False, first_load=False):
     # size=[2000, 2000], texture='LevelOne/r_tile_grey_1', layer=0.7)
     #
     MetalCrate(obstacles_gr, pos=[700, 800])
+    DroppedItem(items_gr, pos=[700, 900], item="RustySword")
     # WorldRectangleSensor(front_gr, pos=[0, 640], size=[128, 256], texture='LevelOne/glass', layer=1)
     WorldRectangleSensor(background_near_gr, pos=[100, 600], size=[32, 32], texture='LevelOne/glass', layer=4)
 
@@ -162,13 +173,13 @@ def init_screen(hero_life=False, first_load=False):
 
     # GUIHeroHealthBar(gui_gr, [256, 800], layer=0)
 
-    audio_manager.play_sound('test.ogg')
+    # audio_manager.play_sound('test.ogg')
 
 
 def close():
 
     # Stop sounds
-    audio_manager.stop_all_sounds()
+    # audio_manager.stop_all_sounds()
 
     # Delete images
     background_gr.delete_all()
@@ -178,9 +189,10 @@ def close():
     player_gr.delete_all()
     front_gr.delete_all()
     gui_gr.delete_all()
+    items_gr.delete_all()
 
     # Delete physic bodies
-    world.clear()
+    MainPhysicSpace.clear()
 
     # Delete light sources
     clearLights()

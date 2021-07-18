@@ -5,6 +5,12 @@
     "menu_loadgame": "Загрузить игру",
     "menu_savegame": "Сохранить игру",
     "menu_settings": "Настройки",
-    "menu_exit": "Выйти"
+    "menu_exit": "Выйти",
+
+    "inventory_weapondamage": "Урон: ",
+    "inventory_description": "Описание Предмета:",
+
+    "item_RustySword": "Ржавый Меч",
+    "item_des_RustySword": "Давным давно этот меч служил великому герою,\nТеперь он в Ваших руках..."
   }
 }

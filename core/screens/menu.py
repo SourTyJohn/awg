@@ -3,6 +3,8 @@ from user.KeyMapping import K_CLOSE, K_MOVE_UP, K_MOVE_DOWN, K_MENU_PRESS
 from core.rendering.PyOGL import *
 from core.rendering.Textures import EssentialTextureStorage as Ets
 
+from core.audio.PyOAL import AudioManager
+
 
 decoration = RenderGroup()
 back = RenderGroup()
@@ -19,11 +21,14 @@ first = True
 hero_is_alive = True
 
 
-def init_screen(hero_life=True, first_load=False):
+def initScreen(hero_life=True, first_load=False):
+    AudioManager.reset_listener()
+    AudioManager.set_stream('music', 'main_menu', True)
+
     global buttons, selected_button
     selected_button = 0
 
-    camera.setField(WINDOW_RECT)
+    camera.set_filed(WINDOW_RECT)
 
     global first, exit_code, hero_is_alive
     exit_code, first, hero_is_alive = None, first_load, hero_is_alive
@@ -34,7 +39,8 @@ def init_screen(hero_life=True, first_load=False):
     Button.hover(0, -1)
 
 
-def close_menu():
+def closeMenu():
+    AudioManager.fade_stream('music', 2)
     decoration.delete_all()
     back.delete_all()
     buttons_group.delete_all()
@@ -44,33 +50,33 @@ exit_code = None
 
 
 def render():
-    pre_render(do_depth_test=False)
-    drawGroups(None, back, decoration, buttons_group)
-    post_render(Shaders.shaders['ScreenShaderMenu'], )
+    preRender(do_depth_test=False)
+    drawGroupsFinally(None, back, decoration, buttons_group)
+    postRender(Shaders.shaders['ScreenShaderMenu'], )
 
 
 def update(dt):
     if exit_code:
-        close_menu()
+        closeMenu()
         return exit_code
 
-    user_input()
+    userInput()
 
     buttons_group.update()
     decoration.update()
 
 
-def user_input():
+def userInput():
     global selected_button, exit_code
 
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
-            close_menu()
+            closeMenu()
             exit_code = 'Quit'
 
         if event.type == pygame.KEYDOWN:
             if event.key == K_CLOSE and not first:
-                close_menu()
+                closeMenu()
                 exit_code = 'game'
 
             elif event.key == K_MOVE_UP and 0 < selected_button:
@@ -103,8 +109,8 @@ class ButtonText(RenderObjectStatic):
     def __init__(self, number):
         self.texture = number
 
-        drawData = ButtonText.TEXTURES[number].makeDrawData(layer=0)
-        super().__init__(None, (0, 0), drawdata=drawData, layer=0)
+        draw_data = ButtonText.TEXTURES[number].make_draw_data(layer=0)
+        super().__init__(None, (0, 0), drawdata=draw_data, layer=0)
         self.rect.size = ButtonText.TEXTURES[number].size
 
 
@@ -122,6 +128,7 @@ class Button(RenderObjectStatic):
         if -1 < prev <= buttons_count:
             buttons[prev].setTexture(0)
         buttons[this].setTexture(1)
+        AudioManager.play_sound('menu_button_select', [0, 0, 0])
 
 
 class FullButton(RenderObjectComposite):
@@ -158,7 +165,7 @@ class ButtonFunctions:
     @classmethod
     def loadGame(cls):
         global exit_code
-        buttons[selected_button].rotY(-buttons[selected_button][0].y_Rotation)
+        buttons[selected_button].set_rotation_y(-buttons[selected_button][0].y_Rotation)
 
 
 Bf = ButtonFunctions

@@ -1,14 +1,10 @@
 import numpy as np
-from math import atan2, pi, sin, cos, radians, sqrt, tan
+from math import atan2, pi, sin, cos, radians, sqrt
 from pymunk.vec2d import Vec2d
+from functools import lru_cache
 
 
 # VECTOR
-def vec_normalize(vec) -> Vec2d:
-    length = vec.length()
-    return Vec2d(vec.x / length, vec.y / length)
-
-
 def vec_dot(blue, red) -> float:
     return blue.x * red.x + blue.y * red.y
 
@@ -23,23 +19,18 @@ def vec_orthogonal(vec) -> Vec2d:
 
 def vec_unit_to_degree(vec) -> float:
     return atan2(*vec) * 180 / pi
-#
 
 
-# unused
-def transform(m, v):
-    return np.asarray(m * np.asmatrix(v).T)[:, 0]
-
-
-def magnitude(v: np.ndarray):
+def vec_magnitude(v: np.ndarray):
     return sqrt((v ** 2).sum())
 
 
-def normalize(v):
-    m = magnitude(v)
+def vec_normalize(v):
+    m = vec_magnitude(v)
     if m == 0:
         return v
     return v / m
+#
 
 
 def sincos(a):
@@ -62,32 +53,6 @@ def ortho(l_, r, b, t, n=-1, f=1):
                               [0.0, 0.0, 0.0, 1.0]])
 
 
-# unused
-def perspective(fovy, aspect, n, f):
-    s = 1.0 / tan(radians(fovy) / 2.0)
-    sx, sy = s / aspect, s
-    zz = (f + n) / (n - f)
-    zw = 2 * f * n / (n - f)
-    return np.array([[sx, 0, 0, 0],
-                     [0, sy, 0, 0],
-                     [0, 0, zz, zw],
-                     [0, 0, -1, 0]])
-
-
-# unused
-def frustum(x0, x1, y0, y1, z0, z1):
-    a = (x1 + x0) / (x1 - x0)
-    b = (y1 + y0) / (y1 - y0)
-    c = -(z1 + z0) / (z1 - z0)
-    d = -2 * z1 * z0 / (z1 - z0)
-    sx = 2 * z0 / (x1 - x0)
-    sy = 2 * z0 / (y1 - y0)
-    return np.array([[sx, 0, a, 0],
-                     [0, sy, b, 0],
-                     [0, 0, c, d],
-                     [0, 0, -1, 0]])
-
-
 # MOVING
 def translate(x, y, z=0):
     return np.asfortranarray([[1, 0, 0, x],
@@ -103,7 +68,7 @@ def scale(x, y, z=1):
 
 # ROTATION
 def rotate(a, xyz):
-    x, y, z = normalize(xyz)
+    x, y, z = vec_normalize(xyz)
     s, c = sincos(a)
     nc = 1 - c
     return np.asfortranarray([[x * x * nc + c,       x * y * nc - z * s, x * z * nc + y * s,    0],
@@ -135,6 +100,7 @@ def reflectY():
                               [+0,  0, 0, 1]])
 
 
+@lru_cache
 def rotz(a):
     s, c = sincos(a)
     return np.asfortranarray([[c, -s, 0, 0],
@@ -143,31 +109,9 @@ def rotz(a):
                               [0,  0, 0, 1]])
 
 
-# unused
-def lookAt(eye, target, up):
-    F = target[:3] - eye[:3]
-    f = normalize(F)
-    U = normalize(up[:3])
-    s = np.cross(f, U)
-    u = np.cross(s, f)
-    M = np.array(np.identity(4))
-    M[:3, :3] = np.vstack([s, u, -f])
-    T = translate(*-eye)
-
-    return M * T
-
-
-# unused
-def viewport(x, y, w, h):
-    x, y, w, h = map(float, (x, y, w, h))
-    return np.array([[w / 2, 0, 0, x + w / 2],
-                     [0, h / 2, 0, y + h / 2],
-                     [0, 0, 1, 0],
-                     [0, 0, 0, 1]])
-
-
+# FULL TRANSFORM -> POSITION, CAMERA AND ROTATION IN ONE MATRIX
 def FullTransformMat(x, y, camera, z_rotation):
     t = translate(x, y)
-    o = camera.getMatrix()
+    o = camera.get_matrix()
     r = rotz(z_rotation)
     return np.matmul(np.matmul(o, t), r)

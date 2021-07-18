@@ -45,13 +45,13 @@ class Camera:
     def __getitem__(self, item):
         return self.ortho_params[item]
 
-    def setFov(self, fov):
+    def set_fov(self, fov):
         if fov != self.fov:
             self.fov = fov
             self.fovW = (WINDOW_SIZE[0] * self.fov) / 2
             self.fovH = (WINDOW_SIZE[1] * self.fov) / 2
 
-    def getRect(self):
+    def get_rect(self):
         # returns Rect4f objects representing field of camera view
         o = self.ortho_params
         return Rect4f(o[0], o[2], o[1] - o[0], o[3] - o[2])
@@ -60,15 +60,15 @@ class Camera:
     def pos(self):
         return np.array([(self[0] + self[1]) // 2, (self[2] + self[3]) // 2], dtype=np.int32)
 
-    def setField(self, rect):
+    def set_filed(self, rect):
         x_, y_, w, h = rect[0], rect[1], rect[2] / 2, rect[3] / 2
         self.ortho_params = np.array([x_ - w, x_ + w, y_ - h, y_ + h], dtype='int64')
 
-    def getMatrix(self):
+    def get_matrix(self):
         # applying field of view. Called only in draw_begin()
         return lin.ortho(*self.ortho_params)
 
-    def focusTo(self, x_v, y_v, soft=True):
+    def focus_to(self, x_v, y_v, soft=True):
         if soft:
             # camera smoothly moving to (x_v, y_x) point
             past_pos = self.pos
@@ -88,17 +88,17 @@ camera: Camera
 renderLights = blank
 
 
-def clear_display():
+def clearDisplay():
     # fully clearing display
     glClearColor(*clear_color)
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 
 
 # RENDER
-def pre_render(do_depth_test=True):
+def preRender(do_depth_test=True):
     # MY FRAME BUFFER
     frameBuffer.bind()
-    clear_display()
+    clearDisplay()
 
     # ENABLE STUFF
     glEnable(GL_TEXTURE_2D)
@@ -109,12 +109,12 @@ def pre_render(do_depth_test=True):
         glEnable(GL_DEPTH_TEST)
 
 
-#  pre_render()
-#  draw_groups()
-#  post_render()
+#  preRender()
+#  drawGroups()
+#  postRender()
 
 
-def post_render(screen_shader):
+def postRender(screen_shader):
     """screen shader - Shader from Shaders module with 'ScreenShader' prefix
     Shader that will be used to render full scene to screen"""
 
@@ -125,7 +125,7 @@ def post_render(screen_shader):
     # DEFAULT FRAME BUFFER
     renderLights()
 
-    clear_display()
+    clearDisplay()
 
     screen_shader.use()
     glBindBuffer(GL_ARRAY_BUFFER, fbuff.vbo)
@@ -149,13 +149,14 @@ def post_render(screen_shader):
 
 # RENDER GROUP
 class RenderGroup(pygame.sprite.Group):
-    __slots__ = ('_visible', )
+    __slots__ = ('_visible', '_use_depth')
     """Container of GlObjects
     """
 
-    def __init__(self, *args, visible=True):
+    def __init__(self, *args, visible=True, use_depth=True):
         super().__init__(*args)
-        self.visible = visible
+        self._visible = visible
+        self._use_depth = use_depth
 
     def __repr__(self):
         #  Memory: {asizeof(self)}
@@ -163,10 +164,19 @@ class RenderGroup(pygame.sprite.Group):
 
     """drawing all of this group objects"""
     def draw_all(self, to_draw=None):
-        """Set of Physic Objects body hash, that should be rendered
+        """
+        to_draw:: Set of Physic Objects body hash, that should be rendered
         If None, all object will be rendered"""
 
-        if not self.visible:
+        if not self._visible:
+            return
+
+        # DRAWING WITHOUT DEPTH BUFFER
+        if not self._use_depth:
+            glDisable(GL_DEPTH_TEST)
+            for obj in self.sprites():
+                obj.smart_draw()
+            glEnable(GL_DEPTH_TEST)
             return
 
         # DRAWING
@@ -192,7 +202,7 @@ class GlTexture:
 
     def __init__(self, data: np.ndarray, size, tex_name, repeat=False):
         self.size = size  # units
-        self.key = make_GL2D_texture(data, *self.size, repeat=repeat)
+        self.key = makeGLTexture(data, *self.size, repeat=repeat)
         self.repeat = repeat
         self.name = tex_name.replace('.png', '')
 
@@ -219,15 +229,15 @@ class GlTexture:
 
         return GlTexture(data, size, image_name, repeat)
 
-    def makeDrawData(self, layer, colors=None):
+    def make_draw_data(self, layer, colors=None):
         """Make draw data with size of this texture
         Usually GlObjects have their own drawData, but you can calculate drawData,
         which will perfectly match this texture"""
         if colors is None:
             colors = ((1.0, 1.0, 1.0, 1.0), ) * 4
 
-        make_draw_data(self.size, colors, layer=layer)
-        return make_draw_data(self.size, colors, layer=layer)
+        drawData(self.size, colors, layer=layer)
+        return drawData(self.size, colors, layer=layer)
 
     def draw(self, pos, vbo, shader, z_rotation=0, **kwargs):
         draw(self.key, pos, vbo, shader, z_rotation, **kwargs)
@@ -334,7 +344,7 @@ class RenderObject(Sprite):
         """Load and bufferize (load to gl buffer) all data, that is required for drawing
         This data includes: texture coords, object coords and color"""
         if isinstance(drawdata, str) and drawdata == 'auto':
-            drawdata = make_draw_data(self.rect.size, self.colors, rotation=rotation, layer=layer)
+            drawdata = drawData(self.rect.size, self.colors, rotation=rotation, layer=layer)
         self.vbo = bufferize(drawdata)
         self._layer = layer
 
@@ -357,16 +367,17 @@ class RenderObject(Sprite):
         return GlTexture
 
     # VISUAL
-    def changeOffset(self, offset):
+    def change_offset(self, offset):
         pass
         # no_offset = [[i - self.tex_offset[0], j - self.tex_offset[1]] for i, j in baseEdgesTex]
         # self.tex_offset = np.array(offset, dtype=np.int16)
         # self.vertexesTex = np.array([[i + offset[0], j + offset[1]] for i, j in no_offset], dtype=np.int32)
 
-    def rotY(self, new_rotation):
+    def set_rotation_y(self, new_rotation):
+        #  y-axis: left or right
         if self.y_Rotation != new_rotation:
             self.y_Rotation = new_rotation
-            drawdata = make_draw_data(self.rect.size, self.colors, rotation=new_rotation, layer=self._layer)
+            drawdata = drawData(self.rect.size, self.colors, rotation=new_rotation, layer=self._layer)
             bufferize(drawdata, self.vbo)
 
     # MOVE
@@ -379,9 +390,9 @@ class RenderObject(Sprite):
 
     # DELETE
     def delete(self):
-        print(f'deleted obj: {self}')
         glBindBuffer(GL_ARRAY_BUFFER, self.vbo)
         glBufferData(GL_ARRAY_BUFFER, 0, None, GL_STATIC_DRAW)
+        glDeleteBuffers(1, np.array(self.vbo, ))
         self.kill()
 
     # DRAW
@@ -404,6 +415,7 @@ class RenderObject(Sprite):
             self.__class__.draw(self, self.shader, 0)
 
     def draw(self, shader, z_rotation):
+        #  to draw, call RenderObjectAnimated/Static draw() method
         return self.visible
 
 
@@ -499,15 +511,19 @@ class RenderObjectComposite(Sprite):
 
     def rotY(self, rotation):
         for obj in self.objects:
-            obj.rotY(rotation)
+            obj.set_rotation_y(rotation)
 
     def delete(self):
         for obj in self.objects:
             obj.delete()
 
+    def move_by(self, vector):
+        for o in self.objects:
+            o.rect.move_by(vector)
+
 
 # MAKE && BIND TEXTURE
-def make_GL2D_texture(image_data: np.ndarray, w: int, h: int, repeat=False) -> int:
+def makeGLTexture(image_data: np.ndarray, w: int, h: int, repeat=False) -> int:
     """Loading pygame.Surface as OpenGL texture
     :return New Texture key"""
 
@@ -535,7 +551,7 @@ def make_GL2D_texture(image_data: np.ndarray, w: int, h: int, repeat=False) -> i
 
 
 # DRAW DATA
-def make_draw_data(size, colors, rotation=1, layer=5):
+def drawData(size, colors, rotation=1, layer=5):
     # ::arg layer - value from 0 to 10
     # lower it is, nearer object to a camera
     assert 0 <= layer <= 10 and isinstance(layer, int), f'Wrong layer param: {layer}. ' \
@@ -568,7 +584,7 @@ def make_draw_data(size, colors, rotation=1, layer=5):
     return data
 
 
-def make_draw_data_for_screen(colors):
+def drawDataFullScreen(colors):
     layer = 1
     w_t, h_t = 1.0, 1.0
     w_o, h_o = 1.0, 1.0
@@ -603,7 +619,7 @@ def splitDrawData(data: np.array):
 
 
 # DRAWING FUNCTION
-def drawGroups(render_zone, *groups):
+def drawGroupsFinally(render_zone, *groups):
     # THE ONLY WAY TO DRAW ON SCREEN
     # Drawing each object in each group
 
@@ -652,12 +668,12 @@ class FrameBuffer:
                  (1.0, 1.0, 1.0, 1.0),
                  (1.0, 1.0, 1.0, 1.0),
                  (1.0, 1.0, 1.0, 1.0))
-        screen_quad = make_draw_data_for_screen(color)
+        screen_quad = drawDataFullScreen(color)
         self.vbo = bufferize(screen_quad)
 
         # CHECK COMPLETE
         self.check()
-        unbind_framebuff()
+        unbindFrameBuffer()
 
     def bind(self):
         glBindFramebuffer(GL_FRAMEBUFFER, self.key)
@@ -682,7 +698,7 @@ class FrameBuffer:
         glBindTexture(GL_TEXTURE_2D, self.rbo)
 
 
-def unbind_framebuff():
+def unbindFrameBuffer():
     glBindFramebuffer(GL_FRAMEBUFFER, 0)
 
 
@@ -691,7 +707,7 @@ lightBuffer: FrameBuffer
 
 
 # DISPLAY
-def init_display(size=WINDOW_RESOLUTION):
+def initDisplay(size=WINDOW_RESOLUTION):
     global camera, frameBuffer, renderLights, lightBuffer
 
     # Display flags
@@ -707,7 +723,7 @@ def init_display(size=WINDOW_RESOLUTION):
 
     Shaders.init()
     frameBuffer = FrameBuffer(depth_buff=True)
-    clear_display()
+    clearDisplay()
     camera = Camera()
     glClearColor(*clear_color)
     glDepthFunc(GL_LEQUAL)

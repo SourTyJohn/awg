@@ -2,7 +2,7 @@ from core.rendering.PyOGL import GlTexture
 from utils.files import load_font, load_text_localization
 from core.Constants import FONT_SETTINGS, settings
 from PIL import Image, ImageDraw
-from core.rendering.PyOGL import RenderObjectStatic, bufferize, make_draw_data
+from core.rendering.PyOGL import RenderObjectStatic, bufferize, drawData
 from OpenGL.GL import glEnable, glDisable, GL_DEPTH_TEST
 import numpy as np
 
@@ -12,7 +12,7 @@ EssentialFontsStorage = [0, ] * MAX_FONTS
 efs_free_ids = set(range(0, MAX_FONTS + 1))
 
 
-def new_font(family, size, key: int = None):
+def newFont(family, size, key: int = None):
     if key is None:
         try:
             key: int = efs_free_ids.pop()
@@ -24,7 +24,7 @@ def new_font(family, size, key: int = None):
     return font
 
 
-def delete_font(font=None, key: int = None):
+def deleteFont(font=None, key: int = None):
     try:
         assert font is not None and key is None
         assert font is None and key is not None
@@ -44,20 +44,20 @@ def delete_font(font=None, key: int = None):
             efs_free_ids.add(key)
 
 
-DefaultFont = new_font(*FONT_SETTINGS)
-MenuFont = new_font(FONT_SETTINGS[0], 64)
+DefaultFont = newFont(*FONT_SETTINGS)
+MenuFont = newFont(FONT_SETTINGS[0], 64)
 
 
 LocalizedTextsStorage = {}
 
 
-def load_text():
+def loadText():
     global LocalizedTextsStorage
     lts = load_text_localization(key=settings['Language'])
     LocalizedTextsStorage = {f'txt_{key}': lts[key] for key in lts.keys()}
 
 
-load_text()
+loadText()
 
 
 class LocalizedText:
@@ -154,7 +154,7 @@ class TextObject(RenderObjectStatic):
             colors = [(1.0, 1.0, 1.0, 1.0), (1.0, 1.0, 1.0, 1.0), (1.0, 1.0, 1.0, 1.0), (1.0, 1.0, 1.0, 1.0)]
 
         bufferize(
-            make_draw_data(texture.size, colors, rotation=rotation, layer=self._layer), self.vbo
+            drawData(texture.size, colors, rotation=rotation, layer=self._layer), self.vbo
         )
 
         if make_visible:

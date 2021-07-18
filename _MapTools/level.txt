@@ -1,1 +1,0 @@
-{'base': {'name': 'level.txt', 'size': [1, 1], 'tex_packs': {'Devs'}}, 'geometry': [{'texture': 'Devs/devs_1.png', 'rect': [176, 178, 560, 320], 'type': 'solid', 'tex_offset': (0, 0), 'rotation': 1}, {'texture': 'Devs/devs_1.png', 'rect': [304, 50, 400, 80], 'type': 'solid', 'tex_offset': (0, 0), 'rotation': 1}], 'objects': []}

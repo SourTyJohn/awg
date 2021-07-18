@@ -3,7 +3,7 @@ import numpy as np
 
 class Rect4f:
     """Array of four floats, representing center's pos and size of rectangle"""
-    __slots__ = ['values', ]
+    __slots__ = ('values', )
 
     def __init__(self, x_center: float, y_center: float, width: float, height: float):
         # init with center position and size

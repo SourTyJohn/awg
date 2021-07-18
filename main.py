@@ -2,6 +2,7 @@ import pygame as pg
 import core.rendering.PyOGL as GL
 from core.Constants import WINDOW_RESOLUTION, FPS_LOCK, TITLE, FPS_SHOW
 from timeit import default_timer as timer
+from core.audio.PyOAL import AudioManager
 
 
 clock: pg.time.Clock
@@ -19,11 +20,12 @@ def _main():
 
 running = True
 screen_type = 'menu'
-start_time = None
+start_time = 0
+seconds = 0.0
 
 
-def game_loop():
-    global running, screen_type, start_time
+def gameLoop():
+    global running, screen_type, start_time, seconds
 
     #  Focus selected screen
     scr = screens[screen_type]
@@ -32,14 +34,17 @@ def game_loop():
     scr.render()
 
     # Update screen
-    if start_time:
-        dt = timer() - start_time
-        exit_code = scr.update(dt)
-    else:
-        dt = 1
-        exit_code = None
+    dt = timer() - start_time
+    exit_code = scr.update(dt)
 
-    # Timer
+    # Some functions to be not every tick
+    seconds += dt
+    if seconds > 2:
+        seconds = 0.0
+        AudioManager.clear_empty_sources()
+    AudioManager.update_streams(dt)
+
+    #
     start_time = timer()
 
     # Current FPS display
@@ -47,12 +52,13 @@ def game_loop():
         print(f'\rFPS: {1 / dt // 1}', end='')
 
     # Screen feedback
-    if exit_code in ('menu', 'game'):
-        if exit_code != screen_type:
+    if exit_code in {'menu', 'game', 'Quit'}:
+        if exit_code == 'Quit':
+            running = False
+
+        elif exit_code != screen_type:
             screen_type = exit_code
-            screens[exit_code].init_screen()
-    elif exit_code == 'Quit':
-        running = False
+            screens[exit_code].initScreen()
 
     # End phase
     pg.display.flip()
@@ -60,15 +66,16 @@ def game_loop():
 
 
 if __name__ == '__main__':
-    GL.init_display(WINDOW_RESOLUTION)
-
+    GL.initDisplay(WINDOW_RESOLUTION)
     _main()
 
     import core.screens.menu as rmenu
     import core.screens.game as rgame
-
     screens = {'menu': rmenu, 'game': rgame}
-    screens[screen_type].init_screen(first_load=True)
+    screens[screen_type].initScreen(first_load=True)
 
     while running:
-        game_loop()
+        gameLoop()
+
+    # finally
+    AudioManager.destroy()

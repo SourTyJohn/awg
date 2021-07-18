@@ -17,10 +17,11 @@ def setup(space: pymunk.Space):
     # === OBSTACLES ===
 
     # === TRIGGERS ===
-    triggers_setup(space)
+    triggersSetup(space)
+    handleCollisionSetup(space)
 
 
-def triggers_setup(space):
+def triggersSetup(space):
     ct = COLL_TYPES
     """Setting up trigger collision types based on their names
     All Trigger collision types will detect collision with types specified in their names
@@ -35,37 +36,72 @@ def triggers_setup(space):
 
             for c in types:
                 handler = space.add_collision_handler(ct[c], ct[trigger_name])
-                handler.begin = trigger_enter
-                handler.separate = trigger_leave
+                handler.begin = triggerEnter
+                handler.separate = triggerLeave
 
 
-def from_shape(arbiter: pymunk.Arbiter, i=0):
+def handleCollisionSetup(spc: pymunk.Space):
+    handler = spc.add_default_collision_handler()
+
+    def collisionHandlerPre(arbiter: pymunk.Arbiter, space, data):
+        if arbiter.is_first_contact:
+            for s in range(len(arbiter.shapes)):
+                obj = objectFromShape(arbiter, s)[0]
+                obj.pre_collision_handle(arbiter.total_impulse)
+        return True
+
+    def collisionHandlerPost(arbiter: pymunk.Arbiter, space, data):
+        if arbiter.is_first_contact:
+            for s in range(len(arbiter.shapes)):
+                obj = objectFromShape(arbiter, s)[0]
+                obj.post_collision_handle(arbiter.total_impulse)
+        return True
+
+    handler.post_solve = collisionHandlerPost
+    handler.pre_solve = collisionHandlerPre
+
+
+class BlankObject:
+    def post_collision_handle(self, *args):
+        pass
+
+    def pre_collision_handle(self, *args):
+        pass
+
+    def leave(self, *args):
+        pass
+
+    def enter(self, *args):
+        pass
+
+
+def objectFromShape(arbiter: pymunk.Arbiter, i=0):
     # Get physic object by it's shape from pymunk.Arbiter
     # len(Arbiter.shapes) == 2. i must be 0 or 1
-    key = arbiter.shapes[i].body.get_key
+    key = arbiter.shapes[i].body.get_hash_key
     if key not in objects.keys():
-        return None, None
+        return BlankObject, None
     return objects[key], key
     # objects is a dict from Physics.py
 
 
-def collision_mortal_vs_obstacle(arbiter: pymunk.Arbiter, space, data):
+def collisionMortalVsObstacle(arbiter: pymunk.Arbiter, space, data):
     if arbiter.is_first_contact:
-        from_shape(arbiter)[0].fall(arbiter.total_impulse)
+        objectFromShape(arbiter)[0].fall(arbiter.total_impulse)
     return True
 
 
-def trigger_enter(arbiter, space, data):
+def triggerEnter(arbiter, space, data):
     if arbiter.is_first_contact:
-        actor, key = from_shape(arbiter, i=0)
-        trigger, _ = from_shape(arbiter, i=1)
+        actor, key = objectFromShape(arbiter, i=0)
+        trigger, _ = objectFromShape(arbiter, i=1)
         trigger.enter(actor, key, arbiter)
     return False
 
 
-def trigger_leave(arbiter, space, data):
-    actor, key = from_shape(arbiter, i=0)
-    trigger, _ = from_shape(arbiter, i=1)
+def triggerLeave(arbiter, space, data):
+    actor, key = objectFromShape(arbiter, i=0)
+    trigger, _ = objectFromShape(arbiter, i=1)
 
     if actor and trigger:
         trigger.leave(actor, key, arbiter)

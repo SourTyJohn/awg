@@ -1,8 +1,10 @@
 {
 	"Brightness": 0.9,
 	"Resolution": "16x10low",
-	"Volume": 1,
+	"Volume": 1.0,
+	"Music Volume": 1.0,
 	"Texture Pack": "b_past",
+	"Sound Pack": "base_pack",
 	"Font": "Arial Black",
 	"Language": "eng"
 }

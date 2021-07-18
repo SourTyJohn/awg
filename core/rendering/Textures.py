@@ -23,7 +23,7 @@ def loadTexturePack(name):
             t = Gl.GlTexture.load_file(f'{dr}/{tex}', (tex[0] == 'r'))
             pack.append(t)
 
-    print(f'-- Texture Pack: {name} loaded\n')
+    print(f'-- Done.\n')
     return pack
 
 

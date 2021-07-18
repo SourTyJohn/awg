@@ -3,22 +3,77 @@ THIS MODUlE CONTAINS ALL GAME OBJECTS THAT CAN BE USED IN GAME (screens.game)
 """
 
 from core.objects.gObjectTools import *
-from core.physic.physics import triggers, rey_cast
+from core.physic.physics import triggers, reyCast, inf
 
 from core.rendering.Textures import EssentialTextureStorage as Ets
 from core.Constants import *
 
+from core.audio.PyOAL import AudioManager
+
+from core.objects.gItems import InventoryAndItemsManager
+
+
 from pymunk.vec2d import Vec2d
 from pymunk import moment_for_poly
-inf = float('inf')
 
 import numpy as np
+
+
+# DROPPED ITEMS
+
+class DroppedItem(composite):
+    class DIF(image):
+        TEXTURES = [Ets['Item/item_frame'], ]
+        texture = 0
+        size = (72, 72)
+
+        def __init__(self, pos):
+            color = np.array([1.0, 0.2, 1.0, 0.3], dtype=np.float32)
+            self.colors = [
+                color, color, color, color
+            ]
+            super().__init__(None, pos, layer=4,)
+
+    class DI(image):
+        TEXTURES = Ets
+        __slots__ = ("item", "item_name")
+
+        size = (48, 48)
+
+        def __init__(self, pos, item):
+            self.item = item
+            item_class = InventoryAndItemsManager.itemClass(item)
+            self.texture = item_class.icon
+            self.item_name = item_class.name
+            super().__init__(None, pos, layer=3)
+
+    def __init__(self, gr, pos, item):
+        objs = [
+            DroppedItem.DI(pos, item),
+            DroppedItem.DIF(pos)
+        ]
+        super().__init__(gr, *objs)
+        self.min_y = pos[1] - 8
+        self.max_y = pos[1] + 8
+        self.moving_to = -1  # -1 down, 1 up
+
+    def update(self, *args, **kwargs) -> None:
+        super(DroppedItem, self).update(*args, **kwargs)
+
+        dt = args[0]
+        self.move_by(np.array([0, dt * 8], dtype=np.float32) * self.moving_to)
+
+        pos_y = self.objects[0].rect.pos[1]
+        if pos_y >= self.max_y:
+            self.moving_to = -1
+        elif pos_y <= self.min_y:
+            self.moving_to = 1
 
 
 # WORLD GEOMETRY
 class WorldRectangleRigid(image, phys, direct):
     # This class represents base level geometry with rigid body
-    shape_filter = shape_filter(('obstacle', ), )
+    shape_filter = shapeFilter(('obstacle',), )
 
     TEXTURES = Ets
     body_type = 'static'
@@ -30,18 +85,18 @@ class WorldRectangleRigid(image, phys, direct):
         super().__init__(gr, pos, size, tex_offset=tex_offset, layer=layer)
 
         # PHYSIC
-        points = rect_points(*size)
+        points = rectPoints(*size)
         phys.__init__(self, pos, points=points)
         if shape_f:
             self.shape.filter = shape_f
 
 
 class WorldRectangleSensor(WorldRectangleRigid):
-    shape_filter = shape_filter(('no_collision', ), collide_with=())
+    shape_filter = shapeFilter(('no_collision',), collide_with=())
 
 
 class WorldGeometry(image, phys, direct):
-    shape_filter = shape_filter(('obstacle', ), )
+    shape_filter = shapeFilter(('obstacle',), )
     collision_type = 'obstacle'
     body_type = 'static'
 
@@ -83,7 +138,7 @@ class BackgroundColor(image):
 
 # TRIGGERS
 class Trigger(phys):
-    shape_filter = shape_filter(('trigger', ), )
+    shape_filter = shapeFilter(('trigger',), )
     body_type = 'kinematic'
 
     """Area that will call given function if something intersects it and/or leaves it"""
@@ -94,7 +149,7 @@ class Trigger(phys):
 
     def __init__(self, function_enter, collision_type, function_leave=None, triggers_by=(), ignore=(),
                  pos=(0, 0), bound_to=None, offset=(0, 0), size=None):
-        super().__init__(pos, points=rect_points(*size), collision_type=collision_type)
+        super().__init__(pos, points=rectPoints(*size), collision_type=collision_type)
 
         """Trigger requires one of provided args: pos, bounded_to.
         If pos, than Trigger static in given position==pos
@@ -188,7 +243,7 @@ class Trigger(phys):
 class Character(image, phys):
     body_type = 'dynamic'
     collision_type = 'mortal'
-    shape_filter = shape_filter(('character', 'mortal'), )
+    shape_filter = shapeFilter(('character', 'mortal'), ignore=('particle', ))
 
     MAX_JUMPS = 2
     WALKING_VEC = 0
@@ -227,7 +282,7 @@ class Character(image, phys):
         self.__grabbedFilter = None
 
         # Blocks rotation. Characters stand on their feet
-        self.body.moment = inf
+        self.can_rotate(False)
 
         self.on_ground = False  # is Character standing on solid floor
         self.in_air = 0  # How long din't Character touch solid flour
@@ -258,8 +313,8 @@ class Character(image, phys):
         legs = [self.pos + legs[j] for j in self.__class__.legs]
 
         # Casting reys from legs
-        left = rey_cast(legs[0] - Vec2d(0, 2), legs[0] - Vec2d(0, 6), self.shape_filter, True)
-        right = rey_cast(legs[1] - Vec2d(0, 2), legs[1] - Vec2d(0, 6), self.shape_filter, True)
+        left = reyCast(legs[0] - Vec2d(0, 2), legs[0] - Vec2d(0, 6), self.shape_filter, True)
+        right = reyCast(legs[1] - Vec2d(0, 2), legs[1] - Vec2d(0, 6), self.shape_filter, True)
 
         if (left and 10 < abs(left.normal.angle_degrees) < 170)\
                 or (right and 10 < abs(right.normal.angle_degrees) < 170):
@@ -286,7 +341,7 @@ class Character(image, phys):
 
         body = self.body
         body.apply_force_at_local_point(vel, body.center_of_gravity)
-        self.rotY(self.walk_direction)
+        self.set_rotation_y(self.walk_direction)
 
         if body.velocity[0] > 0:
             body.velocity = Vec2d(
@@ -324,7 +379,7 @@ class Character(image, phys):
         b.angle = 0
 
         self.__grabbedFilter = target.shape.filter
-        target.shape.filter = add_ignore(target.shape_filter, self.shape.filter.categories)
+        target.shape.filter = filterAddIgnore(target.shape_filter, self.shape.filter.categories)
 
         self.grabbed_object = target
 
@@ -359,7 +414,7 @@ class Character(image, phys):
             self.jumps = 1
 
 
-# vvv INSERT YOUR CLASSES HERE vvv #
+# vvv DEFINE YOUR CLASSES HERE vvv #
 
 class MainHero(Character, direct, mortal):
     # RENDER
@@ -367,8 +422,8 @@ class MainHero(Character, direct, mortal):
     size = (64, 144)
 
     # PHYSIC
-    shape_filter = shape_filter(('player', 'character', 'mortal'), )
-    points = rect_points(*size)
+    shape_filter = shapeFilter(('player', 'character', 'mortal'), ignore=('particle', ))
+    points = rectPoints(*size)
     friction = 2
     mass = 10.0
 
@@ -402,8 +457,8 @@ class MainHero(Character, direct, mortal):
         legs = [self.pos + legs[j] for j in self.__class__.legs]
 
         # Casting reys from legs
-        left = rey_cast(legs[0] - Vec2d(0, 2), legs[0] - Vec2d(0, 6), self.shape_filter, True)
-        right = rey_cast(legs[1] - Vec2d(0, 2), legs[1] - Vec2d(0, 6), self.shape_filter, True)
+        left = reyCast(legs[0] - Vec2d(0, 2), legs[0] - Vec2d(0, 6), self.shape_filter, True)
+        right = reyCast(legs[1] - Vec2d(0, 2), legs[1] - Vec2d(0, 6), self.shape_filter, True)
 
         if (left and 10 < abs(left.normal.angle_degrees) < 170)\
                 or (right and 10 < abs(right.normal.angle_degrees) < 170):
@@ -422,12 +477,12 @@ class MainHero(Character, direct, mortal):
 class WoodenCrate(image, phys, direct, mortal):
     body_type = 'dynamic'
     collision_type = 'mortal'
-    shape_filter = shape_filter(('mortal', 'obstacle'), )
+    shape_filter = shapeFilter(('mortal', 'obstacle'), )
 
     # static
     TEXTURES = (Ets['LevelOne/crate'], )
     size = (72, 72)
-    points = rect_points(*size)
+    points = rectPoints(*size)
 
     # dynamic
     mass = 20.0
@@ -441,12 +496,19 @@ class WoodenCrate(image, phys, direct, mortal):
         phys.__init__(self, pos)
         self.init_mortal(self.__class__)
 
+    def post_collision_handle(self, impulse, **data):
+        impulse = impulse.length
+        if impulse > 4000:
+            AudioManager.play_sound('crate_wood_hit', self.pos, self.body.velocity, volume=impulse / 30000)
+        # if impulse > 26_000:
+        #     self.die()
+
 
 class MetalCrate(WoodenCrate, direct, mortal):
     # static
     TEXTURES = (Ets['LevelOne/crate_metal'], )
     size = (128, 128)
-    points = rect_points(*size)
+    points = rectPoints(*size)
 
     # dynamic
     mass = 60.0
@@ -454,7 +516,10 @@ class MetalCrate(WoodenCrate, direct, mortal):
     # mortal
     max_health = 32
 
-# ^^^ INSERT YOUR CLASSES HERE ^^^ #
+    def collision_handle(self, impulse, **data):
+        pass
+
+# ^^^ DEFINE YOUR CLASSES HERE ^^^ #
 
 
 """Storage of all Direct objects. 

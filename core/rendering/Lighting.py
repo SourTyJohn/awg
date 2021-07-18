@@ -67,7 +67,7 @@ def add_light(ltype, pos, power, light_form, layer=1, color=(0.1, 0.1, 0.1, 0.1)
 
 def renderLights():
     lightBuffer.bind()
-    clear_display()
+    clearDisplay()
 
     # glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE)
 
@@ -75,7 +75,7 @@ def renderLights():
         lights_gr.draw_all(True, )
 
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
-    unbind_framebuff()
+    unbindFrameBuffer()
 
 
 def clearLights():

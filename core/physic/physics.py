@@ -1,6 +1,7 @@
 import pymunk
 from core.math.linear import vec_unit_to_degree
 from core.Constants import GRAVITY_VECTOR, COLL_TYPES, BODY_TYPES
+inf = float('inf')
 
 
 objects = {}
@@ -18,7 +19,7 @@ class Body(pymunk.Body):
     hash_key = None
 
     @property
-    def get_key(self):
+    def get_hash_key(self):
         if not self.hash_key:
             self.hash_key = self.__hash__()
         return self.hash_key
@@ -57,24 +58,35 @@ class PhysicObject:
     Can be changed in subclasses."""
 
     body_type = 'static'
-    """'static': pymunk.Body.STATIC,
-    'dynamic': pymunk.Body.DYNAMIC,
-    'kinematic': pymunk.Body.KINEMATIC"""
-    collision_type = 'prop'
+    """
+    'static': pymunk.Body.STATIC,       Level geometry
+    'dynamic': pymunk.Body.DYNAMIC,     Moving objects
+    'kinematic': pymunk.Body.KINEMATIC  Level objects, that can be moved by The Power of Code
+    """
+    collision_type = 'obstacle'
     shape_filter = None
 
-    def __init__(self, pos, points=None, collision_type=None, shape_filter=None):
+    def __init__(self, pos, points=None, collision_type=None, shape_filter=None, radius=None, mass=None):
+        """You can specify points for polygon shape or radius for circle shape
+        Do not specify both of them"""
         """If no data given, than take it from class. Usually it is not given.
         Only exception is WorldRectangles"""
         cls = self.__class__
-        points = cls.points if points is None else points
+        points = (cls.points if points is None else points) if not radius else None
         collision_type = cls.collision_type if not collision_type else collision_type
         shape_filter = cls.shape_filter if not shape_filter else shape_filter
+        mass = cls.mass if not mass else mass
         body_type = cls.body_type
 
         # Pymunk things. Make Shape and Body
-        self.body = make_body(pos, points, body_type, cls.mass)
-        self.shape = make_shape(self.body, points, collision_type, cls.friction, shape_filter=shape_filter)
+        if radius:  # Circle
+            self.body = makeBodyCircle(pos, radius, body_type, mass)
+            self.shape = makeShapeCircle(self.body, radius, collision_type,
+                                         cls.friction, shape_filter=shape_filter)
+        else:       # Polygon
+            self.body = makeBodyPolygon(pos, points, body_type, mass)
+            self.shape = makeShapePolygon(self.body, points, collision_type,
+                                          cls.friction, shape_filter=shape_filter)
 
         # Collision type
         if collision_type not in COLL_TYPES.keys():
@@ -82,19 +94,33 @@ class PhysicObject:
                              f'Select from {list(COLL_TYPES.keys())}')
         self.shape.collision_type = COLL_TYPES[collision_type]
 
+        # Collision handler
+        pass
+
         # Add to world (Physic simulation)
-        world.add(self, self.body, self.shape)
+        MainPhysicSpace.add(self, self.body, self.shape)
+
+    @classmethod  # factory method
+    def make_circle(cls, pos, radius, collision_type=None, shape_filter=None):
+        return PhysicObject(pos, points=None, collision_type=collision_type,
+                            shape_filter=shape_filter, radius=radius)
+
+    def can_rotate(self, b):
+        if b:
+            pass
+        else:
+            self.body.moment = inf
 
     @property
     def bhash(self):
-        return self.body.hash_key
+        return self.body.get_hash_key
 
     def update(self, *args, **kwargs) -> None:
         pass
 
     def delete_physic(self):
         # Fully deleting object from physic world
-        world.vanish(self)
+        MainPhysicSpace.vanish(self)
 
     # PHYSIC
     @property
@@ -125,6 +151,14 @@ class PhysicObject:
     def pos(self, value):
         self.body.pos = value
 
+    def post_collision_handle(self, impulse, **data) -> bool:
+        # rewrite in child-classes
+        return True
+
+    def pre_collision_handle(self, impulse, **data) -> bool:
+        # rewrite in child-classes
+        return True
+
 
 class World:
     __instance = None
@@ -153,7 +187,7 @@ class World:
     def add(self, obj, body, *shapes):
         # Add object to world
         self.space.add(body, *shapes)
-        objects[body.get_key] = obj
+        objects[body.get_hash_key] = obj
 
     def step(self, dt):
         self.space.step(dt)
@@ -173,7 +207,7 @@ class World:
             obj.__class__.delete_physic(obj, )
 
 
-def make_body(pos, points, body_type, mass=0.0, moment=0):
+def makeBodyPolygon(pos, points, body_type, mass=0.0, moment=0):
     if mass:
         moment = pymunk.moment_for_poly(mass, points, (0, 0))
     body = Body(mass, moment, body_type=BODY_TYPES[body_type])
@@ -181,7 +215,7 @@ def make_body(pos, points, body_type, mass=0.0, moment=0):
     return body
 
 
-def make_shape(body, points, collision_type, friction=0.0, sensor=False, shape_filter=None):
+def makeShapePolygon(body, points, collision_type, friction=0.0, sensor=False, shape_filter=None):
     shape = pymunk.Poly(body, points)
     shape.collision_type = COLL_TYPES[collision_type]
     shape.friction = friction
@@ -193,10 +227,30 @@ def make_shape(body, points, collision_type, friction=0.0, sensor=False, shape_f
     return shape
 
 
-def rey_cast(start, end, shape_filter: pymunk.ShapeFilter = None, first_only=False, radius=1):
+def makeBodyCircle(pos, radius, body_type, mass=0.0, moment=0):
+    if mass:
+        moment = pymunk.moment_for_circle(mass, radius, radius)
+    body = Body(mass, moment, body_type=BODY_TYPES[body_type])
+    body.pos = pos if pos else (0, 0)
+    return body
+
+
+def makeShapeCircle(body, radius, collision_type, friction=0.0, sensor=False, shape_filter=None):
+    shape = pymunk.Circle(body, radius)
+    shape.collision_type = COLL_TYPES[collision_type]
+    shape.friction = friction
+    shape.sensor = sensor
+
+    if shape_filter:
+        shape.filter = shape_filter
+
+    return shape
+
+
+def reyCast(start, end, shape_filter: pymunk.ShapeFilter = None, first_only=False, radius=1):
     if first_only:
-        return world.space.segment_query_first(start, end, shape_filter=shape_filter, radius=radius)
-    return world.space.segment_query(start, end, shape_filter=shape_filter, radius=radius)
+        return MainPhysicSpace.space.segment_query_first(start, end, shape_filter=shape_filter, radius=radius)
+    return MainPhysicSpace.space.segment_query(start, end, shape_filter=shape_filter, radius=radius)
 
 
-world = World()
+MainPhysicSpace = World()
