@@ -24,7 +24,7 @@ class Shader:
     Abstraction of compiled and linked .glsl files
     Each Shader class is a Singleton.
     To start rendering using this Shader call .use()
-    Shader class can't be used on it's own, use only child-classes
+    Shader is a meta-class
     
     In .glsl shader files you can write after version define:
     #constant <constant type> <constant name>
@@ -87,11 +87,11 @@ class Shader:
         shader = self.program
 
         # ATTRIBUTES POINTERS
-        glGetAttribLocation(shader, 'position')
+        glGetAttribLocation(shader, "position")
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, ctypes.c_void_p(0))
         glEnableVertexAttribArray(0)
 
-        glGetAttribLocation(shader, 'color')
+        glGetAttribLocation(shader, "color")
         glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, stride, ctypes.c_void_p(12))
         glEnableVertexAttribArray(1)
 

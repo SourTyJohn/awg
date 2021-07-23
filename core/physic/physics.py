@@ -1,5 +1,5 @@
 import pymunk
-from core.math.linear import vec_unit_to_degree
+from core.math.linear import normalized_to_degree
 from core.Constants import GRAVITY_VECTOR, COLL_TYPES, BODY_TYPES
 inf = float('inf')
 
@@ -100,6 +100,9 @@ class PhysicObject:
         # Add to world (Physic simulation)
         MainPhysicSpace.add(self, self.body, self.shape)
 
+        if hasattr(self, '_render_type'):
+            self._render_type = 1
+
     @classmethod  # factory method
     def make_circle(cls, pos, radius, collision_type=None, shape_filter=None):
         return PhysicObject(pos, points=None, collision_type=collision_type,
@@ -125,7 +128,7 @@ class PhysicObject:
     # PHYSIC
     @property
     def z_rotation(self):
-        return vec_unit_to_degree(self.body.rotation_vector) - 90
+        return normalized_to_degree(self.body.rotation_vector) - 90
 
     @property
     def bmass(self):

@@ -3,7 +3,7 @@ THIS MODUlE CONTAINS ALL GAME OBJECTS THAT CAN BE USED IN GAME (screens.game)
 """
 
 from core.objects.gObjectTools import *
-from core.physic.physics import triggers, reyCast, inf
+from core.physic.physics import triggers, inf
 
 from core.rendering.Textures import EssentialTextureStorage as Ets
 from core.Constants import *
@@ -74,10 +74,10 @@ class DroppedItem(composite):
 class WorldRectangleRigid(image, phys, direct):
     # This class represents base level geometry with rigid body
     shape_filter = shapeFilter(('obstacle',), )
-
-    TEXTURES = Ets
     body_type = 'static'
     collision_type = 'obstacle'
+
+    TEXTURES = Ets
 
     def __init__(self, gr, pos, size, tex_offset=(0, 0), texture='Devs/r_devs_1', shape_f=None, layer=4):
         # IMAGE
@@ -93,15 +93,6 @@ class WorldRectangleRigid(image, phys, direct):
 
 class WorldRectangleSensor(WorldRectangleRigid):
     shape_filter = shapeFilter(('no_collision',), collide_with=())
-
-
-class WorldGeometry(image, phys, direct):
-    shape_filter = shapeFilter(('obstacle',), )
-    collision_type = 'obstacle'
-    body_type = 'static'
-
-    # All textures
-    TEXTURES = Ets
 
 
 class BackgroundColor(image):
@@ -243,7 +234,6 @@ class Trigger(phys):
 class Character(image, phys):
     body_type = 'dynamic'
     collision_type = 'mortal'
-    shape_filter = shapeFilter(('character', 'mortal'), ignore=('particle', ))
 
     MAX_JUMPS = 2
     WALKING_VEC = 0
@@ -255,9 +245,7 @@ class Character(image, phys):
     __grabbed_filter: ShapeFilter
     grabbed_item_offset = np.array([70, 0], dtype=np.float32)
 
-    # Index of vertices from engine will ReyCast to decide is Character on ground
-    # Must be length of 2, otherwise something can go wrong :)
-    legs = (0, 1)
+    __previous_pos: np.array
 
     def __init__(self, group, pos, *args, **kwargs):
         super().__init__(group, pos, *args, **kwargs)
@@ -267,6 +255,7 @@ class Character(image, phys):
         self.walk_direction = 0  # may be -1 - move to  the left, 0 - standing, 1 - move to the right
         self.walking_vec = self.__class__.WALKING_VEC
         self.max_walking_speed = self.__class__.MAX_WALKING_SPEED
+        self.__previous_pos = self.pos
 
         # Jumping
         self.jumps = 0
@@ -299,28 +288,18 @@ class Character(image, phys):
             self.grabbed_object.pos = self.pos + self.grabbed_item_offset * self.y_Rotation
             self.grabbed_object.body.velocity = (0, 0)
 
-        # Standing on ground
-        self.check_on_ground()
-        if not self.on_ground:
+        #
+        if not self.check_on_ground():
             self.in_air += dt
 
         # Walking
         self.walk(dt)
+        self.__previous_pos = self.pos
 
     def check_on_ground(self):
-        # if not self.body.is_sleeping:
-        legs = self.shape.get_vertices()
-        legs = [self.pos + legs[j] for j in self.__class__.legs]
-
-        # Casting reys from legs
-        left = reyCast(legs[0] - Vec2d(0, 2), legs[0] - Vec2d(0, 6), self.shape_filter, True)
-        right = reyCast(legs[1] - Vec2d(0, 2), legs[1] - Vec2d(0, 6), self.shape_filter, True)
-
-        if (left and 10 < abs(left.normal.angle_degrees) < 170)\
-                or (right and 10 < abs(right.normal.angle_degrees) < 170):
+        if (self.pos[1] == self.__previous_pos[1]) or (self.body.velocity[1] == 0):
             self.touch_ground()
             return True
-
         self.untouch_ground()
         return False
 
@@ -422,7 +401,7 @@ class MainHero(Character, direct, mortal):
     size = (64, 144)
 
     # PHYSIC
-    shape_filter = shapeFilter(('player', 'character', 'mortal'), ignore=('particle', ))
+    shape_filter = shapeFilter(('player', ), ignore=('particle', 'background_obstacle'))
     points = rectPoints(*size)
     friction = 2
     mass = 10.0
@@ -451,23 +430,6 @@ class MainHero(Character, direct, mortal):
         if self.jump_delay_current < MainHero.MANY_JUMPS_DELAY:
             self.jump_delay_current += args[0]
 
-    def check_on_ground(self):
-        # if not self.body.is_sleeping:
-        legs = self.shape.get_vertices()
-        legs = [self.pos + legs[j] for j in self.__class__.legs]
-
-        # Casting reys from legs
-        left = reyCast(legs[0] - Vec2d(0, 2), legs[0] - Vec2d(0, 6), self.shape_filter, True)
-        right = reyCast(legs[1] - Vec2d(0, 2), legs[1] - Vec2d(0, 6), self.shape_filter, True)
-
-        if (left and 10 < abs(left.normal.angle_degrees) < 170)\
-                or (right and 10 < abs(right.normal.angle_degrees) < 170):
-            self.touch_ground()
-            return True
-
-        self.untouch_ground()
-        return False
-
     def jump(self):
         if self.jump_delay_current >= MainHero.MANY_JUMPS_DELAY:
             if super().jump():
@@ -477,7 +439,7 @@ class MainHero(Character, direct, mortal):
 class WoodenCrate(image, phys, direct, mortal):
     body_type = 'dynamic'
     collision_type = 'mortal'
-    shape_filter = shapeFilter(('mortal', 'obstacle'), )
+    shape_filter = shapeFilter(('background_obstacle', ), ignore=('player', 'enemy', 'particle'))
 
     # static
     TEXTURES = (Ets['LevelOne/crate'], )
@@ -499,25 +461,8 @@ class WoodenCrate(image, phys, direct, mortal):
     def post_collision_handle(self, impulse, **data):
         impulse = impulse.length
         if impulse > 4000:
-            AudioManager.play_sound('crate_wood_hit', self.pos, self.body.velocity, volume=impulse / 30000)
-        # if impulse > 26_000:
-        #     self.die()
+            AudioManager.play_sound('crate_wood_hit', self.pos, self.body.velocity, volume=impulse / 20000)
 
-
-class MetalCrate(WoodenCrate, direct, mortal):
-    # static
-    TEXTURES = (Ets['LevelOne/crate_metal'], )
-    size = (128, 128)
-    points = rectPoints(*size)
-
-    # dynamic
-    mass = 60.0
-
-    # mortal
-    max_health = 32
-
-    def collision_handle(self, impulse, **data):
-        pass
 
 # ^^^ DEFINE YOUR CLASSES HERE ^^^ #
 

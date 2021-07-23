@@ -7,6 +7,13 @@
     "menu_settings": "Настройки",
     "menu_exit": "Выйти",
 
+    "menu_settings_brightness": "Яркость",
+	"menu_settings_resolution": "Разрешение",
+	"menu_settings_volume": "Громкость",
+	"menu_settings_language": "Язык",
+	"menu_settings_menu": "Назад",
+
+
     "inventory_weapondamage": "Урон: ",
     "inventory_description": "Описание Предмета:",
 

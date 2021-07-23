@@ -9,16 +9,11 @@ __all__ = ('setup', )
 
 
 def setup(space: pymunk.Space):
-    """Main function of this module
-    Setting up all collision handlers"""
-
-    # all collision types from Constants module
-
-    # === OBSTACLES ===
+    # === COLLISIONS ===
+    handleCollisionSetup(space)
 
     # === TRIGGERS ===
     triggersSetup(space)
-    handleCollisionSetup(space)
 
 
 def triggersSetup(space):
@@ -83,12 +78,6 @@ def objectFromShape(arbiter: pymunk.Arbiter, i=0):
         return BlankObject, None
     return objects[key], key
     # objects is a dict from Physics.py
-
-
-def collisionMortalVsObstacle(arbiter: pymunk.Arbiter, space, data):
-    if arbiter.is_first_contact:
-        objectFromShape(arbiter)[0].fall(arbiter.total_impulse)
-    return True
 
 
 def triggerEnter(arbiter, space, data):

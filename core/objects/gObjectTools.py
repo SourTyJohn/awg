@@ -5,7 +5,8 @@ from core.Constants import DEBUG
 
 
 # collision mask categories
-COLLISION_CATEGORIES = ('obstacle', 'no_collision', 'mortal', 'character', 'player', 'light', 'trigger', 'particle')
+COLLISION_CATEGORIES = ('obstacle', 'no_collision', 'enemy',
+                        'player', 'light', 'trigger', 'particle', 'background_obstacle')
 COLLISION_CATEGORIES = {x: 2 ** i for i, x in enumerate(COLLISION_CATEGORIES)}
 
 
@@ -108,8 +109,6 @@ class Mortal:
     """[y] velocity that will cause calling die()
     if set to -1, object can not get damage from falling
     if velocity[y] >= lethal_fall_velocity // 4 -> damage"""
-
-    shape_filter = shapeFilter(('mortal',), )
 
     # health
     health: int

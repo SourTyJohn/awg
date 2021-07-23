@@ -20,7 +20,7 @@ def _main():
 
 running = True
 screen_type = 'menu'
-start_time = 0
+start_time = 0.0
 seconds = 0.0
 
 
@@ -37,9 +37,9 @@ def gameLoop():
     dt = timer() - start_time
     exit_code = scr.update(dt)
 
-    # Some functions to be not every tick
+    # Some functions to be called not every tick
     seconds += dt
-    if seconds > 2:
+    if seconds >= 2:
         seconds = 0.0
         AudioManager.clear_empty_sources()
     AudioManager.update_streams(dt)

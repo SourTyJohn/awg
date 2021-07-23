@@ -18,15 +18,15 @@ class LightSource(RenderObjectStatic):
     __slots__ = ('texture', )
 
     def __init__(self, pos, power, layer=1, ltype='Round', color=(1.0, 1.0, 1.0, 1.0)):
-        self.shader = f'{ltype}LightShader'
+        self.shader: Shaders.Shader = f'{ltype}LightShader'
         self.colors = [color, color, color, color]
         size = (power, power)
         super().__init__(lights_gr, pos, size, layer=layer)
 
-    def draw(self, shader, z_rotation=0):
+    def draw(self):
         if self.visible:
-            shader.use()
-            draw(0, self.rect.pos, self.vbo, shader, z_rotation=z_rotation)
+            self.shader.use()
+            drawTexture(0, self.rect.pos, self._vbo, self.shader, z_rotation=0)
 
 
 class FireLight(LightSource):
@@ -43,9 +43,10 @@ class FireLight(LightSource):
         self.prev_noise = 0
         self.noise = randint(self.min_noise, self.max_noise) / 100
 
-    def draw(self, shader, z_rotation=0):
+    def draw(self):
         if self.visible:
-            draw(0, self.rect.pos, self.vbo, shader, z_rotation=z_rotation, noise=self.noise)
+            self.shader.use()
+            drawTexture(0, self.rect.pos, self._vbo, self.shader, z_rotation=0, noise=self.noise)
 
     def update(self, *args, **kwargs) -> None:
         self.time += args[0]
@@ -54,7 +55,7 @@ class FireLight(LightSource):
             self.time = 0
 
 
-def add_light(ltype, pos, power, light_form, layer=1, color=(0.1, 0.1, 0.1, 0.1)):
+def addLight(ltype, pos, power, light_form, layer=1, color=(0.1, 0.1, 0.1, 0.1)):
     if isinstance(color, str):
         try:
             color = light_colors_presets[color]
@@ -74,7 +75,7 @@ def renderLights():
     if do_render_light:
         lights_gr.draw_all(True, )
 
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+    # glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
     unbindFrameBuffer()
 
 

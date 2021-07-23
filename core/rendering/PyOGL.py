@@ -36,6 +36,9 @@ class Camera:
         #
         self.triggers = set()
 
+        #
+        self.matrix = None
+
     def __new__(cls, *args, **kwargs):
         if cls.__instance:
             del cls.__instance
@@ -64,9 +67,12 @@ class Camera:
         x_, y_, w, h = rect[0], rect[1], rect[2] / 2, rect[3] / 2
         self.ortho_params = np.array([x_ - w, x_ + w, y_ - h, y_ + h], dtype='int64')
 
-    def get_matrix(self):
+    def prepare_matrix(self):
         # applying field of view. Called only in draw_begin()
-        return lin.ortho(*self.ortho_params)
+        self.matrix = lin.ortho(*self.ortho_params)
+
+    def get_matrix(self):
+        return self.matrix
 
     def focus_to(self, x_v, y_v, soft=True):
         if soft:
@@ -97,6 +103,7 @@ def clearDisplay():
 # RENDER
 def preRender(do_depth_test=True):
     # MY FRAME BUFFER
+    camera.prepare_matrix()
     frameBuffer.bind()
     clearDisplay()
 
@@ -124,7 +131,6 @@ def postRender(screen_shader):
 
     # DEFAULT FRAME BUFFER
     renderLights()
-
     clearDisplay()
 
     screen_shader.use()
@@ -150,8 +156,7 @@ def postRender(screen_shader):
 # RENDER GROUP
 class RenderGroup(pygame.sprite.Group):
     __slots__ = ('_visible', '_use_depth')
-    """Container of GlObjects
-    """
+    """Container for in-game Objects"""
 
     def __init__(self, *args, visible=True, use_depth=True):
         super().__init__(*args)
@@ -175,17 +180,13 @@ class RenderGroup(pygame.sprite.Group):
         if not self._use_depth:
             glDisable(GL_DEPTH_TEST)
             for obj in self.sprites():
-                obj.smart_draw()
+                obj.draw()
             glEnable(GL_DEPTH_TEST)
             return
 
         # DRAWING
         for obj in self.sprites():
-            obj.smart_draw()
-
-    """Clearing storage"""
-    def empty(self):
-        super().empty()
+            obj.draw()
 
     """Deleting all of group.sprites()"""
     def delete_all(self):
@@ -230,7 +231,7 @@ class GlTexture:
         return GlTexture(data, size, image_name, repeat)
 
     def make_draw_data(self, layer, colors=None):
-        """Make draw data with size of this texture
+        """Make drawTexture data with size of this texture
         Usually GlObjects have their own drawData, but you can calculate drawData,
         which will perfectly match this texture"""
         if colors is None:
@@ -239,23 +240,21 @@ class GlTexture:
         drawData(self.size, colors, layer=layer)
         return drawData(self.size, colors, layer=layer)
 
-    def draw(self, pos, vbo, shader, z_rotation=0, **kwargs):
-        draw(self.key, pos, vbo, shader, z_rotation, **kwargs)
-
     """Удаление текстуры из памяти"""
     def delete(self):
         glDeleteTextures(1, [self.key, ])
         del self
 
 
-def draw(tex, pos, vbo, shader, z_rotation=0, tex_slot=0, **kwargs):
+def drawTexture(tex_key, pos, vbo, shader, z_rotation=0, tex_slot=0, **kwargs):
+    # :param tex is either integer Key or GLTexture
     glBindBuffer(GL_ARRAY_BUFFER, vbo)
 
     mat = lin.FullTransformMat(*pos, camera, -z_rotation)
     shader.prepareDraw(pos, camera=camera, transform=mat, fbuffer=frameBuffer, **kwargs)
 
     glActiveTexture(GL_TEXTURE0 + tex_slot)
-    glBindTexture(GL_TEXTURE_2D, tex)
+    glBindTexture(GL_TEXTURE_2D, tex_key)
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, None)
 
 
@@ -297,12 +296,13 @@ class AttackAnimation(Animation):
 class Sprite(pygame.sprite.Sprite):
     rect: Rect4f
 
-    def smart_draw(self):
+    def draw(self):
         pass
 
 
 class RenderObject(Sprite):
-    """Base render object. Provides drawing given texture:GLTexture within given rect:Rect4f
+    """Base render object.
+    Provides possibility for drawing given texture: GLTexture within given rect: Rect4f
     For :args info check in __init__"""
 
     # public
@@ -311,13 +311,11 @@ class RenderObject(Sprite):
                         np.array([1.0, 1.0, 1.0, 1.0], dtype=np.float32),
                         np.array([1.0, 1.0, 1.0, 1.0], dtype=np.float32),
                         np.array([1.0, 1.0, 1.0, 1.0], dtype=np.float32)]
-
-    # vertex buffer object key
-    vbo: int = 0
-
-    # should object be rendered
     visible = True
 
+    # private
+    _vbo: int = 0
+    _render_type = 0  # 0 - classic RenderObject, 1 - RenderObject with physic body
     shader = 'DefaultShader'
 
     def __init__(self, group, pos, size=None, rotation=1, tex_offset=(0, 0), drawdata='auto', layer=5):
@@ -345,7 +343,7 @@ class RenderObject(Sprite):
         This data includes: texture coords, object coords and color"""
         if isinstance(drawdata, str) and drawdata == 'auto':
             drawdata = drawData(self.rect.size, self.colors, rotation=rotation, layer=layer)
-        self.vbo = bufferize(drawdata)
+        self._vbo = bufferize(drawdata)
         self._layer = layer
 
         """If set to False, it will set glDepthMask to False when rendering ->
@@ -353,18 +351,17 @@ class RenderObject(Sprite):
         Should be set False, if this object's texture has alpha channel other than 255"""
         # self.depth_mask = depth_mask
 
-        """Shader that will be used to draw this object"""
+        """Shader that will be used to drawTexture this object"""
         self.shader = Shaders.shaders[self.shader]
 
     def __repr__(self):
         return f'<{self.__class__.__name__} {self.rect}. In {len(self.groups())} groups>'
 
-    @property
-    def curr_image(self):
+    def curr_image(self) -> GlTexture:
         """Getting current image of object.
         In this class it does not work as intended.
         True functions defined in subclasses"""
-        return GlTexture
+        pass
 
     # VISUAL
     def change_offset(self, offset):
@@ -378,7 +375,7 @@ class RenderObject(Sprite):
         if self.y_Rotation != new_rotation:
             self.y_Rotation = new_rotation
             drawdata = drawData(self.rect.size, self.colors, rotation=new_rotation, layer=self._layer)
-            bufferize(drawdata, self.vbo)
+            bufferize(drawdata, self._vbo)
 
     # MOVE
     def move_to(self, pos):
@@ -390,33 +387,23 @@ class RenderObject(Sprite):
 
     # DELETE
     def delete(self):
-        glBindBuffer(GL_ARRAY_BUFFER, self.vbo)
+        glBindBuffer(GL_ARRAY_BUFFER, self._vbo)
         glBufferData(GL_ARRAY_BUFFER, 0, None, GL_STATIC_DRAW)
-        glDeleteBuffers(1, np.array(self.vbo, ))
+        glDeleteBuffers(1, np.array(self._vbo, ))
         self.kill()
 
     # DRAW
-    def smart_draw(self, ):
-        """This method decides if object should be rendered as object with physic body
-        or as regular RenderObject.
-        PhysicObjects will be rendered with same position and z_rotation as it's ph.body"""
-
+    def draw(self):
         if not self.visible:
             return
 
         self.shader.use()
+        frame = self.curr_image()
 
-        if hasattr(self, 'body') and hasattr(self, 'z_rotation'):
-            # DRAW OBJECTS WITH PHYSIC BODY
-            frame = self.curr_image
-            frame.draw(self.body.pos, self.vbo, self.shader, z_rotation=self.z_rotation)
+        if self._render_type == 0:
+            drawTexture(frame.key, self.rect.pos, self._vbo, self.shader, z_rotation=0)
         else:
-            # DRAW BASE RENDER OBJECTS
-            self.__class__.draw(self, self.shader, 0)
-
-    def draw(self, shader, z_rotation):
-        #  to draw, call RenderObjectAnimated/Static draw() method
-        return self.visible
+            drawTexture(frame.key, self.body.pos, self._vbo, self.shader, z_rotation=self.z_rotation)
 
 
 class RenderObjectAnimated(RenderObject):
@@ -424,7 +411,6 @@ class RenderObjectAnimated(RenderObject):
     animation = 0
     # ANIMATIONS[0] - always idle animation
 
-    # a_ stands for Animation
     a_time = 0
     a_frame = 0
 
@@ -467,11 +453,6 @@ class RenderObjectAnimated(RenderObject):
             return
         self.a_time = 0
 
-    def draw(self, shader, z_rotation=0):
-        if super().draw(shader, z_rotation):
-            self.curr_image.draw(self.rect.pos, self.vbo, shader, z_rotation=z_rotation)
-
-    @property
     def curr_image(self):
         return self.__class__.ANIMATIONS[self.animation][self.a_frame][0]
 
@@ -480,16 +461,8 @@ class RenderObjectStatic(RenderObject):
     TEXTURES: [GlTexture, ] = None
     texture = 0
 
-    def draw(self, shader, z_rotation=0):
-        if super().draw(shader, z_rotation):
-            self.curr_image.draw(self.rect.pos, self.vbo, shader, z_rotation=z_rotation)
-
-    @property
     def curr_image(self):
         return self.__class__.TEXTURES[self.texture]
-
-    def set_image(self, text):
-        self.curr_image = self.__class__.TEXTURES[text]
 
 
 class RenderObjectComposite(Sprite):
@@ -508,9 +481,9 @@ class RenderObjectComposite(Sprite):
     def __getitem__(self, item):
         return self.objects[item]
 
-    def smart_draw(self):
+    def draw(self):
         for obj in self.objects:
-            obj.smart_draw()
+            obj.draw()
 
     def rotY(self, rotation):
         for obj in self.objects:

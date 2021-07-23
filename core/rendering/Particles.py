@@ -1,10 +1,10 @@
-from random import randint
-import numpy as np
-from math import sin, cos, radians
 from core.physic.physics import PhysicObject
 from core.objects.gObjectTools import shapeFilter, deleteObject
 from core.rendering.PyOGL import RenderObjectStatic
 from core.rendering.Textures import EssentialTextureStorage as Ets
+from core.rendering.Lighting import LightSource
+
+from math import sin, cos, radians
 from random import randint
 
 
@@ -48,3 +48,7 @@ class Particle(RenderObjectStatic, PhysicObject):
     def pre_collision_handle(self, impulse, **data):
         deleteObject(self)
         return False
+
+
+class LightParticle():
+    pass

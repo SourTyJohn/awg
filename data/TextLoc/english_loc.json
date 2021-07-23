@@ -1,15 +1,22 @@
 {
   "key": "eng",
   "tokens": {
-
     "menu_newgame": "New Game",
     "menu_loadgame": "Load Game",
     "menu_savegame": "Save Game",
     "menu_settings": "Settings",
     "menu_exit": "Quit",
 
+    "menu_settings_brightness": "Brightness",
+	"menu_settings_resolution": "Resolution",
+	"menu_settings_volume": "Volume",
+	"menu_settings_language": "Language",
+	"menu_settings_menu": "Back",
+
+
     "inventory_weapondamage": "Damage: ",
     "inventory_description": "Item Description:",
+
 
     "item_RustySword": "Rusty Sword",
     "item_des_RustySword": "Long ago this sword served to a great hero,\nNow it is in your hands..."

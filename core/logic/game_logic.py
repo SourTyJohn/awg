@@ -68,19 +68,19 @@ def load_map(map_name):
                 objs.append(obj)
             if type_obj == 4:
                 if len(element_list) > 8:
-                    obj = core.screens.game.add_light(core.screens.game.FireLight, [pos_x, pos_y], int(element_list[5]),
-                                                      element_list[6], int(element_list[7]), element_list[8])
+                    obj = core.screens.game.addLight(core.screens.game.FireLight, [pos_x, pos_y], int(element_list[5]),
+                                                     element_list[6], int(element_list[7]), element_list[8])
                 else:
-                    obj = core.screens.game.add_light(core.screens.game.FireLight, [pos_x, pos_y], int(element_list[5]),
-                                                      element_list[6], int(element_list[7]))
+                    obj = core.screens.game.addLight(core.screens.game.FireLight, [pos_x, pos_y], int(element_list[5]),
+                                                     element_list[6], int(element_list[7]))
                 objs.append(obj)
             if type_obj == 5:
                 if len(element_list) > 8:
-                    obj = core.screens.game.add_light(core.screens.game.LightSource, [pos_x, pos_y], int(element_list[5]),
-                                                      element_list[6], int(element_list[7]), element_list[8])
+                    obj = core.screens.game.addLight(core.screens.game.LightSource, [pos_x, pos_y], int(element_list[5]),
+                                                     element_list[6], int(element_list[7]), element_list[8])
                 else:
-                    obj = core.screens.game.add_light(core.screens.game.LightSource, [pos_x, pos_y], int(element_list[5]),
-                                                      element_list[6], int(element_list[7]))
+                    obj = core.screens.game.addLight(core.screens.game.LightSource, [pos_x, pos_y], int(element_list[5]),
+                                                     element_list[6], int(element_list[7]))
                 objs.append(obj)
         else:
             tmp = element_list[0].replace("[", "")

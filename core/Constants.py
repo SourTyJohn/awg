@@ -19,7 +19,7 @@ load_settings()
 # BASE
 TITLE = 'AWG 2'  # window name
 TEXTURE_PACK = settings['Texture Pack']  # folder name in data/Textures
-DEBUG = True
+DEBUG = False
 DRAW_TRIGGER = True
 
 
@@ -99,5 +99,5 @@ COLL_TYPES = {
 
 
 # SHADERS
-AMBIENT_LIGHT = 2.0  # default: 1.0
+AMBIENT_LIGHT = 1.0  # default: 1.0
 LIGHT_MULTIPLY = 1.0  # default: 1.0

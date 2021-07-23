@@ -129,13 +129,14 @@ class TextObject(RenderObjectStatic):
         TextTextures[self.texture] = texture
         super().__init__(gr, pos, texture.size, layer=layer, )
 
-    def draw(self, shader, z_rotation=0):
+    def draw(self):
         if self.depth_mask:
-            super().draw(shader, z_rotation)
-        else:
-            glDisable(GL_DEPTH_TEST)
-            super().draw(shader, z_rotation)
-            glEnable(GL_DEPTH_TEST)
+            super().draw()
+            return
+#
+        glDisable(GL_DEPTH_TEST)
+        super().draw()
+        glEnable(GL_DEPTH_TEST)
 
     def clear(self):
         TextTextures[self.texture].delete()
@@ -154,7 +155,7 @@ class TextObject(RenderObjectStatic):
             colors = [(1.0, 1.0, 1.0, 1.0), (1.0, 1.0, 1.0, 1.0), (1.0, 1.0, 1.0, 1.0), (1.0, 1.0, 1.0, 1.0)]
 
         bufferize(
-            drawData(texture.size, colors, rotation=rotation, layer=self._layer), self.vbo
+            drawData(texture.size, colors, rotation=rotation, layer=self._layer), self._vbo
         )
 
         if make_visible:
