@@ -1,16 +1,34 @@
 from OpenGL.GL import *
-
 import numpy as np
 import pygame
-from collections import namedtuple
 
 from core.Constants import *
-from utils.files import load_image
-
 import core.math.linear as lin
-import core.rendering.Shaders as Shaders
 from core.math.rect4f import Rect4f
+import core.rendering.Shaders as Shaders
+from core.rendering.PyOGL_utils import *
 
+from utils.files import load_image
+from collections import namedtuple
+from typing import Callable
+
+
+"""
+    [CORE RENDERING MODULE]
+    
+    render pipeline after initDisplay:
+        preRender()
+            clearDisplay()
+            
+        drawGroupsFinally()
+            drawTexture()
+            
+        postRender() 
+            clearDisplay()
+            renderLights()
+            render scene onto the screen
+    
+"""
 
 # background color
 clear_color = (0.0, 0.0, 0.0, 0.0)
@@ -87,70 +105,8 @@ class Camera:
         )
 
 
-def blank(): pass
-
-
 camera: Camera
-renderLights = blank
-
-
-def clearDisplay():
-    # fully clearing display
-    glClearColor(*clear_color)
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
-
-
-# RENDER
-def preRender(do_depth_test=True):
-    # MY FRAME BUFFER
-    camera.prepare_matrix()
-    frameBuffer.bind()
-    clearDisplay()
-
-    # ENABLE STUFF
-    glEnable(GL_TEXTURE_2D)
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
-    glEnable(GL_BLEND)
-
-    if do_depth_test:
-        glEnable(GL_DEPTH_TEST)
-
-
-#  preRender()
-#  drawGroups()
-#  postRender()
-
-
-def postRender(screen_shader):
-    """screen shader - Shader from Shaders module with 'ScreenShader' prefix
-    Shader that will be used to render full scene to screen"""
-
-    # MY FRAME BUFFER
-    fbuff = frameBuffer
-    lbuff = lightBuffer
-
-    # DEFAULT FRAME BUFFER
-    renderLights()
-    clearDisplay()
-
-    screen_shader.use()
-    glBindBuffer(GL_ARRAY_BUFFER, fbuff.vbo)
-
-    # DISABLE STUFF 1
-    glDisable(GL_DEPTH_TEST)
-
-    # SHADER
-    screen_shader.prepareDraw(None, )
-
-    # DRAW SCENE AND GUI
-    fbuff.bind_texture(0)        # bind scene texture
-    lbuff.bind_texture(1)        # bind light texture
-    fbuff.bind_depth_texture(2)  # bind depth texture
-    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, None)
-
-    # DISABLE STUFF 2
-    glDisable(GL_TEXTURE_2D)
-    glDisable(GL_BLEND)
+renderLights: Callable
 
 
 # RENDER GROUP
@@ -244,18 +200,6 @@ class GlTexture:
     def delete(self):
         glDeleteTextures(1, [self.key, ])
         del self
-
-
-def drawTexture(tex_key, pos, vbo, shader, z_rotation=0, tex_slot=0, **kwargs):
-    # :param tex is either integer Key or GLTexture
-    glBindBuffer(GL_ARRAY_BUFFER, vbo)
-
-    mat = lin.FullTransformMat(*pos, camera.get_matrix(), FLOAT32(-z_rotation))
-    shader.prepareDraw(pos, camera=camera, transform=mat, fbuffer=frameBuffer, **kwargs)
-
-    glActiveTexture(GL_TEXTURE0 + tex_slot)
-    glBindTexture(GL_TEXTURE_2D, tex_key)
-    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, None)
 
 
 # ANIMATION
@@ -498,116 +442,6 @@ class RenderObjectComposite(Sprite):
             o.rect.move_by(vector)
 
 
-# MAKE && BIND TEXTURE
-def makeGLTexture(image_data: np.ndarray, w: int, h: int, repeat=False) -> int:
-    """Loading pygame.Surface as OpenGL texture
-    :return New Texture key"""
-
-    # getting data from pygame.Surface
-
-    # bind new texture
-    key = glGenTextures(1)
-    glBindTexture(GL_TEXTURE_2D, key)
-
-    # SETTING UP
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST)  # настройка сжатия
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST)  # настройка растяжения
-
-    if repeat:
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT)
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT)
-
-    glTexImage2D(GL_TEXTURE_2D, GL_ZERO, GL_RGBA, w, h, GL_ZERO, GL_RGBA, GL_UNSIGNED_BYTE, image_data)
-    #
-
-    # unbind new texture
-    glBindTexture(GL_TEXTURE_2D, 0)
-
-    return key
-
-
-# DRAW DATA
-def drawData(size, colors, rotation=1, layer=5):
-    # ::arg layer - value from 0 to 10
-    # lower it is, nearer object to a camera
-    assert 0 <= layer <= 10 and isinstance(layer, int), f'Wrong layer param: {layer}. ' \
-                                                        f'Should be integer from 1 to 10'
-    layer = (5 - layer) / 10
-
-    w_t, h_t = 1, 1
-    w_o, h_o = size[0] / 2, size[1] / 2
-
-    # right (base)
-    if rotation == 1:
-        data = np.array([
-            # obj cords         # color      # tex cords
-            -w_o, -h_o, layer, *colors[0],   0.0, h_t,
-            +w_o, -h_o, layer, *colors[1],   w_t, h_t,
-            +w_o, +h_o, layer, *colors[2],   w_t, 0.0,
-            -w_o, +h_o, layer, *colors[3],   0.0, 0.0,
-        ], dtype=np.float32)
-
-    # left (mirrored)
-    else:
-        data = np.array([
-            # obj cords         # color      # tex cords
-            -w_o, -h_o, layer, *colors[0],   w_t, h_t,
-            +w_o, -h_o, layer, *colors[1],   0.0, h_t,
-            +w_o, +h_o, layer, *colors[2],   0.0, 0.0,
-            -w_o, +h_o, layer, *colors[3],   w_t, 0.0,
-        ], dtype=np.float32)
-
-    return data
-
-
-def drawDataFullScreen(colors):
-    layer = 1
-    w_t, h_t = 1.0, 1.0
-    w_o, h_o = 1.0, 1.0
-
-    data_base = np.array([
-        # obj cords         # color       # texture
-        -w_o, -h_o, layer, *colors[0], 0.0, h_t,
-        +w_o, -h_o, layer, *colors[1], w_t, h_t,
-        +w_o, +h_o, layer, *colors[2], w_t, 0.0,
-        -w_o, +h_o, layer, *colors[3], 0.0, 0.0,
-    ], dtype=np.float32)
-
-    return data_base
-
-
-def bufferize(data, vbo=None):
-    """Generating Buffer to store this object's vertex data,
-    necessary for drawing"""
-    if vbo is None:
-        vbo = glGenBuffers(1)
-
-    glBindBuffer(GL_ARRAY_BUFFER, vbo)
-    glBufferData(GL_ARRAY_BUFFER, data.nbytes, data, GL_STATIC_DRAW)
-
-    return vbo
-
-
-def splitDrawData(data: np.array):
-    obj_v = [list(data[h * 8: h * 8 + 2]) for h in range(4)]
-    tex_v = [list(data[h * 8 + 6: h * 8 + 8]) for h in range(4)]
-    return obj_v, tex_v
-
-
-# DRAWING FUNCTION
-def drawGroupsFinally(render_zone, *groups):
-    # THE ONLY WAY TO DRAW ON SCREEN
-    # Drawing each object in each group
-
-    # Getting objects that should be rendered
-    to_draw = None
-    # if render_zone is not None:
-    #     to_draw = render_zone.entities
-
-    for group in groups:
-        group.draw_all(to_draw=to_draw)
-
-
 # FRAME BUFFER
 class FrameBuffer:
     vbo: int
@@ -649,7 +483,7 @@ class FrameBuffer:
 
         # CHECK COMPLETE
         self.check()
-        unbindFrameBuffer()
+        FrameBuffer.unbind()
 
     def bind(self):
         glBindFramebuffer(GL_FRAMEBUFFER, self.key)
@@ -673,9 +507,9 @@ class FrameBuffer:
         glActiveTexture(GL_TEXTURE0 + slot)
         glBindTexture(GL_TEXTURE_2D, self.rbo)
 
-
-def unbindFrameBuffer():
-    glBindFramebuffer(GL_FRAMEBUFFER, 0)
+    @staticmethod
+    def unbind():
+        glBindFramebuffer(GL_FRAMEBUFFER, 0)
 
 
 frameBuffer: FrameBuffer
@@ -719,3 +553,81 @@ def initDisplay(size=WINDOW_RESOLUTION):
     from core.rendering.Lighting import renderLights as Rl
     from core.rendering.Lighting import lightBuffer as Lb
     renderLights, lightBuffer = Rl, Lb
+
+
+def preRender(do_depth_test=True):
+    # MY FRAME BUFFER
+    camera.prepare_matrix()
+    frameBuffer.bind()
+    clearDisplay()
+
+    # ENABLE STUFF
+    glEnable(GL_TEXTURE_2D)
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+    glEnable(GL_BLEND)
+
+    if do_depth_test:
+        glEnable(GL_DEPTH_TEST)
+
+
+def drawGroupsFinally(render_zone, *groups):
+    # THE ONLY WAY TO DRAW ON SCREEN
+    # Drawing each object in each group
+
+    # Getting objects that should be rendered
+    to_draw = None
+    # if render_zone is not None:
+    #     to_draw = render_zone.entities
+
+    for group in groups:
+        group.draw_all(to_draw=to_draw)
+
+
+def drawTexture(tex_key, pos, vbo, shader, z_rotation=0, tex_slot=0, **kwargs):
+    # :param tex is either integer Key or GLTexture
+    glBindBuffer(GL_ARRAY_BUFFER, vbo)
+
+    mat = lin.FullTransformMat(*pos, camera.get_matrix(), FLOAT32(-z_rotation))
+    shader.prepareDraw(pos, camera=camera, transform=mat, fbuffer=frameBuffer, **kwargs)
+
+    glActiveTexture(GL_TEXTURE0 + tex_slot)
+    glBindTexture(GL_TEXTURE_2D, tex_key)
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, None)
+
+
+def postRender(screen_shader):
+    """screen shader - Shader from Shaders module with 'ScreenShader' prefix
+    Shader that will be used to render full scene to screen"""
+
+    # MY FRAME BUFFER
+    fbuff = frameBuffer
+    lbuff = lightBuffer
+
+    # DEFAULT FRAME BUFFER
+    renderLights()
+    clearDisplay()
+
+    screen_shader.use()
+    glBindBuffer(GL_ARRAY_BUFFER, fbuff.vbo)
+
+    # DISABLE STUFF 1
+    glDisable(GL_DEPTH_TEST)
+
+    # SHADER
+    screen_shader.prepareDraw(None, )
+
+    # DRAW SCENE AND GUI
+    fbuff.bind_texture(0)        # bind scene texture
+    lbuff.bind_texture(1)        # bind light texture
+    fbuff.bind_depth_texture(2)  # bind depth texture
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, None)
+
+    # DISABLE STUFF 2
+    glDisable(GL_TEXTURE_2D)
+    glDisable(GL_BLEND)
+
+
+def clearDisplay():
+    # fully clearing display
+    glClearColor(*clear_color)
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
