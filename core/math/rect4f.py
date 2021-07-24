@@ -1,4 +1,5 @@
 import numpy as np
+from core.Constants import FLOAT32
 
 
 class Rect4f:
@@ -7,7 +8,7 @@ class Rect4f:
 
     def __init__(self, x_center: float, y_center: float, width: float, height: float):
         # init with center position and size
-        self.values = np.array([x_center, y_center, width, height], dtype=np.float32)
+        self.values = np.array([x_center, y_center, width, height], dtype=FLOAT32)
 
     def __getitem__(self, item):
         return self.values[item]

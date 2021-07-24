@@ -1,7 +1,9 @@
 import pymunk
 from core.math.linear import normalized_to_degree
-from core.Constants import GRAVITY_VECTOR, COLL_TYPES, BODY_TYPES
+from core.Constants import \
+    GRAVITY_VECTOR, COLL_TYPES, BODY_TYPES, FLOAT32, SLEEP_TIME_THRESHOLD
 inf = float('inf')
+from beartype import beartype
 
 
 objects = {}
@@ -31,6 +33,12 @@ class Body(pymunk.Body):
     @pos.setter
     def pos(self, value):
         self._set_position(value)
+
+    @property
+    def pos_FLOAT32(self):
+        p = self.pos
+        yield FLOAT32(p.x)
+        yield FLOAT32(p.y)
 
     @property
     def angle(self):
@@ -128,7 +136,7 @@ class PhysicObject:
     # PHYSIC
     @property
     def z_rotation(self):
-        return normalized_to_degree(self.body.rotation_vector) - 90
+        return normalized_to_degree(self.body.rotation_vector)
 
     @property
     def bmass(self):
@@ -171,7 +179,7 @@ class World:
         # setting up space
         self.space = pymunk.Space()
         self.space.gravity = GRAVITY_VECTOR
-        self.space.sleep_time_threshold = 0.3
+        self.space.sleep_time_threshold = SLEEP_TIME_THRESHOLD
 
         # setting up collision handlers
         from core.physic.collision_handlers import setup
@@ -197,7 +205,8 @@ class World:
         self.update_triggers(dt)
 
     @staticmethod
-    def update_triggers(dt):
+    @beartype
+    def update_triggers(dt: float):
         for tr in triggers:
             tr.update(dt)
 

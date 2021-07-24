@@ -1,46 +1,26 @@
 import numpy as np
-from math import atan2, pi, sin, cos, radians, sqrt
+from math import atan2, pi, sin, cos, radians
 from pymunk.vec2d import Vec2d
 from functools import lru_cache
+from beartype import beartype
+from core.Constants import FLOAT32, INT64, ZERO_FLOAT32
 
 
 @lru_cache()
-def sincos(a):
+def sincos(a: float):
     a = radians(a)
     return sin(a), cos(a)
 
 
 # VECTOR
-def vec_dot(blue, red) -> float:
-    return blue.x * red.x + blue.y * red.y
-
-
-def vec_cross(blue, red) -> float:
-    return blue.x * red.y - blue.y * red.x
-
-
-def vec_orthogonal(vec) -> Vec2d:
-    return Vec2d(vec.x, -vec.y)
-
-
-def normalized_to_degree(vec) -> float:
-    return atan2(*vec) * 180 / pi
-
-
-def vec_magnitude(v: np.ndarray):
-    return sqrt((v ** 2).sum())
-
-
-def vec_normalize(v):
-    m = vec_magnitude(v)
-    if m == 0:
-        return v
-    return v / m
-#
+@beartype
+def normalized_to_degree(vec: Vec2d) -> INT64:
+    return INT64(atan2(*vec) * 180 / pi - 90)
 
 
 # CAMERA
-def ortho(l_, r, b, t, n=-1, f=1):
+@beartype
+def ortho(l_: INT64, r: INT64, b: INT64, t: INT64, n: INT64 = - 1, f: INT64 = 1):
     dx = r - l_
     dy = t - b
     dz = f - n
@@ -56,7 +36,7 @@ def ortho(l_, r, b, t, n=-1, f=1):
 
 # MOVING
 @lru_cache()
-def translate(x, y, z=0):
+def translate(x: FLOAT32, y: FLOAT32, z: FLOAT32 = ZERO_FLOAT32):
     return np.asfortranarray([[1, 0, 0, x],
                               [0, 1, 0, y],
                               [0, 0, 1, z],
@@ -104,8 +84,8 @@ def reflectY():
 
 
 # FULL TRANSFORM -> POSITION, CAMERA AND ROTATION IN ONE MATRIX
-def FullTransformMat(x, y, camera, z_rotation):
+@beartype
+def FullTransformMat(x: FLOAT32, y: FLOAT32, camera_matrix, z_rotation: FLOAT32):
     t = translate(x, y)
-    o = camera.get_matrix()
     r = rotz(z_rotation)
-    return np.matmul(np.matmul(o, t), r)
+    return np.matmul(np.matmul(camera_matrix, t), r)

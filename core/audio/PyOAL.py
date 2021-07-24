@@ -1,7 +1,7 @@
 from openal import *
 from os import listdir
 from utils.files import get_full_path
-from core.Constants import settings
+from core.Constants import MASTER_VOLUME, GAME_VOLUME, MUSIC_VOLUME, SOUND_PACK
 from pyogg import VorbisFile
 from os.path import join, splitext
 
@@ -34,9 +34,7 @@ class AudioManager:
 
         device = alcGetString(ALC_DEVICE_SPECIFIER, ALC_DEFAULT_DEVICE_SPECIFIER)
         oalInit(device)
-        alListenerf(AL_GAIN, settings['Volume'])  # Master Volume
-
-        self.set_listener_position(0, 0)
+        self.reset_listener()
 
     def __new__(cls, *args, **kwargs):
         if cls.__instance is None:
@@ -51,20 +49,22 @@ class AudioManager:
         for key, [stream, sound, loop] in self.streams.items():
             if stream:
                 if stream.get_state() == AL_PLAYING:
-                    fade_m, fade_r = self.streams_fade[key]
-                    if fade_m != -1:
-                        if fade_r <= 0:
-                            self.streams_fade[key] = [-1, -1]
-                            self.clear_stream(key)
-                        else:
-                            stream.set_gain(stream.gain * (fade_r / fade_m))
-                            self.streams_fade[key][1] -= dt
-
+                    self.check_fade_for_stream(key, stream, dt)
                     stream.set_position(self.listener_position)
                     stream.update()
                 elif loop:
-                    gain = stream.gain / settings['Volume' if sound != 'music' else 'Music Volume']
+                    gain = stream.gain / MUSIC_VOLUME
                     self.set_stream(key, sound, loop, gain)
+
+    def check_fade_for_stream(self, stream_key, stream, dt):
+        fade_m, fade_r = self.streams_fade[stream_key]
+        if fade_m != -1:
+            if fade_r <= 0:
+                self.streams_fade[stream_key] = [-1, -1]
+                self.clear_stream(stream_key)
+            else:
+                stream.set_gain(stream.gain * (fade_r / fade_m))
+                self.streams_fade[stream_key][1] -= dt
 
     # LISTENER
     @staticmethod
@@ -85,7 +85,7 @@ class AudioManager:
 
     def reset_listener(self):
         self.update_listener([0, 0, 0], [0, 0, 0])
-        alListenerf(AL_GAIN, settings['Volume'])
+        alListenerf(AL_GAIN, MASTER_VOLUME)
 
     # BUFFERS
     def load_sound(self, path: str, name: str):
@@ -111,7 +111,7 @@ class AudioManager:
         alSource3f(source, AL_POSITION, *pos3f)
         alSource3f(source, AL_VELOCITY, *vel3f)
         alSourcei(source, AL_PITCH, 1)
-        alSourcef(source, AL_GAIN, volume)
+        alSourcef(source, AL_GAIN, volume * GAME_VOLUME)
 
         alSourcei(source, AL_BUFFER, self.buffers[sound])
         alSourcePlay(source)
@@ -137,13 +137,13 @@ class AudioManager:
             alDeleteSources(1, ctypes.c_ulong(s))
 
     # AMBIENT-MUSIC [STREAM SOUND]
-    def set_stream(self, stream: str, sound: str, looping=False, gain: float = 1.0):
+    def set_stream(self, stream: str, sound: str, looping=False, volume: float = 1.0):
         if stream in self.streams.keys():
             stream_obj = oalStream(self.ambient_paths[sound])
             self.streams[stream] = [stream_obj, sound, looping]
-            gain = settings['Volume' if sound != 'music' else 'Music Volume'] * gain
+            volume = volume * MUSIC_VOLUME
             stream_obj.set_position(self.listener_position)
-            stream_obj.set_gain(gain)
+            stream_obj.set_gain(volume)
             stream_obj.play()
 
     def clear_stream(self, stream: str):
@@ -189,4 +189,4 @@ def gamePosToSoundPos(pos):
 
 
 AudioManager = AudioManager()
-loadSoundPack(settings['Sound Pack'])
+loadSoundPack(SOUND_PACK)

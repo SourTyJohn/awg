@@ -4,12 +4,10 @@ from core.objects.gObjects import *
 from core.rendering.PyOGL import *
 from core.rendering.Lighting import addLight, LightSource, FireLight, clearLights, lights_gr
 from core.rendering.Particles import Particle
-
 from core.rendering.TextRender import TextObject, DefaultFont
-
 from core.audio.PyOAL import AudioManager
-
 import pygame
+from beartype import beartype
 
 
 # GROUPS
@@ -126,7 +124,8 @@ def updateHeroMovement():
         hero.walk_direction = 0
 
 
-def updateGroups(dt):
+@beartype
+def updateGroups(dt: float):
     # updating all GLSprite groups
     player_gr.update(dt)
     obstacles_gr.update(dt)
@@ -159,6 +158,8 @@ def initScreen(hero_life=False, first_load=False):
     #
     for r in range(4):
         WoodenCrate(obstacles_gr, pos=[700, 800 + r*20])
+    WoodenCrate(obstacles_gr, pos=[760, 800])
+    WoodenCrate(obstacles_gr, pos=[600, 800])
     DroppedItem(items_gr, pos=[700, 900], item="RustySword")
     # WorldRectangleSensor(front_gr, pos=[0, 640], size=[128, 256], texture='LevelOne/glass', layer=1)
 

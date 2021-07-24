@@ -1,8 +1,9 @@
 import pygame as pg
 import core.rendering.PyOGL as GL
 from core.Constants import WINDOW_RESOLUTION, FPS_LOCK, TITLE, FPS_SHOW
-from timeit import default_timer as timer
 from core.audio.PyOAL import AudioManager
+from cProfile import Profile
+Profile = Profile()
 
 
 clock: pg.time.Clock
@@ -34,25 +35,25 @@ def gameLoop():
     scr.render()
 
     # Update screen
-    dt = timer() - start_time
+    dt = clock.tick(FPS_LOCK) / 1000
     exit_code = scr.update(dt)
 
-    # Some functions to be called not every tick
     seconds += dt
-    if seconds >= 2:
+    if seconds >= 5.2:
         seconds = 0.0
         AudioManager.clear_empty_sources()
+        Profile.disable()
+        Profile.print_stats('cumtime')
+        running = False
+
     AudioManager.update_streams(dt)
-
-    #
-    start_time = timer()
-
-    # Current FPS display
-    if FPS_SHOW:
-        print(f'\rFPS: {1 / dt // 1}', end='')
 
     # Screen feedback
     if exit_code in {'menu', 'game', 'Quit'}:
+        if exit_code == 'game':
+            seconds = 0.0
+            Profile.enable()
+
         if exit_code == 'Quit':
             running = False
 
@@ -62,7 +63,8 @@ def gameLoop():
 
     # End phase
     pg.display.flip()
-    clock.tick(FPS_LOCK)
+    if FPS_SHOW:
+        print(f'\rFPS: {clock.get_fps() // 1}', end='')
 
 
 if __name__ == '__main__':

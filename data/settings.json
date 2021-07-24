@@ -1,10 +1,14 @@
 {
 	"Brightness": 0.9,
-	"Resolution": "16x10low",
-	"Volume": 1.0,
-	"Music Volume": 1.0,
 	"Texture Pack": "b_past",
+	"Resolution": "16x10low",
+	"Window Mode": "windowed",
+
 	"Sound Pack": "base_pack",
+	"Master Volume": 0.6,
+	"Music Volume": 1.0,
+	"Game Volume": 1.0,
+
 	"Font": "Arial Black",
 	"Language": "eng"
 }

@@ -26,7 +26,7 @@ class Camera:
 
     def __init__(self):
         #  Camera params. np.array([left, right, bottom, top], dtype=int64)
-        self.ortho_params = np.array([0, 0, 0, 0], dtype=np.int64)
+        self.ortho_params = np.array([0, 0, 0, 0], dtype=INT64)
 
         #  Field of view
         self.fov = 1  # scale
@@ -61,11 +61,11 @@ class Camera:
 
     @property
     def pos(self):
-        return np.array([(self[0] + self[1]) // 2, (self[2] + self[3]) // 2], dtype=np.int32)
+        return np.array([(self[0] + self[1]) // 2, (self[2] + self[3]) // 2], dtype=INT64)
 
     def set_filed(self, rect):
         x_, y_, w, h = rect[0], rect[1], rect[2] / 2, rect[3] / 2
-        self.ortho_params = np.array([x_ - w, x_ + w, y_ - h, y_ + h], dtype='int64')
+        self.ortho_params = np.array([x_ - w, x_ + w, y_ - h, y_ + h], dtype=INT64)
 
     def prepare_matrix(self):
         # applying field of view. Called only in draw_begin()
@@ -83,7 +83,7 @@ class Camera:
 
         self.ortho_params = np.array(
             [x_v - self.fovW, x_v + self.fovW, y_v - self.fovH, y_v + self.fovH],
-            dtype='int64'
+            dtype=INT64
         )
 
 
@@ -250,7 +250,7 @@ def drawTexture(tex_key, pos, vbo, shader, z_rotation=0, tex_slot=0, **kwargs):
     # :param tex is either integer Key or GLTexture
     glBindBuffer(GL_ARRAY_BUFFER, vbo)
 
-    mat = lin.FullTransformMat(*pos, camera, -z_rotation)
+    mat = lin.FullTransformMat(*pos, camera.get_matrix(), FLOAT32(-z_rotation))
     shader.prepareDraw(pos, camera=camera, transform=mat, fbuffer=frameBuffer, **kwargs)
 
     glActiveTexture(GL_TEXTURE0 + tex_slot)
@@ -403,7 +403,7 @@ class RenderObject(Sprite):
         if self._render_type == 0:
             drawTexture(frame.key, self.rect.pos, self._vbo, self.shader, z_rotation=0)
         else:
-            drawTexture(frame.key, self.body.pos, self._vbo, self.shader, z_rotation=self.z_rotation)
+            drawTexture(frame.key, self.body.pos_FLOAT32, self._vbo, self.shader, z_rotation=self.z_rotation)
 
 
 class RenderObjectAnimated(RenderObject):

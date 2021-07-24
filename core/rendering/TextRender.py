@@ -1,6 +1,6 @@
 from core.rendering.PyOGL import GlTexture
 from utils.files import load_font, load_text_localization
-from core.Constants import FONT_SETTINGS, settings
+from core.Constants import FONT_SETTINGS, LANGUAGE
 from PIL import Image, ImageDraw
 from core.rendering.PyOGL import RenderObjectStatic, bufferize, drawData
 from OpenGL.GL import glEnable, glDisable, GL_DEPTH_TEST
@@ -53,7 +53,7 @@ LocalizedTextsStorage = {}
 
 def loadText():
     global LocalizedTextsStorage
-    lts = load_text_localization(key=settings['Language'])
+    lts = load_text_localization(key=LANGUAGE)
     LocalizedTextsStorage = {f'txt_{key}': lts[key] for key in lts.keys()}
 
 

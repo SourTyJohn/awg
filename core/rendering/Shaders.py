@@ -1,6 +1,8 @@
 from OpenGL.GL import *
 from utils.files import get_full_path
 import core.Constants as Const
+from beartype import beartype
+import numpy as np
 
 shaders = {}
 
@@ -38,7 +40,6 @@ class Shader:
     __instance = None
 
     def __init__(self, vertex_path: str, fragment_path: str):
-
         #  Reading shader code
         vertx_code = shader_load(vertex_path)
         fragm_code = shader_load(fragment_path)
@@ -102,19 +103,23 @@ class Shader:
         return shader
 
     # PASS UNIFORMS TO SHADER
-    def passMat4(self, name_, value) -> None:
+    @beartype
+    def passMat4(self, name_: str, value: np.ndarray) -> None:
         loc = glGetUniformLocation(self.program, name_)
         glUniformMatrix4fv(loc, 1, GL_FALSE, value)
 
-    def passFloat(self, name_, value):
+    @beartype
+    def passFloat(self, name_: str, value) -> None:
         loc = glGetUniformLocation(self.program, name_)
         glUniform1f(loc, value)
 
-    def passTexture(self, name_, value):
+    @beartype
+    def passTexture(self, name_: str, value) -> None:
         frame = glGetUniformLocation(self.program, name_)
         glUniform1i(frame, value)
 
-    def passVec2(self, name_, value):
+    @beartype
+    def passVec2(self, name_: str, value) -> None:
         loc = glGetUniformLocation(self.program, name_)
         glUniform2f(loc, *value)
 
