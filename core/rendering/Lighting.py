@@ -76,7 +76,7 @@ def renderLights():
         lights_gr.draw_all(True, )
 
     # glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
-    unbindFrameBuffer()
+    FrameBuffer.unbind()
 
 
 def clearLights():

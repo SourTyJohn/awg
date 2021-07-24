@@ -1,9 +1,9 @@
 import pygame as pg
-import core.rendering.PyOGL as GL
-from core.Constants import WINDOW_RESOLUTION, FPS_LOCK, TITLE, FPS_SHOW
+from core.rendering.PyOGL import RenderContext, gl_context
+from core.Constants import FPS_LOCK, TITLE, FPS_SHOW
 from core.audio.PyOAL import AudioManager
-from cProfile import Profile
-Profile = Profile()
+# from cProfile import Profile
+# Profile = Profile()
 
 
 clock: pg.time.Clock
@@ -42,17 +42,17 @@ def gameLoop():
     if seconds >= 5.2:
         seconds = 0.0
         AudioManager.clear_empty_sources()
-        Profile.disable()
-        Profile.print_stats('cumtime')
-        running = False
+        # Profile.disable()
+        # Profile.print_stats('cumtime')
+        # running = False
 
     AudioManager.update_streams(dt)
 
     # Screen feedback
     if exit_code in {'menu', 'game', 'Quit'}:
-        if exit_code == 'game':
-            seconds = 0.0
-            Profile.enable()
+        # if exit_code == 'game':
+        #     seconds = 0.0
+        #     Profile.enable()
 
         if exit_code == 'Quit':
             running = False
@@ -68,7 +68,7 @@ def gameLoop():
 
 
 if __name__ == '__main__':
-    GL.initDisplay(WINDOW_RESOLUTION)
+    gl_context = RenderContext()
     _main()
 
     import core.screens.menu as rmenu

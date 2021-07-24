@@ -7,20 +7,6 @@ import numpy as np
 shaders = {}
 
 
-def shader_load(path):
-    with open(get_full_path(path, file_type='shd')) as file:
-        code = file.readlines()
-        for i, line in enumerate(code):
-            if line[0] != '#':
-                break
-
-            tags = line.split()
-            if tags[0] == '#constant':
-                code[i] = f'{tags[1]} {tags[2]} = {getattr(Const, tags[2])};\n'
-
-    return ''.join(code)
-
-
 class Shader:
     __doc__ = """
     Abstraction of compiled and linked .glsl files
@@ -41,8 +27,8 @@ class Shader:
 
     def __init__(self, vertex_path: str, fragment_path: str):
         #  Reading shader code
-        vertx_code = shader_load(vertex_path)
-        fragm_code = shader_load(fragment_path)
+        vertx_code = loadGLSL(vertex_path)
+        fragm_code = loadGLSL(fragment_path)
 
         #  Compiling shaders
         vertex = glCreateShader(GL_VERTEX_SHADER)
@@ -137,7 +123,6 @@ class DefaultShader(Shader):
         self.passMat4('Transform', kw['transform'])
 
 
-# SHADERS
 class BackgroundShader(Shader):
     """Shader for fancy gradient background drawing"""
 
@@ -216,3 +201,17 @@ def init():
         print(f'Inited: {cls.__name__}')
 
     print('-- Done.\n')
+
+
+def loadGLSL(path):
+    with open(get_full_path(path, file_type='shd')) as file:
+        code = file.readlines()
+        for i, line in enumerate(code):
+            if line[0] != '#':
+                break
+
+            tags = line.split()
+            if tags[0] == '#constant':
+                code[i] = f'{tags[1]} {tags[2]} = {getattr(Const, tags[2])};\n'
+
+    return ''.join(code)
