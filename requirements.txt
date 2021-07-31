@@ -1,3 +1,4 @@
+Cython
 setuptools==57.4.0
 
 beartype==0.7.1

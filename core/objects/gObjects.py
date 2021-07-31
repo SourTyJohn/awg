@@ -4,23 +4,17 @@ THIS MODUlE CONTAINS ALL GAME OBJECTS THAT CAN BE USED IN GAME (screens.game)
 
 from core.objects.gObjectTools import *
 from core.physic.physics import triggers, inf
-
 from core.rendering.Textures import EssentialTextureStorage as Ets
 from core.Constants import *
-
 from core.audio.PyOAL import AudioManager
-
 from core.objects.gItems import InventoryAndItemsManager
 
-
 from pymunk.vec2d import Vec2d
-from pymunk import moment_for_poly
-
+from pymunk import moment_for_poly, ShapeFilter
 import numpy as np
 
 
 # DROPPED ITEMS
-
 class DroppedItem(composite):
     class DIF(image):
         TEXTURES = [Ets['Item/item_frame'], ]
@@ -73,9 +67,8 @@ class DroppedItem(composite):
 # WORLD GEOMETRY
 class WorldRectangleRigid(image, phys, direct):
     # This class represents base level geometry with rigid body
-    shape_filter = shapeFilter(('obstacle',), )
+    shape_filter = shapeFilter('obstacle', )
     body_type = 'static'
-    collision_type = 'obstacle'
 
     TEXTURES = Ets
 
@@ -92,7 +85,7 @@ class WorldRectangleRigid(image, phys, direct):
 
 
 class WorldRectangleSensor(WorldRectangleRigid):
-    shape_filter = shapeFilter(('no_collision',), collide_with=())
+    shape_filter = shapeFilter('no_collision', collide_with=())
 
 
 class BackgroundColor(image):
@@ -129,7 +122,7 @@ class BackgroundColor(image):
 
 # TRIGGERS
 class Trigger(phys):
-    shape_filter = shapeFilter(('trigger',), )
+    shape_filter = shapeFilter('trigger', )
     body_type = 'kinematic'
 
     """Area that will call given function if something intersects it and/or leaves it"""
@@ -138,9 +131,10 @@ class Trigger(phys):
         'ignore', 'pos', 'bound_to', 'offset', 'size', 'entities'
     )
 
-    def __init__(self, function_enter, collision_type, function_leave=None, triggers_by=(), ignore=(),
+    def __init__(self, function_enter, categories, function_leave=None, triggers_by=(), ignore=(),
                  pos=(0, 0), bound_to=None, offset=(0, 0), size=None):
-        super().__init__(pos, points=rectPoints(*size), collision_type=collision_type)
+        super().__init__(pos, points=rectPoints(*size), )
+        self.shape.sensor = True
 
         """Trigger requires one of provided args: pos, bounded_to.
         If pos, than Trigger static in given position==pos
@@ -154,7 +148,7 @@ class Trigger(phys):
         world - World object
         arbiter - pymunk.Arbiter object to provide full info about collision
 
-        ::arg collision_type - pymunk collision type key from Constants.COLL_TYPES
+        ::arg categories - pymunk collision types from gObjectTools
 
         ::arg triggers_by - tuple of classes from gObjects.py,
         that can activate this trigger
@@ -174,14 +168,15 @@ class Trigger(phys):
             raise ValueError('Trigger requires one of provided args: pos, bounded_to')
         if bound_to and not hasattr(bound_to, 'pos'):
             raise ValueError('Wrong arg: bound_to object must have .pos() method')
-        if collision_type not in COLL_TYPES.keys():
-            raise ValueError(f'Wrong collision type: {collision_type}.\nSelect from {list(COLL_TYPES.keys())}')
+        for category in categories:
+            if category not in COLLISION_CATEGORIES:
+                raise ValueError(f'Category {category} does not exist\n'
+                                 f'Chose from {COLLISION_CATEGORIES.keys()}')
 
         # Attrs
         self.function_leave, self.function_enter = function_leave, function_enter
         self.triggers_by, self.ignore = triggers_by, ignore
         self.bound_to, self.offset = bound_to, offset
-        self.collision_type = collision_type
         self.entities = set()
 
         # Add to new triggers. Check core.screens.game.update() for more info
@@ -192,7 +187,7 @@ class Trigger(phys):
 
     def delete_physic(self):
         triggers.remove(self)
-        super().delete_physic()
+        super().delete_from_physic()
 
     def update(self, *args, **kwargs):
         # Trigger static and won't move
@@ -207,7 +202,7 @@ class Trigger(phys):
         if actor is self.bound_to or actor in self.ignore:
             return
         if self.triggers_by:
-            if actor.__class__ in self.triggers_by:
+            if actor.__class__.__name__ in self.triggers_by:
                 self.entities.add(key)
                 if self.function_enter:
                     return self.function_enter(actor, self.bound_to, None, arbiter)
@@ -219,21 +214,15 @@ class Trigger(phys):
     def leave(self, actor, key, arbiter):
         if actor is self.bound_to or actor in self.ignore:
             return
-        if self.triggers_by:
-            if actor.__class__ in self.triggers_by:
-                self.entities.discard(key)
-                if self.function_leave:
-                    return self.function_leave(actor, self.bound_to, None, arbiter)
-        else:
-            self.entities.discard(key)
-            if self.function_leave:
-                return self.function_leave(actor, self.bound_to, None, arbiter)
+
+        self.entities.discard(key)
+        if self.function_leave:
+            return self.function_leave(actor, self.bound_to, None, arbiter)
 
 
 #
 class Character(image, phys):
     body_type = 'dynamic'
-    collision_type = 'mortal'
 
     MAX_JUMPS = 2
     WALKING_VEC = 0
@@ -266,8 +255,8 @@ class Character(image, phys):
         # Grab
         self.grab_distance = 60
         self.grabbed_object = None
-        self.grab_trigger = Trigger(None, 't_mortal',
-                                    bound_to=self, size=(80, 80), triggers_by=[WoodenCrate, ])
+        self.grab_trigger = Trigger(None, bound_to=self,
+                                    size=(80, 80), triggers_by=['WoodenCrate', ])
         self.__grabbedFilter = None
 
         # Blocks rotation. Characters stand on their feet
@@ -401,7 +390,7 @@ class MainHero(Character, direct, mortal):
     size = (64, 144)
 
     # PHYSIC
-    shape_filter = shapeFilter(('player', ), ignore=('particle', 'background_obstacle'))
+    shape_filter = shapeFilter('player', ignore=('particle', 'bg_obstacle'))
     points = rectPoints(*size)
     friction = 2
     mass = 10.0
@@ -438,8 +427,7 @@ class MainHero(Character, direct, mortal):
 
 class WoodenCrate(image, phys, direct, mortal):
     body_type = 'dynamic'
-    collision_type = 'mortal'
-    shape_filter = shapeFilter(('background_obstacle', ), ignore=('player', 'enemy', 'particle'))
+    shape_filter = shapeFilter('bg_obstacle', ignore=('player', 'enemy', 'particle'))
 
     # static
     TEXTURES = (Ets['LevelOne/crate'], )
@@ -470,7 +458,7 @@ class WoodenCrate(image, phys, direct, mortal):
 """Storage of all Direct objects. 
 Can be accessed by WorldEditor, LevelLoader and create_object() function"""
 allObjects = {}
-for x in DirectAccessObject.__subclasses__():
+for x in direct.__subclasses__():
     allObjects[x.__name__] = x
 
 

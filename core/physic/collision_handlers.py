@@ -1,11 +1,13 @@
 from core.physic.physics import objects
-from core.Constants import COLL_TYPES
+from core.objects.gObjectTools import COLLISION_CATEGORIES
 import pymunk
 
 
 """This module include only pymunk collision handlers.
 Imported in World class constructor from Physics.py"""
-__all__ = ('setup', )
+__all__ = (
+    'setup',
+)
 
 
 def setup(space: pymunk.Space):
@@ -14,25 +16,6 @@ def setup(space: pymunk.Space):
 
     # === TRIGGERS ===
     triggersSetup(space)
-
-
-def triggersSetup(space):
-    ct = COLL_TYPES
-    """Setting up trigger collision types based on their names
-    All Trigger collision types will detect collision with types specified in their names
-    For example: 't_mortal' will collide with 'mortal' """
-
-    for trigger_name in ct:
-        if trigger_name.startswith('t_'):
-            if trigger_name[2] == '*':
-                types = filter(lambda x: not x.startswith('t_'), ct)
-            else:
-                types = trigger_name[2:].split('&&')
-
-            for c in types:
-                handler = space.add_collision_handler(ct[c], ct[trigger_name])
-                handler.begin = triggerEnter
-                handler.separate = triggerLeave
 
 
 def handleCollisionSetup(spc: pymunk.Space):
@@ -54,6 +37,28 @@ def handleCollisionSetup(spc: pymunk.Space):
 
     handler.post_solve = collisionHandlerPost
     handler.pre_solve = collisionHandlerPre
+
+
+def triggersSetup(spc: pymunk.Space):
+    handler = spc.add_wildcard_collision_handler(COLLISION_CATEGORIES['trigger'])
+
+    def triggerEnter(arbiter, space, data):
+        if arbiter.is_first_contact:
+            actor, key = objectFromShape(arbiter, i=1)
+            trigger, _ = objectFromShape(arbiter, i=0)
+            trigger.enter(actor, key, arbiter)
+        return False
+
+    def triggerLeave(arbiter, space, data):
+        actor, key = objectFromShape(arbiter, i=1)
+        trigger, _ = objectFromShape(arbiter, i=0)
+
+        if actor and trigger:
+            trigger.leave(actor, key, arbiter)
+        return False
+
+    handler.begin = triggerEnter
+    handler.separate = triggerLeave
 
 
 class BlankObject:
@@ -78,20 +83,3 @@ def objectFromShape(arbiter: pymunk.Arbiter, i=0):
         return BlankObject, None
     return objects[key], key
     # objects is a dict from Physics.py
-
-
-def triggerEnter(arbiter, space, data):
-    if arbiter.is_first_contact:
-        actor, key = objectFromShape(arbiter, i=0)
-        trigger, _ = objectFromShape(arbiter, i=1)
-        trigger.enter(actor, key, arbiter)
-    return False
-
-
-def triggerLeave(arbiter, space, data):
-    actor, key = objectFromShape(arbiter, i=0)
-    trigger, _ = objectFromShape(arbiter, i=1)
-
-    if actor and trigger:
-        trigger.leave(actor, key, arbiter)
-    return False

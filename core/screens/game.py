@@ -137,40 +137,40 @@ def updateGroups(dt: float):
 def initScreen(hero_life=False, first_load=False):
     global hero, hero_inited, render_zone, t
     BackgroundColor(background_gr)
-    # #  render distance
-    # render_zone = Trigger(None, 't_*', bound_to=camera, size=WINDOW_SIZE)
-    # render_zone.visible = False
 
-    # --- TEST LEVEL ---
+    #
+    # #
+    # # #
+
     WorldRectangleRigid(obstacles_gr, pos=[0, 500], size=[8192, 64])
     WorldRectangleRigid(obstacles_gr, pos=[850, 700], size=[200, 200])
 
+    """This VVV is a way to the bright future"""
     a = WorldRectangleRigid(obstacles_gr, pos=[-400, 660], size=[512, 256])
     WorldRectangleRigid(obstacles_gr, pos=[-400, 792], size=[512, 8])
     a.bfriction = 0.0
 
-    #
-    # WorldRectangleRigid(obstacles_gr, pos=[1600, 1200], size=[50, 900])
-    # WorldRectangleRigid(obstacles_gr, pos=[2000, 1000], size=[50, 900])
-    #
-    # WorldRectangleSensor(obstacles_gr, pos=[-500, 575],
-    # size=[2000, 2000], texture='LevelOne/r_tile_grey_1', layer=0.7)
-    #
     for r in range(4):
         WoodenCrate(obstacles_gr, pos=[700, 800 + r*20])
     WoodenCrate(obstacles_gr, pos=[760, 800])
     WoodenCrate(obstacles_gr, pos=[600, 800])
     DroppedItem(items_gr, pos=[700, 900], item="RustySword")
-    # WorldRectangleSensor(front_gr, pos=[0, 640], size=[128, 256], texture='LevelOne/glass', layer=1)
 
     WorldRectangleSensor(background_near_gr, (1300, 600), (2600, 900), layer=6)
-    # addLight(LightSource, [1400, 700], 32, 'Round', 1)
     addLight(FireLight, [1400, 700], 16, 'RoundFlat', layer=1, color='fire')
 
     addLight(LightSource, [800, 700], 32, 'Round', 1)
     addLight(LightSource, [600, 700], 18, 'Round', 1)
     addLight(LightSource, [900, 700], 18, 'Round', 1)
-    # --- TEST LEVEL ---
+
+    def functionE(actor, owner, world, arbiter):
+        WoodenCrate(obstacles_gr, actor.pos)
+    # Trigger(functionE, 't_player', pos=(1100, 600), size=(256, 256))
+    WorldRectangleSensor(background_near_gr, pos=(1100, 600), size=(256, 256), layer=6)
+
+    # # #
+    # #
+    #
 
     hero = MainHero(player_gr, pos=[256, 800])
     t = TextObject(background_gr, [256, 800], ['text?', 'text indeed...'], DefaultFont, layer=6, depth_mask=True)

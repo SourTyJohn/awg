@@ -3,7 +3,11 @@ import numpy as np
 import pygame
 
 from core.Constants import *
+
+import pyximport
+pyximport.install()
 import core.math.linear as lin
+
 from core.math.rect4f import Rect4f
 import core.rendering.Shaders as Shaders
 from core.rendering.PyOGL_utils import *

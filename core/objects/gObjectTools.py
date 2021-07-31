@@ -1,12 +1,30 @@
 from pymunk import ShapeFilter
 from core.physic.physics import PhysicObject
 from core.rendering.PyOGL import RenderObjectAnimated, RenderObjectStatic, RenderObjectComposite
-from core.Constants import DEBUG
+from typing import Tuple
+
+
+__all__ = [
+    'COLLISION_CATEGORIES',
+
+    'filterAddIgnore',
+    'filterDelIgnore',
+    'shapeFilter',
+    'rectPoints',
+    'deleteObject',
+
+    'animated',
+    'image',
+    'phys',
+    'composite',
+    'direct',
+    'mortal'
+]
 
 
 # collision mask categories
-COLLISION_CATEGORIES = ('obstacle', 'no_collision', 'enemy',
-                        'player', 'light', 'trigger', 'particle', 'background_obstacle')
+COLLISION_CATEGORIES = ('obstacle', 'no_collision', 'enemy', 'level',
+                        'player', 'light', 'trigger', 'particle', 'bg_obstacle')
 COLLISION_CATEGORIES = {x: 2 ** i for i, x in enumerate(COLLISION_CATEGORIES)}
 
 
@@ -35,16 +53,16 @@ def filterDelIgnore(filter_obj, categories):
     return ShapeFilter(group=filter_obj.group, categories=filter_obj.categories, mask=mask)
 
 
-def shapeFilter(categories, ignore=None, collide_with=None):
+def shapeFilter(category, ignore: Tuple = None, collide_with: Tuple = None) -> ShapeFilter:
     __doc__ = """
     arg:: ignore         list(tuple) of collision categories that won't collide with this mask
     arg:: collide_with   list(tuple) of collision categories that will collide with this mask
     Pass only one of described args"""
     if ignore is not None and collide_with is not None:
         raise ValueError('Pass only one of provided args: "ignore" "collide_with" ')
-    if not all([c in COLLISION_CATEGORIES for c in categories]):
-        raise ValueError(f'Some of categories from: {categories}'
-                         f' does not exist. Chose from {COLLISION_CATEGORIES.keys()}')
+    if category not in COLLISION_CATEGORIES:
+        raise ValueError(f'Category {category} does not exist\n'
+                         f'Chose from {COLLISION_CATEGORIES.keys()}')
 
     # MASK
     mask = 4_294_967_295  # all 32-bit -> Collide with everything
@@ -58,16 +76,14 @@ def shapeFilter(categories, ignore=None, collide_with=None):
             mask += COLLISION_CATEGORIES[x]
 
     # CATEGORIES
-    cat = 0
-    for c in categories:
-        cat += COLLISION_CATEGORIES[c]
+    cat = COLLISION_CATEGORIES[category]
 
     # COMPLETE
     return ShapeFilter(categories=cat, mask=mask)
 #
 
 
-def rectPoints(w, h, x_offset=0, y_offset=0):
+def rectPoints(w, h, x_offset=0, y_offset=0) -> Tuple[Tuple, Tuple, Tuple, Tuple]:
     """
     ::args      width height offset_x offset_y
     ::returns   tuple of rect vertexes with given params
@@ -86,10 +102,10 @@ def rectPoints(w, h, x_offset=0, y_offset=0):
 
 def deleteObject(obj):
     #  deletes image and physic body of obj
-    if DEBUG:
-        print(f'Fully Deleted: {obj}')
+    # if DEBUG:
+    #     print(f'Fully Deleted: {obj}')
     obj.delete()
-    PhysicObject.delete_physic(obj)
+    PhysicObject.delete_from_physic(obj)
 
 
 class DirectAccessObject:
@@ -143,6 +159,9 @@ class Mortal:
         self.health -= amount
         if self.health <= 0:
             self.die()
+
+    def delete(self):
+        pass
 
     def die(self):
         deleteObject(self)

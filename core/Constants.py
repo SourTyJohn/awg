@@ -101,26 +101,6 @@ BODY_TYPES = {
 }
 
 
-# COLLISION TYPES
-COLL_TYPES = {
-    'player': 0,
-    'mortal': 1,
-    'item': 2,
-    'obstacle': 3,
-    'trigger': 4,
-    'particle': 5,
-
-    # Triggers. Must be named t_<coll_type>&&<coll_type>...
-    # Check CollisionHandles.triggersSetup() for more info
-    't_obstacle': 10,
-    't_obstacle&&mortal': 11,
-    't_player': 12,
-    't_mortal': 13,
-    't_item': 14,
-    't_*': 15,
-}
-
-
 # SHADERS
 AMBIENT_LIGHT = 1.0  # default: 1.0
 LIGHT_MULTIPLY = 1.0  # default: 1.0

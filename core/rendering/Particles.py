@@ -11,8 +11,7 @@ from random import randint
 class Particle(RenderObjectStatic, PhysicObject):
     points = None
     body_type = 'dynamic'
-    collision_type = 'particle'
-    shape_filter = shapeFilter(categories=('particle', ), collide_with=('obstacle', ))
+    shape_filter = shapeFilter('particle', collide_with=('obstacle', ))
 
     # static
     TEXTURES = Ets

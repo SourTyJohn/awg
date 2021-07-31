@@ -1,7 +1,7 @@
 import pymunk
 from core.math.linear import normalized_to_degree
 from core.Constants import \
-    GRAVITY_VECTOR, COLL_TYPES, BODY_TYPES, FLOAT32, SLEEP_TIME_THRESHOLD
+    GRAVITY_VECTOR, BODY_TYPES, FLOAT32, SLEEP_TIME_THRESHOLD
 inf = float('inf')
 from beartype import beartype
 
@@ -71,17 +71,15 @@ class PhysicObject:
     'dynamic': pymunk.Body.DYNAMIC,     Moving objects
     'kinematic': pymunk.Body.KINEMATIC  Level objects, that can be moved by The Power of Code
     """
-    collision_type = 'obstacle'
     shape_filter = None
 
-    def __init__(self, pos, points=None, collision_type=None, shape_filter=None, radius=None, mass=None):
+    def __init__(self, pos, points=None, shape_filter=None, radius=None, mass=None):
         """You can specify points for polygon shape or radius for circle shape
         Do not specify both of them"""
         """If no data given, than take it from class. Usually it is not given.
         Only exception is WorldRectangles"""
         cls = self.__class__
         points = (cls.points if points is None else points) if not radius else None
-        collision_type = cls.collision_type if not collision_type else collision_type
         shape_filter = cls.shape_filter if not shape_filter else shape_filter
         mass = cls.mass if not mass else mass
         body_type = cls.body_type
@@ -89,18 +87,12 @@ class PhysicObject:
         # Pymunk things. Make Shape and Body
         if radius:  # Circle
             self.body = makeBodyCircle(pos, radius, body_type, mass)
-            self.shape = makeShapeCircle(self.body, radius, collision_type,
+            self.shape = makeShapeCircle(self.body, radius,
                                          cls.friction, shape_filter=shape_filter)
         else:       # Polygon
             self.body = makeBodyPolygon(pos, points, body_type, mass)
-            self.shape = makeShapePolygon(self.body, points, collision_type,
+            self.shape = makeShapePolygon(self.body, points,
                                           cls.friction, shape_filter=shape_filter)
-
-        # Collision type
-        if collision_type not in COLL_TYPES.keys():
-            raise ValueError(f'Wrong collision type: {collision_type}.\n'
-                             f'Select from {list(COLL_TYPES.keys())}')
-        self.shape.collision_type = COLL_TYPES[collision_type]
 
         # Collision handler
         pass
@@ -110,11 +102,6 @@ class PhysicObject:
 
         if hasattr(self, '_render_type'):
             self._render_type = 1
-
-    @classmethod  # factory method
-    def make_circle(cls, pos, radius, collision_type=None, shape_filter=None):
-        return PhysicObject(pos, points=None, collision_type=collision_type,
-                            shape_filter=shape_filter, radius=radius)
 
     def can_rotate(self, b):
         if b:
@@ -129,7 +116,7 @@ class PhysicObject:
     def update(self, *args, **kwargs) -> None:
         pass
 
-    def delete_physic(self):
+    def delete_from_physic(self):
         # Fully deleting object from physic world
         MainPhysicSpace.vanish(self)
 
@@ -216,27 +203,16 @@ class World:
         while objects.values():
             obj = list(objects.values())[0]
             # Physically delete object
-            obj.__class__.delete_physic(obj, )
+            obj.__class__.delete_from_physic(obj, )
 
 
+# MAKE BODY
 def makeBodyPolygon(pos, points, body_type, mass=0.0, moment=0):
     if mass:
         moment = pymunk.moment_for_poly(mass, points, (0, 0))
     body = Body(mass, moment, body_type=BODY_TYPES[body_type])
     body.pos = pos if pos else (0, 0)
     return body
-
-
-def makeShapePolygon(body, points, collision_type, friction=0.0, sensor=False, shape_filter=None):
-    shape = pymunk.Poly(body, points)
-    shape.collision_type = COLL_TYPES[collision_type]
-    shape.friction = friction
-    shape.sensor = sensor
-
-    if shape_filter:
-        shape.filter = shape_filter
-
-    return shape
 
 
 def makeBodyCircle(pos, radius, body_type, mass=0.0, moment=0):
@@ -247,11 +223,12 @@ def makeBodyCircle(pos, radius, body_type, mass=0.0, moment=0):
     return body
 
 
-def makeShapeCircle(body, radius, collision_type, friction=0.0, sensor=False, shape_filter=None):
-    shape = pymunk.Circle(body, radius)
-    shape.collision_type = COLL_TYPES[collision_type]
+# MAKE SHAPE
+def makeShapePolygon(body, points, friction=0.0, sensor=False, shape_filter=None):
+    shape = pymunk.Poly(body, points)
     shape.friction = friction
     shape.sensor = sensor
+    shape.collision_type = shape_filter.categories
 
     if shape_filter:
         shape.filter = shape_filter
@@ -259,6 +236,19 @@ def makeShapeCircle(body, radius, collision_type, friction=0.0, sensor=False, sh
     return shape
 
 
+def makeShapeCircle(body, radius, friction=0.0, sensor=False, shape_filter=None):
+    shape = pymunk.Circle(body, radius)
+    shape.friction = friction
+    shape.sensor = sensor
+    shape.collision_type = shape_filter.categories
+
+    if shape_filter:
+        shape.filter = shape_filter
+
+    return shape
+
+
+#
 def reyCast(start, end, shape_filter: pymunk.ShapeFilter = None, first_only=False, radius=1):
     if first_only:
         return MainPhysicSpace.space.segment_query_first(start, end, shape_filter=shape_filter, radius=radius)
