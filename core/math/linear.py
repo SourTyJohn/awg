@@ -3,7 +3,7 @@ from math import atan2, pi, sin, cos, radians
 from pymunk.vec2d import Vec2d
 from functools import lru_cache
 from beartype import beartype
-from core.Constants import FLOAT32, INT64, ZERO_FLOAT32
+from core.Constants import FLOAT32, INT64, ZERO_FLOAT32, TYPE_VEC, TYPE_FLOAT
 
 
 @lru_cache()
@@ -12,10 +12,16 @@ def sincos(a: float):
     return sin(a), cos(a)
 
 
+# IN-GAME USAGE, PHYSICS
+@beartype
+def projectedMovement(vec: TYPE_VEC, normal: TYPE_VEC, m: TYPE_FLOAT = 1.0) -> TYPE_VEC:
+    return (vec - np.vdot(vec, normal) * normal) * m
+
+
 # VECTOR
 @beartype
-def normalized_to_degree(vec: Vec2d) -> INT64:
-    return INT64(atan2(*vec) * 180 / pi - 90)
+def degreesFromNormal(vec: Vec2d) -> FLOAT32:
+    return FLOAT32(atan2(*vec) * 180 / pi - 90)
 
 
 # CAMERA

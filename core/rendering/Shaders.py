@@ -1,6 +1,8 @@
 from OpenGL.GL import *
 from utils.files import get_full_path
+from utils.debug import dprint
 import core.Constants as Const
+from core.Constants import TYPE_VEC, TYPE_FLOAT, TYPE_INT
 from beartype import beartype
 import numpy as np
 
@@ -25,32 +27,28 @@ class Shader:
 
     __instance = None
 
-    def __init__(self, vertex_path: str, fragment_path: str):
+    def __init__(self, vertex_path: str, fragment_path: str, geometry_path: str = ''):
         #  Reading shader code
         vertx_code = loadGLSL(vertex_path)
         fragm_code = loadGLSL(fragment_path)
+        gemtr_code = loadGLSL(geometry_path) if geometry_path else None
 
         #  Compiling shaders
         vertex = glCreateShader(GL_VERTEX_SHADER)
-        glShaderSource(vertex, vertx_code)
-        glCompileShader(vertex)
-
-        if not glGetShaderiv(vertex, GL_COMPILE_STATUS):
-            print(f'vertex shader error in: {vertex_path}')
-            print(glGetShaderInfoLog(vertex))
+        self.compile_shader(vertex, vertx_code, vertex_path)
 
         fragment = glCreateShader(GL_FRAGMENT_SHADER)
-        glShaderSource(fragment, fragm_code)
-        glCompileShader(fragment)
+        self.compile_shader(fragment, fragm_code, fragm_code)
 
-        if not glGetShaderiv(fragment, GL_COMPILE_STATUS):
-            print(f'fragment shader error in: {fragment_path}')
-            print(glGetShaderInfoLog(fragment))
+        geometry = glCreateShader(GL_GEOMETRY_SHADER)
+        self.compile_shader(geometry, gemtr_code, geometry_path)
 
         #  Creating program and attaching shaders
         self.program = glCreateProgram()
         glAttachShader(self.program, vertex)
         glAttachShader(self.program, fragment)
+        if geometry_path:
+            glAttachShader(self.program, geometry)
         glLinkProgram(self.program)
 
         if not glGetProgramiv(self.program, GL_LINK_STATUS):
@@ -61,6 +59,19 @@ class Shader:
         #  Cleaning up
         glDeleteShader(vertex)
         glDeleteShader(fragment)
+        glDeleteShader(geometry)
+
+    @staticmethod
+    def compile_shader(gl_shader, code: str, path: str):
+        if not path:
+            return None
+
+        glShaderSource(gl_shader, code)
+        glCompileShader(gl_shader)
+
+        if not glGetShaderiv(gl_shader, GL_COMPILE_STATUS):
+            print(f'Shader compilation error in: {path}')
+            print(glGetShaderInfoLog(gl_shader))
 
     def __new__(cls, *args, **kwargs):
         cls.__instance = super(Shader, cls).__new__(cls)
@@ -95,9 +106,14 @@ class Shader:
         glUniformMatrix4fv(loc, 1, GL_FALSE, value)
 
     @beartype
-    def passFloat(self, name_: str, value) -> None:
+    def passFloat(self, name_: str, value: TYPE_FLOAT) -> None:
         loc = glGetUniformLocation(self.program, name_)
         glUniform1f(loc, value)
+
+    @beartype
+    def passInteger(self, name_: str, value: TYPE_INT):
+        loc = glGetUniformLocation(self.program, name_)
+        glUniform1i(loc, value)
 
     @beartype
     def passTexture(self, name_: str, value) -> None:
@@ -105,9 +121,14 @@ class Shader:
         glUniform1i(frame, value)
 
     @beartype
-    def passVec2(self, name_: str, value) -> None:
+    def passVec2f(self, name_: str, value) -> None:
         loc = glGetUniformLocation(self.program, name_)
         glUniform2f(loc, *value)
+
+    @beartype
+    def passVec4f(self, name_: str, value: TYPE_VEC) -> None:
+        loc = glGetUniformLocation(self.program, name_)
+        glUniform4f(loc, *value)
 
 
 class DefaultShader(Shader):
@@ -124,7 +145,7 @@ class DefaultShader(Shader):
 
 
 class BackgroundShader(Shader):
-    """Shader for fancy gradient background drawing"""
+    """Shader for fancy :) gradient background drawing"""
 
     __instance = None
 
@@ -190,6 +211,50 @@ class GUIShader(Shader):
     def prepareDraw(self, pos, **kw):
         super().prepareDraw(pos, **kw)
         self.passMat4('Transform', kw['transform'])
+
+
+class StraightLineShader(Shader):
+    def __init__(self):
+        super().__init__('straight_line_vert.glsl',
+                         'straight_line_frag.glsl',
+                         'straight_line_geo.glsl')
+
+    def prepareDraw(self, pos, **kw):
+        shader = self.program
+
+        # ATTRIBUTES POINTERS
+        glGetAttribLocation(shader, "position")
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 12, ctypes.c_void_p(0))
+        glEnableVertexAttribArray(0)
+        self.passMat4('Transform', kw['transform'])
+        self.passVec4f('LineColor', kw['color'])
+        self.passInteger('Thickness', kw['width'])
+
+
+class ParticlePolyShader(Shader):
+    def __init__(self):
+        super().__init__('particle_vert.glsl',
+                         'particle_frag.glsl',
+                         'particle_poly_geo.glsl')
+
+    def prepareDraw(self, pos, **kw):
+        shader = self.program
+        stride = 36
+
+        # ATTRIBUTES POINTERS
+        glGetAttribLocation(shader, "position")
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, ctypes.c_void_p(0))
+        glEnableVertexAttribArray(0)
+
+        glGetAttribLocation(shader, "color")
+        glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, stride, ctypes.c_void_p(12))
+        glEnableVertexAttribArray(1)
+
+        glGetAttribLocation(shader, "size")
+        glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, stride, ctypes.c_void_p(28))
+        glEnableVertexAttribArray(2)
+
+        self.passMat4('Transform', kw['transform'])
 #
 
 
@@ -198,9 +263,9 @@ def init():
 
     for cls in Shader.__subclasses__():
         shaders[cls.__name__] = cls()
-        print(f'Inited: {cls.__name__}')
+        dprint(f'Inited: {cls.__name__}')
 
-    print('-- Done.\n')
+    dprint('-- Done.\n')
 
 
 def loadGLSL(path):
@@ -212,6 +277,10 @@ def loadGLSL(path):
 
             tags = line.split()
             if tags[0] == '#constant':
-                code[i] = f'{tags[1]} {tags[2]} = {getattr(Const, tags[2])};\n'
+                value = getattr(Const, tags[2])
+                if type(value) in {set, list, tuple, np.ndarray}:
+                    code[i] = f'{tags[1]} {tags[2]} = vec{len(value)}({str(list(value))[1:-1]});\n'
+                else:
+                    code[i] = f'{tags[1]} {tags[2]} = {value};\n'
 
     return ''.join(code)

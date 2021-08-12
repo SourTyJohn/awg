@@ -1,16 +1,39 @@
-import pymunk
+from pymunk.body import Body
+from pymunk.vec2d import Vec2d
+from numpy import ndarray, array, matrix
+
+from json import load as json_load
+from typing import Union, Generator
 
 from utils.files import SETTINGS_FILE
-import json
 
 
-# Data Types [Mostly used in math.linear && math.rect4f]
-from numpy import float64, float32, int64
+# Data Types
+from numpy import float64, float32, int64, uintc, int16, float16
 FLOAT64 = float64
 FLOAT32 = float32
+FLOAT16 = float16
 INT64 = int64
+INT16 = int16
+UINT = uintc
+ARRAY = array
+
 ZERO_FLOAT32 = FLOAT32(0)
 ONE_FLOAT32 = FLOAT32(1)
+INF = float('inf')
+
+TYPE_FLOAT = Union[float, FLOAT32, FLOAT64]
+TYPE_INT = Union[int, INT64]
+TYPE_NUM = Union[float, FLOAT32, FLOAT64, int, INT64, uintc]
+TYPE_VEC = Union[Vec2d, ndarray, Generator]
+TYPE_MAT = Union[ndarray, matrix]
+
+
+# Tags
+# TAG_PHYSIC_THROWABLE = 1
+# TAG_SILENCED = 2  # no sound
+# TAG_HUMAN = 4
+# TAG_UNDEAD = 8
 
 
 # In-Settings Variables
@@ -31,7 +54,7 @@ def load_settings():
     global LANGUAGE
 
     with open(SETTINGS_FILE) as f:
-        settings = json.load(f)
+        settings = json_load(f)
 
     TEXTURE_PACK = settings['Texture Pack']
     BRIGHTNESS = settings['Brightness']
@@ -45,7 +68,6 @@ def load_settings():
 
 
 load_settings()
-
 
 # BASE
 TITLE = 'Actually Working Game II'  # window name
@@ -77,15 +99,8 @@ WINDOW_RECT = [*WINDOW_MIDDLE, *WINDOW_SIZE]
 FULL_SCREEN = False if WINDOW_MODE == 'windowed' else True
 
 
-# FOV. Field of View
-FOV = 1  # multiplier of screen size
-DEFAULT_FOV_W = (WINDOW_SIZE[0] * FOV) / 2
-DEFAULT_FOV_H = (WINDOW_SIZE[1] * FOV) / 2
-
-# render rect for fixed must be greater than rect for dynamic
-# otherwise dynamic objects may fall through flour
-RENDER_RECT_FOR_DYNAMIC = [0, 0, int(DEFAULT_FOV_W * 2.5), int(DEFAULT_FOV_W * 2.5)]
-RENDER_RECT_FOR_FIXED = [0, 0, int(DEFAULT_FOV_W * 3), int(DEFAULT_FOV_W * 3)]
+# FOV
+FOV: float = 1.0  # multiplier of screen size
 
 
 # PHYSICS
@@ -95,9 +110,9 @@ SLEEP_TIME_THRESHOLD = 0.3
 
 # BODY TYPES
 BODY_TYPES = {
-    'static': pymunk.Body.STATIC,
-    'dynamic': pymunk.Body.DYNAMIC,
-    'kinematic': pymunk.Body.KINEMATIC
+    'static': Body.STATIC,
+    'dynamic': Body.DYNAMIC,
+    'kinematic': Body.KINEMATIC
 }
 
 

@@ -1,6 +1,6 @@
+from core.Constants import FPS_LOCK, TITLE, FPS_SHOW, WINDOW_RESOLUTION
 import pygame as pg
 from core.rendering.PyOGL import initDisplay
-from core.Constants import FPS_LOCK, TITLE, FPS_SHOW, WINDOW_RESOLUTION
 from core.audio.PyOAL import AudioManager
 # from cProfile import Profile
 # Profile = Profile()

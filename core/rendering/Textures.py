@@ -4,6 +4,7 @@ from core.rendering.TextRender import GlText, LocalizedText, MenuFont
 from os import listdir
 
 from utils.files import get_full_path
+from utils.debug import dprint
 
 from core.Constants import *
 T_ERROR_TEXTURE = Gl.GlTexture.load_file('Devs/r_error.png', repeat=True)
@@ -23,7 +24,7 @@ def loadTexturePack(name):
             t = Gl.GlTexture.load_file(f'{dr}/{tex}', (tex[0] == 'r'))
             pack.append(t)
 
-    print(f'-- Done.\n')
+    dprint(f'-- Done.\n')
     return pack
 
 

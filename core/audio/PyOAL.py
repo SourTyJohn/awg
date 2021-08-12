@@ -1,6 +1,7 @@
 from openal import *
 from os import listdir
 from utils.files import get_full_path
+from utils.debug import dprint
 from core.Constants import MASTER_VOLUME, GAME_VOLUME, MUSIC_VOLUME, SOUND_PACK
 from pyogg import VorbisFile
 from os.path import join, splitext
@@ -98,7 +99,7 @@ class AudioManager:
         self.buffers[name] = buffer.value
         del ops
 
-        print(f'<Sound[{buffer.value}]\tsize: {data[2].value}\tname:{name}>')
+        dprint(f'<Sound[{buffer.value}]\tsize: {data[2].value}\tname:{name}>')
 
     # SOURCES
     def play_sound(self, sound, pos3f, vel3f=(0.0, 0.0, 0.0), volume=1.0):
@@ -178,8 +179,7 @@ def loadSoundPack(name):
     for file in files:
         AudioManager.ambient_paths[splitext(file)[-2]] = join(path, file)
 
-    print(AudioManager.ambient_paths)
-    print(f'-- Done.\n')
+    dprint(f'-- Done.\n')
     
 
 def gamePosToSoundPos(pos):

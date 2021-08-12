@@ -22,17 +22,15 @@ def handleCollisionSetup(spc: pymunk.Space):
     handler = spc.add_default_collision_handler()
 
     def collisionHandlerPre(arbiter: pymunk.Arbiter, space, data):
-        if arbiter.is_first_contact:
-            for s in range(len(arbiter.shapes)):
-                obj = objectFromShape(arbiter, s)[0]
-                obj.pre_collision_handle(arbiter.total_impulse)
+        for s in range(len(arbiter.shapes)):
+            obj = objectFromShape(arbiter, s)[0]
+            obj.pre_collision_handle(arbiter, space)
         return True
 
     def collisionHandlerPost(arbiter: pymunk.Arbiter, space, data):
-        if arbiter.is_first_contact:
-            for s in range(len(arbiter.shapes)):
-                obj = objectFromShape(arbiter, s)[0]
-                obj.post_collision_handle(arbiter.total_impulse)
+        for s in range(len(arbiter.shapes)):
+            obj = objectFromShape(arbiter, s)[0]
+            obj.post_collision_handle(arbiter, space)
         return True
 
     handler.post_solve = collisionHandlerPost

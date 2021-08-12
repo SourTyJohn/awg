@@ -1,11 +1,13 @@
 from core.physic.physics import MainPhysicSpace, objects
 from user.KeyMapping import *
 from core.objects.gObjects import *
-from core.rendering.PyOGL import *
+from core.rendering.PyOGL import RenderGroup, camera, preRender, postRender, Shaders, drawGroupsFinally
+from core.rendering.PyOGL_line import renderAllLines, drawLine
 from core.rendering.Lighting import addLight, LightSource, FireLight, clearLights, lights_gr
-from core.rendering.Particles import Particle
+from core.rendering.Particles import ParticleManager
 from core.rendering.TextRender import TextObject, DefaultFont
 from core.audio.PyOAL import AudioManager
+
 import pygame
 from beartype import beartype
 
@@ -41,6 +43,8 @@ def render():
 
     preRender()
     drawGroups()
+    renderAllLines()
+    ParticleManager.draw(hero.pos, camera)
     postRender(Shaders.shaders['ScreenShaderGame'], )
 
 
@@ -48,6 +52,7 @@ def drawGroups():
     # drawing all GLSprite groups
     drawGroupsFinally(None, characters_gr, player_gr, obstacles_gr,
                       front_gr, background_near_gr, background_gr, items_gr, gui_gr)
+    pass
 
 
 def update(dt):
@@ -58,9 +63,9 @@ def update(dt):
 
     # PHYSIC AND UPDATE [!!! PHYSICS UPDATE FIXED AND NOT BASED ON FPS !!!]
     # TODO: JUST WARNING ^
-    puf = PHYSIC_UPDATE_FREQUENCY
-    MainPhysicSpace.step(dt=puf)
-    updateGroups(dt=puf)
+    updateGroups(dt)
+    MainPhysicSpace.step(dt)
+    ParticleManager.update(dt)
 
     # SOUND
     AudioManager.update_listener(hero.pos, hero.body.velocity)
@@ -86,7 +91,8 @@ def userInput():
                 # addLight(hero.pos, 12, 'round_smooth')
 
             elif key == pygame.K_p:
-                Particle.create(items_gr, 'Particle/fire', hero.pos, (10, 24), (600, 1200), (0, 45))
+                ParticleManager.create(0, hero.pos, (10, 24), (600, 1200), (1, 2),
+                                       (1.0, 1.0, 0.0, 1.0), (10, 24), None, angle=(80, 100), gravity=1000.0)
 
             elif key == K_GRAB:
                 hero.grab_nearest_put(objects)
@@ -94,9 +100,6 @@ def userInput():
             elif key == K_CLOSE:
                 close()
                 return 'menu'
-
-            else:
-                t.set_text(str(event.key), DefaultFont)
 
         elif event.type == pygame.KEYUP:
             key = event.key
@@ -135,7 +138,7 @@ def updateGroups(dt: float):
 
 
 def initScreen(hero_life=False, first_load=False):
-    global hero, hero_inited, render_zone, t
+    global hero, hero_inited, render_zone
     BackgroundColor(background_gr)
 
     #
@@ -143,12 +146,12 @@ def initScreen(hero_life=False, first_load=False):
     # # #
 
     WorldRectangleRigid(obstacles_gr, pos=[0, 500], size=[8192, 64])
-    WorldRectangleRigid(obstacles_gr, pos=[850, 700], size=[200, 200])
+    WorldRectangleRigidTrue(obstacles_gr, pos=[850, 500], size=[200, 200])
+    # a = WorldRectangleRigid(obstacles_gr, pos=[500, 900], size=[64, 64])
+    # b = WoodenCrate(obstacles_gr, pos=[400, 900])
 
     """This VVV is a way to the bright future"""
-    a = WorldRectangleRigid(obstacles_gr, pos=[-400, 660], size=[512, 256])
-    WorldRectangleRigid(obstacles_gr, pos=[-400, 792], size=[512, 8])
-    a.bfriction = 0.0
+    WorldRectangleRigidTrue(obstacles_gr, pos=[-400, 660], size=[512, 256])
 
     for r in range(4):
         WoodenCrate(obstacles_gr, pos=[700, 800 + r*20])
@@ -163,17 +166,12 @@ def initScreen(hero_life=False, first_load=False):
     addLight(LightSource, [600, 700], 18, 'Round', 1)
     addLight(LightSource, [900, 700], 18, 'Round', 1)
 
-    def functionE(actor, owner, world, arbiter):
-        WoodenCrate(obstacles_gr, actor.pos)
-    # Trigger(functionE, 't_player', pos=(1100, 600), size=(256, 256))
-    WorldRectangleSensor(background_near_gr, pos=(1100, 600), size=(256, 256), layer=6)
-
     # # #
     # #
     #
 
     hero = MainHero(player_gr, pos=[256, 800])
-    t = TextObject(background_gr, [256, 800], ['text?', 'text indeed...'], DefaultFont, layer=6, depth_mask=True)
+    TextObject(background_gr, [256, 800], ['text?', 'text indeed...'], DefaultFont, layer=6, depth_mask=True)
 
     # GUIHeroHealthBar(gui_gr, [256, 800], layer=0)
 

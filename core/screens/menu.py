@@ -28,7 +28,7 @@ def initScreen(hero_life=True, first_load=False):
     global buttons, selected_button
     selected_button = 0
 
-    camera.set_filed(WINDOW_RECT)
+    camera.to_default_position()
 
     global first, exit_code, hero_is_alive
     exit_code, first, hero_is_alive = None, first_load, hero_is_alive

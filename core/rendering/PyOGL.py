@@ -14,6 +14,7 @@ from core.rendering.PyOGL_utils import *
 
 from utils.files import load_image
 from collections import namedtuple
+from beartype import beartype
 from typing import Callable
 
 
@@ -26,6 +27,8 @@ from typing import Callable
             
         drawGroupsFinally()
             drawTexture()
+        drawAllLines()
+            drawLineBackend()
             
         postRender() 
             clearDisplay()
@@ -37,29 +40,26 @@ from typing import Callable
 # background color
 clear_color = (0.0, 0.0, 0.0, 0.0)
 
+FIRST_EBO: uintc
+
 
 # CAMERA
 class Camera:
     """Singleton that stores camera's position and fov.
     In game usually focused on hero"""
+    ortho_params: ARRAY
+    matrix: TYPE_MAT
+    fov: TYPE_FLOAT = 0.0
+    fovW: TYPE_INT = 0
+    fovH: TYPE_INT = 0
 
-    ortho_params: np.array
     __instance = None  # Camera object is Singleton
 
-    def __init__(self):
-        #  Camera params. np.array([left, right, bottom, top], dtype=int64)
-        self.ortho_params = np.array([0, 0, 0, 0], dtype=INT64)
+    def __init__(self, fov=FOV):
+        self.set_fov(fov)
 
-        #  Field of view
-        self.fov = 1  # scale
-        self.fovW = DEFAULT_FOV_W  # field half width
-        self.fovH = DEFAULT_FOV_H  # filed half height
-
-        #
-        self.triggers = set()
-
-        #
-        self.matrix = None
+        self.ortho_params = np.array([0, 1, 0, 1], dtype=INT64)
+        self.prepare_matrix()
 
     def __new__(cls, *args, **kwargs):
         if cls.__instance:
@@ -70,11 +70,15 @@ class Camera:
     def __getitem__(self, item):
         return self.ortho_params[item]
 
-    def set_fov(self, fov):
+    def to_default_position(self) -> None:
+        self.set_filed(WINDOW_RECT)
+
+    @beartype
+    def set_fov(self, fov: float):
         if fov != self.fov:
             self.fov = fov
-            self.fovW = (WINDOW_SIZE[0] * self.fov) / 2
-            self.fovH = (WINDOW_SIZE[1] * self.fov) / 2
+            self.fovW = (WINDOW_SIZE[0] * self.fov) // 2
+            self.fovH = (WINDOW_SIZE[1] * self.fov) // 2
 
     def get_rect(self):
         # returns Rect4f objects representing field of camera view
@@ -85,23 +89,25 @@ class Camera:
     def pos(self):
         return np.array([(self[0] + self[1]) // 2, (self[2] + self[3]) // 2], dtype=INT64)
 
-    def set_filed(self, rect):
+    def set_filed(self, rect) -> None:
         x_, y_, w, h = rect[0], rect[1], rect[2] / 2, rect[3] / 2
         self.ortho_params = np.array([x_ - w, x_ + w, y_ - h, y_ + h], dtype=INT64)
 
-    def prepare_matrix(self):
+    def prepare_matrix(self) -> None:
         # applying field of view. Called only in draw_begin()
         self.matrix = lin.ortho(*self.ortho_params)
 
-    def get_matrix(self):
+    @beartype
+    def get_matrix(self) -> TYPE_MAT:
         return self.matrix
 
-    def focus_to(self, x_v, y_v, soft=True):
-        if soft:
+    @beartype
+    def focus_to(self, x_v: TYPE_FLOAT, y_v: TYPE_FLOAT, soft: float = 0.2):
+        if soft > 0:
             # camera smoothly moving to (x_v, y_x) point
             past_pos = self.pos
             d_x, d_y = past_pos[0] - x_v, past_pos[1] - y_v
-            x_v, y_v = past_pos[0] - d_x * 0.2, past_pos[1] - d_y * 0.2
+            x_v, y_v = past_pos[0] - d_x * soft, past_pos[1] - d_y * soft
 
         self.ortho_params = np.array(
             [x_v - self.fovW, x_v + self.fovW, y_v - self.fovH, y_v + self.fovH],
@@ -362,7 +368,7 @@ class RenderObjectAnimated(RenderObject):
     a_time = 0
     a_frame = 0
 
-    def update(self, dt, *args, **kwargs) -> None:
+    def update(self, dt) -> None:
         animation = self.__class__.ANIMATIONS[self.animation]
         frame = animation[self.a_frame]
 
@@ -522,7 +528,7 @@ lightBuffer: FrameBuffer
 
 # DISPLAY
 def initDisplay(size=WINDOW_RESOLUTION):
-    global camera, frameBuffer, renderLights, lightBuffer
+    global camera, frameBuffer, renderLights, lightBuffer, FIRST_EBO
 
     # Display flags
     flags = pygame.OPENGL | pygame.DOUBLEBUF | pygame.HWSURFACE | pygame.SRCALPHA
@@ -531,7 +537,7 @@ def initDisplay(size=WINDOW_RESOLUTION):
         flags |= pygame.FULLSCREEN
     pygame.display.set_mode(size, flags=flags)
     
-    #  Correct OpenGL Version requierment
+    #  Correct OpenGL Version requirement
     pygame.display.gl_set_attribute(pygame.GL_CONTEXT_MAJOR_VERSION, 3)
     pygame.display.gl_set_attribute(pygame.GL_CONTEXT_MINOR_VERSION, 2)
 
@@ -543,10 +549,20 @@ def initDisplay(size=WINDOW_RESOLUTION):
     glDepthFunc(GL_LEQUAL)
 
     # Order of vertexes when drawing
-    indices = np.array([0, 1, 2, 2, 3, 0], dtype=np.uint32)
-    ebo = glGenBuffers(1)
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo)
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices, GL_STATIC_DRAW)
+    indices = [
+        np.array([0, 1, 2, 2, 3, 0], dtype=np.uint32),
+        np.array([0, *np.array([[v, v] for v in range(1, 256)]).flatten()], dtype=np.uint32),
+        np.array(range(2 ** 13), dtype=np.uint32)
+    ]
+    first_ebo = None
+    for i in indices:
+        ebo = glGenBuffers(1)
+        if first_ebo is None:
+            first_ebo = ebo
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo)
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, i, GL_STATIC_DRAW)
+    FIRST_EBO = first_ebo
+    bindEBO()
 
     # Does not allow deprecated gl functions
     pygame.display.gl_set_attribute(
@@ -557,6 +573,10 @@ def initDisplay(size=WINDOW_RESOLUTION):
     from core.rendering.Lighting import renderLights as Rl
     from core.rendering.Lighting import lightBuffer as Lb
     renderLights, lightBuffer = Rl, Lb
+
+
+def bindEBO(offset=0):
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, FIRST_EBO + offset)
 
 
 def preRender(do_depth_test=True):
@@ -587,11 +607,15 @@ def drawGroupsFinally(render_zone, *groups):
         group.draw_all(to_draw=to_draw)
 
 
-def drawTexture(tex_key, pos, vbo, shader, z_rotation=0, tex_slot=0, **kwargs):
+@beartype
+def drawTexture(tex_key: TYPE_NUM, pos: TYPE_VEC, vbo: TYPE_NUM, shader: Shaders.Shader,
+                z_rotation: TYPE_NUM = 0.0, tex_slot: int = 0, **kwargs):
+
     # :param tex is either integer Key or GLTexture
     glBindBuffer(GL_ARRAY_BUFFER, vbo)
 
-    mat = lin.FullTransformMat(*pos, camera.get_matrix(), FLOAT32(-z_rotation))
+    x_, y_ = pos
+    mat = lin.FullTransformMat(x_, y_, camera.get_matrix(), FLOAT32(-z_rotation))
     shader.prepareDraw(pos, camera=camera, transform=mat, fbuffer=frameBuffer, **kwargs)
 
     glActiveTexture(GL_TEXTURE0 + tex_slot)
