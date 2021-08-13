@@ -324,6 +324,35 @@ class Character(RObjectStatic, PObject):
         self.on_ground = False
 
     # Moving around
+    def walk(self, dt):
+        direction = self.walk_direction
+        if not (direction and self.can_move):
+            self.friction = self._friction
+            return
+
+        end_for_rey = self.pos - Vec2d(0, self.size[1])
+        arbiter = reyCastFirst(self.pos, end_for_rey, self.shape_filter)
+        normal = arbiter.normal if arbiter else Vec2d(0, 1 * direction)
+        vec = self.walking_vec * direction * dt
+        vecFinal = projectedMovement(vec, normal, 1.0 - (self.in_air > self.IN_AIR_MOVE) * 0.3)
+
+        if self.velocity[0] * direction >= 0:
+            self.friction = 0.0
+
+        body = self.body
+        body.apply_force_at_local_point(vecFinal, body.center_of_gravity)
+        self.set_rotation_y(direction)
+
+        if body.velocity[0] > 0:
+            body.velocity = Vec2d(
+                min(self.max_walking_speed, body.velocity[0]),
+                body.velocity[1]
+            )
+        else:
+            body.velocity = Vec2d(
+                max(-self.max_walking_speed, body.velocity[0]),
+                body.velocity[1]
+            )
 
     def jump(self):
         if self.can_move and self.jumps < self.max_jumps:
