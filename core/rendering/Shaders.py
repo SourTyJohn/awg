@@ -4,9 +4,10 @@ from utils.debug import dprint
 import core.Constants as Const
 from core.Constants import TYPE_VEC, TYPE_FLOAT, TYPE_INT
 from beartype import beartype
+from typing import Dict
 import numpy as np
 
-shaders = {}
+shaders: Dict[str, "Shader"] = {}
 
 
 class Shader:
@@ -131,6 +132,7 @@ class Shader:
         glUniform4f(loc, *value)
 
 
+# DEFAULT
 class DefaultShader(Shader):
     """Basic Shader with no effects. Can use colors from VBO"""
 
@@ -159,27 +161,34 @@ class BackgroundShader(Shader):
         self.passFloat('cameraPos', kw['camera'].pos[1] / Const.WINDOW_SIZE[1])
 
 
-# light shaders
+# LIGHTING
 class RoundLightShader(Shader):
     def __init__(self):
-        super().__init__('light_round_vert.glsl', 'light_round_frag.glsl')
+        super().__init__('light_round_vert.glsl',
+                         'light_round_frag.glsl',
+                         'light_round_geo.glsl')
 
     def prepareDraw(self, pos, **kw):
-        super().prepareDraw(pos, **kw)
+        shader = self.program
+        stride = 32
+
+        # ATTRIBUTES POINTERS
+        glGetAttribLocation(shader, "position")
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, ctypes.c_void_p(0))
+        glEnableVertexAttribArray(0)
+
+        glGetAttribLocation(shader, "color")
+        glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, stride, ctypes.c_void_p(12))
+        glEnableVertexAttribArray(1)
+
+        glGetAttribLocation(shader, "radius")
+        glVertexAttribPointer(2, 1, GL_FLOAT, GL_FALSE, stride, ctypes.c_void_p(28))
+        glEnableVertexAttribArray(2)
+
         self.passMat4('Transform', kw['transform'])
 
 
-class RoundFlatLightShader(Shader):
-    def __init__(self):
-        super().__init__('light_round_vert.glsl', 'light_fire_frag.glsl')
-
-    def prepareDraw(self, pos, **kw):
-        super().prepareDraw(pos, **kw)
-        self.passMat4('Transform', kw['transform'])
-        self.passFloat('RandK', kw['noise'])
-#
-
-
+# SCREENS AND GUIS
 class ScreenShaderGame(Shader):
     """Post-effect shader"""
 
@@ -213,6 +222,7 @@ class GUIShader(Shader):
         self.passMat4('Transform', kw['transform'])
 
 
+# PARTICLES AND EFFECTS
 class StraightLineShader(Shader):
     def __init__(self):
         super().__init__('straight_line_vert.glsl',
@@ -255,7 +265,6 @@ class ParticlePolyShader(Shader):
         glEnableVertexAttribArray(2)
 
         self.passMat4('Transform', kw['transform'])
-#
 
 
 def init():
@@ -279,8 +288,8 @@ def loadGLSL(path):
             if tags[0] == '#constant':
                 value = getattr(Const, tags[2])
                 if type(value) in {set, list, tuple, np.ndarray}:
-                    code[i] = f'{tags[1]} {tags[2]} = vec{len(value)}({str(list(value))[1:-1]});\n'
+                    code[i] = f'const {tags[1]} {tags[2]} = vec{len(value)}({str(list(value))[1:-1]});\n'
                 else:
-                    code[i] = f'{tags[1]} {tags[2]} = {value};\n'
+                    code[i] = f'const {tags[1]} {tags[2]} = {value};\n'
 
     return ''.join(code)

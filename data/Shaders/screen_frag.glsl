@@ -24,4 +24,5 @@ void main() {
    }
 
    gl_FragColor = ( color + lightColor ) * intence * brightness;
+//   gl_FragColor = texture(lightMap, TexCoords);
 }

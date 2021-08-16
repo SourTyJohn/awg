@@ -1,40 +1,37 @@
 from OpenGL.GL import *
-import numpy as np
-import pygame
 
-from core.Constants import *
-
-import pyximport
-pyximport.install()
-import core.math.linear as lin
-
-from core.math.rect4f import Rect4f
 import core.rendering.Shaders as Shaders
+import core.math.linear as lin
+from core.rendering.Lighting import __LightingManager
 from core.rendering.PyOGL_utils import *
+from core.math.rect4f import Rect4f
+from core.Constants import *
 
 from utils.files import load_image
 from collections import namedtuple
 from beartype import beartype
-from typing import Callable
+import numpy as np
+import pygame
 
 
 """
     [CORE RENDERING MODULE]
     
     render pipeline after initDisplay:
-        preRender()
+        preRender() -> prepare to render
             clearDisplay()
-            
+        
+        [MAIN PHASE, RENDERING ALL IN-GAME OBJECTS]
         drawGroupsFinally()
             drawTexture()
         drawAllLines()
             drawLineBackend()
+        renderLights()
+            LightManager.render()
             
-        postRender() 
+        postRender() -> render scene onto the screen
             clearDisplay()
             renderLights()
-            render scene onto the screen
-    
 """
 
 # background color
@@ -116,7 +113,6 @@ class Camera:
 
 
 camera: Camera
-renderLights: Callable
 
 
 # RENDER GROUP
@@ -309,7 +305,7 @@ class RenderObject(Sprite):
         self.shader = Shaders.shaders[self.shader]
 
     def __repr__(self):
-        return f'<{self.__class__.__name__} {self.rect}. In {len(self.groups())} groups>'
+        return f'<{self.__class__.__name__} {self.rect}'
 
     def curr_image(self) -> GlTexture:
         """Getting current image of object.
@@ -522,27 +518,30 @@ class FrameBuffer:
         glBindFramebuffer(GL_FRAMEBUFFER, 0)
 
 
-frameBuffer: FrameBuffer
-lightBuffer: FrameBuffer
+frameBufferGeometry: FrameBuffer
+frameBufferLight: FrameBuffer
+LightingManager: __LightingManager
 
 
 # DISPLAY
 def initDisplay(size=WINDOW_RESOLUTION):
-    global camera, frameBuffer, renderLights, lightBuffer, FIRST_EBO
+    global camera, frameBufferGeometry, frameBufferLight, FIRST_EBO, LightingManager
 
     # Display flags
     flags = pygame.OPENGL | pygame.DOUBLEBUF | pygame.HWSURFACE | pygame.SRCALPHA
-
-    if FULL_SCREEN:
-        flags |= pygame.FULLSCREEN
+    flags = flags | pygame.FULLSCREEN if FULL_SCREEN else flags
     pygame.display.set_mode(size, flags=flags)
     
     #  Correct OpenGL Version requirement
     pygame.display.gl_set_attribute(pygame.GL_CONTEXT_MAJOR_VERSION, 3)
     pygame.display.gl_set_attribute(pygame.GL_CONTEXT_MINOR_VERSION, 2)
 
+    # Initialize modules
     Shaders.init()
-    frameBuffer = FrameBuffer(depth_buff=True)
+    LightingManager = __LightingManager()
+
+    frameBufferGeometry = FrameBuffer(depth_buff=True)
+    frameBufferLight = FrameBuffer(depth_buff=False)
     clearDisplay()
     camera = Camera()
     glClearColor(*clear_color)
@@ -569,11 +568,6 @@ def initDisplay(size=WINDOW_RESOLUTION):
         pygame.GL_CONTEXT_PROFILE_MASK, pygame.GL_CONTEXT_PROFILE_CORE
     )
 
-    # LIGHTING IMPORT
-    from core.rendering.Lighting import renderLights as Rl
-    from core.rendering.Lighting import lightBuffer as Lb
-    renderLights, lightBuffer = Rl, Lb
-
 
 def bindEBO(offset=0):
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, FIRST_EBO + offset)
@@ -582,7 +576,7 @@ def bindEBO(offset=0):
 def preRender(do_depth_test=True):
     # MY FRAME BUFFER
     camera.prepare_matrix()
-    frameBuffer.bind()
+    frameBufferGeometry.bind()
     clearDisplay()
 
     # ENABLE STUFF
@@ -616,11 +610,25 @@ def drawTexture(tex_key: TYPE_NUM, pos: TYPE_VEC, vbo: TYPE_NUM, shader: Shaders
 
     x_, y_ = pos
     mat = lin.FullTransformMat(x_, y_, camera.get_matrix(), FLOAT32(-z_rotation))
-    shader.prepareDraw(pos, camera=camera, transform=mat, fbuffer=frameBuffer, **kwargs)
+    shader.prepareDraw(pos, camera=camera, transform=mat, fbuffer=frameBufferGeometry, **kwargs)
 
     glActiveTexture(GL_TEXTURE0 + tex_slot)
     glBindTexture(GL_TEXTURE_2D, tex_key)
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, None)
+
+
+def renderLights(camera_):
+    lm = LightingManager
+
+    if lm.do_render:
+        bindEBO(2)
+        frameBufferLight.bind()
+        clearDisplay()
+
+        lm.render(camera_)
+
+        FrameBuffer.unbind()
+        bindEBO(0)
 
 
 def postRender(screen_shader):
@@ -628,11 +636,11 @@ def postRender(screen_shader):
     Shader that will be used to render full scene to screen"""
 
     # MY FRAME BUFFER
-    fbuff = frameBuffer
-    lbuff = lightBuffer
+    fbuff = frameBufferGeometry
+    lbuff = frameBufferLight
 
     # DEFAULT FRAME BUFFER
-    renderLights()
+    renderLights(camera)
     clearDisplay()
 
     screen_shader.use()

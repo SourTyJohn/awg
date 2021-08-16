@@ -2,6 +2,7 @@ from openal import *
 from os import listdir
 from utils.files import get_full_path
 from utils.debug import dprint
+from core.math.random import randf
 from core.Constants import MASTER_VOLUME, GAME_VOLUME, MUSIC_VOLUME, SOUND_PACK
 from pyogg import VorbisFile
 from os.path import join, splitext
@@ -102,7 +103,8 @@ class AudioManager:
         dprint(f'<Sound[{buffer.value}]\tsize: {data[2].value}\tname:{name}>')
 
     # SOURCES
-    def play_sound(self, sound, pos3f, vel3f=(0.0, 0.0, 0.0), volume=1.0):
+    def play_sound(self, sound: str, pos3f, vel3f=(0.0, 0.0, 0.0), volume=1.0, pitch=(1.0, 1.0)):
+        """pitch:: (min, max)"""
         pos3f = gamePosToSoundPos(pos3f)
         vel3f = gamePosToSoundPos(vel3f)
 
@@ -111,7 +113,7 @@ class AudioManager:
 
         alSource3f(source, AL_POSITION, *pos3f)
         alSource3f(source, AL_VELOCITY, *vel3f)
-        alSourcei(source, AL_PITCH, 1)
+        alSourcef(source, AL_PITCH, randf(*pitch))
         alSourcef(source, AL_GAIN, volume * GAME_VOLUME)
 
         alSourcei(source, AL_BUFFER, self.buffers[sound])

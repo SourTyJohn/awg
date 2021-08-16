@@ -2,8 +2,7 @@ from pymunk import ShapeFilter, Shape
 from core.physic.physics import PhysicObject, Body
 from core.rendering.PyOGL import RenderObjectAnimated, RenderObjectStatic, RenderObjectComposite
 from core.rendering.PyOGL_line import drawLine
-from core.rendering.Particles import ParticleManager
-from core.Constants import FLOAT32, TYPE_FLOAT, INT64, TYPE_INT, INF, TYPE_VEC
+from core.Constants import FLOAT32, TYPE_FLOAT, INT64, TYPE_INT, INF, TYPE_VEC, TYPE_NUM
 
 from typing import Tuple
 import dataclasses as dtc
@@ -35,8 +34,16 @@ __all__ = [
 
 
 # collision mask categories
-COLLISION_CATEGORIES = ('obstacle', 'no_collision', 'enemy', 'level',
-                        'player', 'light', 'trigger', 'particle', 'bg_obstacle')
+COLLISION_CATEGORIES = (
+    'no_collision',
+    'player',
+    'level',
+    'obstacle',
+    'bg_obstacle',
+    'enemy',
+    'trigger',
+    'particle'
+)
 COLLISION_CATEGORIES = {x: 2 ** i for i, x in enumerate(COLLISION_CATEGORIES)}
 
 
@@ -113,11 +120,12 @@ def rectPoints(w, h, x_offset=0, y_offset=0) -> Tuple[Tuple, Tuple, Tuple, Tuple
 
 
 def deleteObject(obj):
-    #  deletes image and physic body of obj
-    # if DEBUG:
-    #     print(f'Fully Deleted: {obj}')
-    obj.delete()
-    PhysicObject.delete_from_physic(obj)
+    """Checks if object has image or/and physic body and deletes it/both
+    Slowest deletion method, but universal"""
+    if hasattr(obj, 'delete_Mortal'):
+        obj.delete_Mortal()
+    if hasattr(obj, 'body'):
+        PhysicObject.delete_from_physic(obj)
 
 
 @beartype
@@ -135,51 +143,51 @@ class InGameObject:
 
 
 class Mortal:
-    """Mortal means that object have .health: int and if .health <= 0 object will .die()
+    """Mortal means that object have .health: int and if .health <= 0 object will .die_Mortal()
        Apply this to every DESTRUCTABLE OBJECT"""
 
-    lethal_fall_velocity: int = -1
-    """[y] velocity that will cause calling die()
+    __Mortal_lethal_fall_velocity: int = -1
+    """[y] velocity that will cause calling die_Mortal()
     if set to -1, object can not get damage from falling
     if velocity[y] >= lethal_fall_velocity // 4 -> damage"""
 
-    health: np.ndarray
-    show_health_bar: int = 2  # 0 - no, 1 - yes, 2 - on damage
+    __Mortal_health: np.ndarray
+    __Mortal_show_health_bar: int = 2  # 0 - no, 1 - yes, 2 - on damage
 
-    def init_mortal(self, cls, health: list):
+    def init_Mortal(self, cls, health: list):
         """You need to call this in constructor of subclasses
         to fully integrate Mortal functionality"""
-        self.health = np.array(health, dtype=INT64)
+        self.__Mortal_health = np.array(health, dtype=INT64)
 
-    def update(self, *args, **kwargs):
+    def update_Mortal(self, dt: float) -> None:
         pass
 
-    def fall(self, vec):
-        if self.lethal_fall_velocity == -1:
+    def fall_Mortal(self, vec):
+        if self.__Mortal_lethal_fall_velocity == -1:
             return
 
-        damage = abs(vec.length / self.lethal_fall_velocity)
+        damage = abs(vec.length / self.__Mortal_lethal_fall_velocity)
         if damage < 0.35:
             return
-        damage = round(damage ** 2 * self.health[1])
-        self.get_damage(damage)
+        damage = round(damage ** 2 * self.__Mortal_health[1])
+        self.get_damage_Mortal(damage)
 
-    def get_damage(self, amount: TYPE_INT, damage_type: int = 0):
+    def get_damage_Mortal(self, amount: TYPE_INT, damage_type: int = 0):
         """
         :param amount: amount
         :param damage_type: 0 for int amount and 1 for percentage"""
         if damage_type == 0:
-            self.health[0] -= amount
+            self.__Mortal_health[0] -= amount
         else:
-            self.health[0] -= INT64(self.health[1] * amount)
+            self.__Mortal_health[0] -= INT64(self.__Mortal_health[1] * amount)
 
-        if self.health[0] <= 0:
-            self.die()
+        if self.__Mortal_health[0] <= 0:
+            self.die_Mortal()
 
-    def delete(self):
+    def delete_Mortal(self):
         pass
 
-    def die(self):
+    def die_Mortal(self):
         deleteObject(self)
 
 
@@ -188,10 +196,10 @@ class Throwable:
     You can add this only to classes with PhysicObject interface"""
 
     # own
-    touchable_after_throw: bool = True
-    __default_shapeFilter: ShapeFilter
-    __default_moment: Body.moment
-    __throw_shapeFilter: ShapeFilter
+    __Throwable_default_shapeFilter: ShapeFilter
+    __Throwable_default_moment: Body.moment
+    __Throwable_is_thrown: bool
+    __Throwable_time_since_throw: float
 
     # physic object
     body: Body
@@ -203,40 +211,38 @@ class Throwable:
         """Call this from PhysicObject"""
         return ShapeFilter
 
-    def __init__(self, cls, filter_after_throw: ShapeFilter):
-        self.__default_shapeFilter = cls.shape_filter
-        self.__throw_shapeFilter = filter_after_throw
-        self.__default_moment = self.body.moment
+    def init_Throwable(self, cls):
+        self.__Throwable_default_shapeFilter = cls.shape_filter
+        self.__Throwable_default_moment = self.body.moment
 
-        self.__time_since_throw = 0.0
-        self.__is_thrown = False
+        self.__Throwable_time_since_throw = 0.0
+        self.__Throwable_is_thrown = False
 
-    def update(self, dt):
-        if self.__is_thrown:
-            self.__time_since_throw += dt
-            ParticleManager.create(
-                0, self.pos, (4, 4), (6, 12), (1, 1), (0.8, 0.0, 0.0, 0.6), (4, 4), None
-            )
+    def update_Throwable(self, dt) -> bool:
+        if self.__Throwable_is_thrown:
+            self.__Throwable_time_since_throw += dt
+            return True
+        return False
 
-    def thrown(self, by, vec):
-        self.__is_thrown = True
+    def thrown_Throwable(self, by, vec):
+        self.__Throwable_is_thrown = True
 
-    def throw_hit(self):
-        self.__time_since_throw = 0.0
-        self.__is_thrown = False
+    def throw_hit_Throwable(self):
+        self.__Throwable_time_since_throw = 0.0
+        self.__Throwable_is_thrown = False
 
-    def grabbed(self, by):
+    def grabbed_Throwable(self, by):
         b = self.body
         b.moment = INF
         b.angular_velocity = 0
         b.angle = 0
         self.shape.filter = filterAddIgnore(self.shape_filter, by.shape.filter.categories)
 
-    def putted(self, by):
+    def putted_Throwable(self, by):
         body = self.body
-        body.moment = self.__default_moment
+        body.moment = self.__Throwable_default_moment
         body.velocity = by.body.velocity
-        self.shape.filter = self.__default_shapeFilter
+        self.shape.filter = self.__Throwable_default_shapeFilter
 
 
 @dtc.dataclass
@@ -275,7 +281,7 @@ class Tracer:
         self.points = deque(maxlen=self.points.maxlen)
 
     @beartype
-    def update(self, dt: float) -> bool:
+    def update_Tracer(self, dt: float) -> bool:
         """Must be called in actor's update method.
         There is no auto-update"""
         if not self.__started:
@@ -296,6 +302,25 @@ class Tracer:
 
     def clear(self):
         self.points.clear()
+
+
+class Projectile(PhysicObject):
+    def __init__(self, pos, points=None, radius=None, mass=None,
+                 destroy_by: Tuple = (), max_time: float = -1.0):
+        shape_filter = shapeFilter('projectile', collide_with=destroy_by)
+        super().__init__(self, pos, points, shape_filter, radius, mass)
+        self.projectile_max_time = max_time
+        self.projectile_current_time = 0.0
+
+    @beartype
+    def update_Projectile(self, dt: float) -> None:
+        self.projectile_current_time += dt
+        if self.projectile_current_time >= self.projectile_current_time:
+            deleteObject(self)
+
+    @classmethod
+    def from_angle(cls, speed: TYPE_NUM, angle: TYPE_INT):
+        cls.__init__()
 
 
 RObjectAnimated = RenderObjectAnimated

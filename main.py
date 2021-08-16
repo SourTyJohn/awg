@@ -40,7 +40,7 @@ def gameLoop():
     exit_code = scr.update(dt)
 
     seconds += dt
-    if seconds >= 1:
+    if seconds >= 1.0:
         seconds = 0.0
         AudioManager.clear_empty_sources()
         # Profile.disable()

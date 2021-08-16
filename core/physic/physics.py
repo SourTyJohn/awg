@@ -114,9 +114,6 @@ class PhysicObject:
     def bhash(self):
         return self.body.get_hash_key
 
-    def update(self, *args, **kwargs) -> None:
-        pass
-
     def delete_from_physic(self):
         # Fully deleting object from physic world
         MainPhysicSpace.vanish(self)
@@ -201,6 +198,12 @@ class World:
         self.space.add(body, *shapes)
         objects[body.get_hash_key] = obj
 
+    def simple_add(self, *to_add):
+        self.space.add(*to_add)
+
+    def simple_delete(self, *to_delete):
+        self.space.remove(*to_delete)
+
     def add_joints(self, *joints):
         self.space.add(*joints)
 
@@ -219,13 +222,13 @@ class World:
         # Clearing physic world
         while objects.values():
             obj = list(objects.values())[0]
-            # Physically delete object
+            # Physically delete_Mortal object
             obj.__class__.delete_from_physic(obj, )
 
 
 # MAKE BODY
 def makeBodyPolygon(pos, points, body_type, mass=0.0, moment=0):
-    if mass:
+    if moment == 0:
         moment = pymunk.moment_for_poly(mass, points, (0, 0))
     body = Body(mass, moment, body_type=BODY_TYPES[body_type])
     body.pos = pos if pos else (0, 0)
@@ -233,7 +236,7 @@ def makeBodyPolygon(pos, points, body_type, mass=0.0, moment=0):
 
 
 def makeBodyCircle(pos, radius, body_type, mass=0.0, moment=0):
-    if mass:
+    if moment == 0:
         moment = pymunk.moment_for_circle(mass, radius, radius)
     body = Body(mass, moment, body_type=BODY_TYPES[body_type])
     body.pos = pos if pos else (0, 0)

@@ -23,7 +23,7 @@ hero_is_alive = True
 
 def initScreen(hero_life=True, first_load=False):
     AudioManager.reset_listener()
-    AudioManager.set_stream('music', 'main_menu', True)
+    AudioManager.set_stream('music', 'main_menu', True, volume=0.2)
 
     global buttons, selected_button
     selected_button = 0
@@ -128,7 +128,7 @@ class Button(RenderObjectStatic):
         if -1 < prev <= buttons_count:
             buttons[prev].setTexture(0)
         buttons[this].setTexture(1)
-        AudioManager.play_sound('menu_button_select', [0, 0, 0])
+        AudioManager.play_sound('menu_button_select', [0, 0, 0], pitch=(0.9, 1.0))
 
 
 class FullButton(RenderObjectComposite):

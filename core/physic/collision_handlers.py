@@ -19,22 +19,26 @@ def setup(space: pymunk.Space):
 
 
 def handleCollisionSetup(spc: pymunk.Space):
-    handler = spc.add_default_collision_handler()
+    # DEFAULT
+    handler1 = spc.add_default_collision_handler()
 
-    def collisionHandlerPre(arbiter: pymunk.Arbiter, space, data):
+    def collisionHandlerPre(arbiter: pymunk.Arbiter, space, _):
         for s in range(len(arbiter.shapes)):
             obj = objectFromShape(arbiter, s)[0]
             obj.pre_collision_handle(arbiter, space)
         return True
 
-    def collisionHandlerPost(arbiter: pymunk.Arbiter, space, data):
+    def collisionHandlerPost(arbiter: pymunk.Arbiter, space, _):
         for s in range(len(arbiter.shapes)):
             obj = objectFromShape(arbiter, s)[0]
             obj.post_collision_handle(arbiter, space)
         return True
 
-    handler.post_solve = collisionHandlerPost
-    handler.pre_solve = collisionHandlerPre
+    handler1.post_solve = collisionHandlerPost
+    handler1.pre_solve = collisionHandlerPre
+
+    # PARTICLES
+    """In rendering.Particles modulo"""
 
 
 def triggersSetup(spc: pymunk.Space):

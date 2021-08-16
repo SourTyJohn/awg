@@ -9,7 +9,8 @@ from core.rendering.Textures import EssentialTextureStorage as Ets
 from core.Constants import *
 from core.audio.PyOAL import AudioManager
 from core.objects.gItems import InventoryAndItemsManager
-from core.math.linear import projectedMovement
+from core.math.linear import projectedMovement, degreesFromNormal
+from core.rendering.Particles import ParticleManager
 
 from pymunk.vec2d import Vec2d
 from beartype import beartype
@@ -68,7 +69,7 @@ class DroppedItem(RObjectComposite):
 # WORLD GEOMETRY
 class WorldRectangleRigid(RObjectStatic, PObject, Direct):
     # This class represents base level geometry with rigid body
-    shape_filter = shapeFilter('obstacle', )
+    shape_filter = shapeFilter('level', )
     body_type = 'static'
 
     TEXTURES = Ets
@@ -370,7 +371,7 @@ class Character(RObjectStatic, PObject):
             self.grab(nearest)
 
     def grab(self, target: "Throwable"):
-        target.grabbed(self)
+        target.grabbed_Throwable(self)
         self.grabbed_object = target
         target.pos = self.pos + self.grabbed_item_offset
 
@@ -379,7 +380,7 @@ class Character(RObjectStatic, PObject):
         if not obj:
             return None
 
-        obj.putted(self)
+        obj.putted_Throwable(self)
         self.grabbed_object = None
         self.max_walking_speed = self.MAX_WALKING_SPEED
         return obj
@@ -387,7 +388,7 @@ class Character(RObjectStatic, PObject):
     def throw_grabbed(self):
         if obj := self.put_grabbed():
             vec = Vec2d(self.THROW_POWER[0] * self.y_Rotation, self.THROW_POWER[1])
-            obj.thrown(self, vec)
+            obj.thrown_Throwable(self, vec)
             obj.velocity = Vec2d(0, 0)
             obj.body.apply_impulse_at_local_point(vec)
 
@@ -432,7 +433,7 @@ class MainHero(Character, Direct, Mortal):
     def __init__(self, gr, pos, layer=4):
         cls = self.__class__
         Character.__init__(self, gr, pos, cls.size, layer=layer)
-        self.init_mortal(cls, [cls.max_health, ] * 2)
+        self.init_Mortal(cls, [cls.max_health, ] * 2)
         self.tracer = Tracer(self, 0.17, 10)
 
     @beartype
@@ -448,6 +449,20 @@ class MainHero(Character, Direct, Mortal):
         if self.jump_delay_current >= MainHero.MANY_JUMPS_DELAY:
             if super().jump():
                 self.jump_delay_current = 0
+
+    def post_collision_handle(self, arbiter, space) -> bool:
+        if abs(arbiter.normal[1]) > 0.7:
+            self.touch_ground()
+
+            # Particles when landing
+            if arbiter.total_impulse.length > self.mass * 1000:
+                angles = (10, 30, 150, 170)
+                pos = Vec2d( self.pos[0], self.pos[1] - self.size[1] / 2 + 16 )
+
+                ParticleManager.create_physic(
+                    0, pos, (16, 24), (200, 600), (1.0, 3.0),
+                    (0.15, 0.1, 0.1, 1.0), (4, 6), None, angles, elasticity=0.5)
+        return True
 
 
 class WoodenCrate(RObjectStatic, PObject, Throwable, Direct, Mortal):
@@ -470,18 +485,33 @@ class WoodenCrate(RObjectStatic, PObject, Throwable, Direct, Mortal):
         cls = self.__class__
         super().__init__(gr, pos, size=cls.size)
         PObject.__init__(self, pos)
-        Throwable.__init__(self, cls, shapeFilter('obstacle', ))
-        self.init_mortal(cls, [cls.max_health, ] * 2)
+        self.init_Throwable(cls)
+        self.init_Mortal(cls, [cls.max_health, ] * 2)
 
     def post_collision_handle(self, arbiter, space):
         if arbiter.is_first_contact:
             impulse = arbiter.total_impulse.length
             if impulse > 4000:
-                AudioManager.play_sound('crate_wood_hit', self.pos, self.body.velocity, volume=impulse / 20000)
-            self.throw_hit()
+                AudioManager.play_sound('crate_wood_hit', self.pos, self.body.velocity,
+                                        volume=impulse / 20000, pitch=(0.8, 1.0))
+            if impulse > 25_000:
+                angle = int(degreesFromNormal(arbiter.normal))
+                amount = int((impulse - 25_000) // 3_000)
+                size_y = (12, 24)
+                size_x = (8, 12)
+                if 45 < abs(angle) < 135:
+                    size_x, size_y = size_y, size_x
+                ParticleManager.create_simple(0, arbiter.contact_point_set.points[0].point_a,
+                                              (amount, amount), (16, 96), (0.5, 1.0), (0.5, 0.5, 0.5, 1.0),
+                                              size_x, size_y,
+                                              (angle - 90, angle - 90, angle + 90, angle + 90))
+            self.throw_hit_Throwable()
 
-    def update(self, *args, **kwargs) -> None:
-        Throwable.update(self, *args)
+    def update(self, dt: float) -> None:
+        if self.update_Throwable(dt):
+            ParticleManager.create_simple(
+                0, self.pos, (4, 4), (6, 12), (0.5, 1.0), (0.8, 0.0, 0.0, 0.6), (4, 4), None
+            )
 
 
 class Dummy(Character, Direct, Mortal):

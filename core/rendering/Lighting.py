@@ -1,83 +1,183 @@
-from core.rendering.PyOGL import *
-from core.Constants import TILE_SIZE
-from random import randint
+from OpenGL.GL import *
+
+from core.Constants import TILE_SIZE, FLOAT32, TYPE_NUM,\
+    TYPE_VEC, MAX_LIGHT_SOURCES, ZERO_FLOAT32
+from core.math.linear import FullTransformMat
+from core.rendering.PyOGL_utils import zFromLayer
+from core.rendering.Shaders import shaders
+
+from dataclasses import dataclass, field
+from typing import Tuple, Dict, Union
+import numpy as np
+from beartype import beartype
 
 
-lights_gr = RenderGroup()
-lightBuffer = FrameBuffer()
-
-light_colors_presets = {
+LIGHT_COLOR_PRESETS = {
     'fire': (1.0, 0.3, 0.0, 0.0)
 }
 
-
-do_render_light = True
-
-
-class LightSource(RenderObjectStatic):
-    __slots__ = ('texture', )
-
-    def __init__(self, pos, power, layer=1, ltype='Round', color=(1.0, 1.0, 1.0, 1.0)):
-        self.shader: Shaders.Shader = f'{ltype}LightShader'
-        self.colors = [color, color, color, color]
-        size = (power, power)
-        super().__init__(lights_gr, pos, size, layer=layer)
-
-    def draw(self):
-        if self.visible:
-            self.shader.use()
-            drawTexture(0, self.rect.pos, self._vbo, self.shader, z_rotation=0)
+__all__ = [
+    "__LightingManager",
+]
 
 
-class FireLight(LightSource):
-    __slots__ = ('min_noise', 'max_noise', 'noise_frequency', 'time', 'noise')
+@dataclass
+class LightSource:
+    __slots__ = ("color", "radius", "posXY", "posZ")
 
-    def __init__(self, pos, power, layer=1, ltype='Round', color=(1.0, 1.0, 1.0, 1.0)):
-        super().__init__(pos, power, layer, ltype, color)
+    color: field(default_factory=np.ndarray)
+    radius: field(default_factory=FLOAT32)
+    posXY: field(default_factory=np.ndarray)
+    posZ: field(default_factory=FLOAT32)
 
-        self.min_noise = 50
-        self.max_noise = 75
+    def __init__(self, pos, power, layer, color, brightness):
+        self.color = np.array([*color, brightness], dtype=FLOAT32)
+        self.radius = FLOAT32(power * TILE_SIZE)
+        self.posXY = np.array(pos, dtype=FLOAT32)
+        self.posZ = FLOAT32(zFromLayer(layer))
 
-        self.noise_frequency = 0.1
-        self.time = 0
-        self.prev_noise = 0
-        self.noise = randint(self.min_noise, self.max_noise) / 100
+    def __repr__(self):
+        return f'LS {list(self.posXY)}'
 
-    def draw(self):
-        if self.visible:
-            self.shader.use()
-            drawTexture(0, self.rect.pos, self._vbo, self.shader, z_rotation=0, noise=self.noise)
+    @beartype
+    def update(self, dt: float):
+        pass
 
-    def update(self, *args, **kwargs) -> None:
-        self.time += args[0]
-        if self.time >= self.noise_frequency:
-            self.noise = randint(self.min_noise, self.max_noise) / 100
-            self.time = 0
-
-
-def addLight(ltype, pos, power, light_form, layer=1, color=(0.1, 0.1, 0.1, 0.1)):
-    if isinstance(color, str):
-        try:
-            color = light_colors_presets[color]
-        except KeyError:
-            raise KeyError(f'No such color preset. Chose from {light_colors_presets.keys()}')
-
-    power *= TILE_SIZE
-    return ltype(pos, power, layer, light_form, color=color)
+    def get_data(self):
+        return np.array(
+            [*self.posXY, self.posZ, *self.color, self.radius]
+        ).flatten()
 
 
-def renderLights():
-    lightBuffer.bind()
-    clearDisplay()
+class ExplosionLightSource(LightSource):
+    __slots__ = ('curr_time', 'end_time', 'peak_time', )
 
-    # glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE)
+    curr_time: field(default_factory=float)
+    end_time: field(default_factory=float)
+    peak_time: field(default_factory=float)
 
-    if do_render_light:
-        lights_gr.draw_all(True, )
+    def __init__(self, pos, power, layer, color, brightness, time, peak):
+        super().__init__(pos, power, layer, color, brightness)
+        assert peak < time, "Max time must be greater than peak time"
+        self.curr_time = 0.0
+        self.end_time = time
+        self.peak_time = peak
 
-    # glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
-    FrameBuffer.unbind()
+    @beartype
+    def update(self, dt: float):
+        self.curr_time += dt
+        if self.curr_time >= self.end_time:
+            return True
+
+    def get_data(self):
+        crt, ndt, pkt = self.curr_time, self.end_time, self.peak_time
+        if crt >= pkt:
+            kff = 1.0 - (crt - pkt) / (ndt - pkt)
+        else:
+            kff = crt / pkt
+
+        return np.array(
+            [*self.posXY, self.posZ, *self.color[:-1], self.color[-1] * kff, self.radius * kff]
+        ).flatten()
 
 
-def clearLights():
-    lights_gr.delete_all()
+class __LightingManager:
+    sources: Dict[int, Dict] = {}
+    free_ids = set(range(MAX_LIGHT_SOURCES))
+
+    vbo_id: int
+    shaders = {
+        0: "RoundLightShader",
+    }
+    do_render = True
+
+    def __init__(self):
+        self.sources = {
+            i: dict() for i in self.__class__.shaders.keys()
+        }
+        self.vbo_id = glGenBuffers(1)
+        self.frame_buffer = None
+
+    @beartype
+    def newSource(self, ltype: int, pos: Union[TYPE_VEC, Tuple], power: TYPE_NUM,
+                  layer: int = 1, color: Tuple[float, float, float] = (0.1, 0.1, 0.1),
+                  brightness: float = 0.8):
+
+        if isinstance(color, str):
+            assert color in LIGHT_COLOR_PRESETS.keys(),\
+                KeyError(f'No such color preset. Chose from {LIGHT_COLOR_PRESETS.keys()}')
+
+        source = LightSource(pos, power, layer, color, brightness)
+        idd = self.new_id(ltype)
+        self.sources[ltype][idd] = source
+        return idd, source
+
+    @beartype
+    def newSource_explosion(self, ltype: int, pos: Union[TYPE_VEC, Tuple], power: TYPE_NUM,
+                            time: float, peak_time: float,
+                            layer: int = 1, color: Tuple[float, float, float] = (0.1, 0.1, 0.1),
+                            brightness: float = 0.8):
+
+        if isinstance(color, str):
+            assert color in LIGHT_COLOR_PRESETS.keys(),\
+                KeyError(f'No such color preset. Chose from {LIGHT_COLOR_PRESETS.keys()}')
+
+        source = ExplosionLightSource(pos, power, layer, color, brightness, time, peak_time)
+        idd = self.new_id(ltype)
+        self.sources[ltype][idd] = source
+        return source
+
+    @beartype
+    def new_id(self, ltype: int):
+        """If the is no free ids for Source,
+        then it returns last added Source's id"""
+        if self.free_ids:
+            return self.free_ids.pop()
+        return self.sources[ltype].popitem()[0]
+
+    def render(self, camera_):
+        for key in self.sources.keys():
+            if not (sources := self.sources[key]):
+                continue
+            Shader = shaders[self.shaders[key]]
+            Shader.use()
+
+            data = np.array(
+                [p.get_data() for p in sources.values()], dtype=FLOAT32
+            ).flatten()
+
+            self.__drawGL_from_data(data, camera_, len(sources), Shader)
+
+    def delete_source(self, ltype, idd):
+        self.free_ids.add(idd)
+        s = self.sources[ltype]
+        if idd in s.keys():
+            del s[idd]
+
+    @beartype
+    def update(self, dt: float):
+        for key in self.sources.keys():
+            to_delete = set()
+
+            for idd, source in self.sources[key].items():
+                if source.update(dt):
+                    self.free_ids.add(idd)
+                    to_delete.add(idd)
+
+            for _ in range(len(to_delete)):
+                del self.sources[key][to_delete.pop()]
+
+    def __drawGL_from_data(self, data, camera_, elements, shader):
+        glBindBuffer(GL_ARRAY_BUFFER, self.vbo_id)
+        glBufferData(GL_ARRAY_BUFFER, data.nbytes, data, GL_STATIC_DRAW)
+
+        mat = FullTransformMat(ZERO_FLOAT32, ZERO_FLOAT32, camera_.get_matrix(), ZERO_FLOAT32)
+        shader.prepareDraw(None, transform=mat)
+
+        glDrawElements(GL_POINTS, elements, GL_UNSIGNED_INT, None)
+
+    def bind_buffer(self):
+        self.frame_buffer.bind()
+
+    def clear(self):
+        pass

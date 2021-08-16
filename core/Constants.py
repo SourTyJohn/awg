@@ -1,15 +1,14 @@
+from utils.files import SETTINGS_FILE
+
 from pymunk.body import Body
 from pymunk.vec2d import Vec2d
 from numpy import ndarray, array, matrix
-
 from json import load as json_load
 from typing import Union, Generator
-
-from utils.files import SETTINGS_FILE
-
-
-# Data Types
 from numpy import float64, float32, int64, uintc, int16, float16
+
+
+# DATA TYPES
 FLOAT64 = float64
 FLOAT32 = float32
 FLOAT16 = float16
@@ -29,14 +28,18 @@ TYPE_VEC = Union[Vec2d, ndarray, Generator]
 TYPE_MAT = Union[ndarray, matrix]
 
 
-# Tags
+# TAGS
 # TAG_PHYSIC_THROWABLE = 1
 # TAG_SILENCED = 2  # no sound
 # TAG_HUMAN = 4
 # TAG_UNDEAD = 8
 
 
-# In-Settings Variables
+# PARTICLES
+MAX_PARTICLES = 2 ** 12
+
+
+# IN-SETTINGS VARIABLES
 SOUND_PACK: str = ''
 MASTER_VOLUME: float = 0.0
 GAME_VOLUME: float = 0.0
@@ -116,6 +119,8 @@ BODY_TYPES = {
 }
 
 
-# SHADERS
+# LIGHTING
 AMBIENT_LIGHT = 1.0  # default: 1.0
 LIGHT_MULTIPLY = 1.0  # default: 1.0
+MAX_LIGHT_SOURCES = 2 ** 10
+LIGHT_POLYGONS = 8

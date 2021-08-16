@@ -1,9 +1,9 @@
 from core.physic.physics import MainPhysicSpace, objects
 from user.KeyMapping import *
 from core.objects.gObjects import *
-from core.rendering.PyOGL import RenderGroup, camera, preRender, postRender, Shaders, drawGroupsFinally
-from core.rendering.PyOGL_line import renderAllLines, drawLine
-from core.rendering.Lighting import addLight, LightSource, FireLight, clearLights, lights_gr
+from core.rendering.PyOGL import RenderGroup, camera, preRender,\
+    postRender, Shaders, drawGroupsFinally, LightingManager
+from core.rendering.PyOGL_line import renderAllLines
 from core.rendering.Particles import ParticleManager
 from core.rendering.TextRender import TextObject, DefaultFont
 from core.audio.PyOAL import AudioManager
@@ -42,9 +42,11 @@ def render():
     background_gr.update(1, camera)
 
     preRender()
+    #
     drawGroups()
     renderAllLines()
-    ParticleManager.draw(hero.pos, camera)
+    ParticleManager.render(camera)
+    #
     postRender(Shaders.shaders['ScreenShaderGame'], )
 
 
@@ -64,6 +66,7 @@ def update(dt):
     # PHYSIC AND UPDATE [!!! PHYSICS UPDATE FIXED AND NOT BASED ON FPS !!!]
     # TODO: JUST WARNING ^
     updateGroups(dt)
+    LightingManager.update(dt)
     MainPhysicSpace.step(dt)
     ParticleManager.update(dt)
 
@@ -91,8 +94,24 @@ def userInput():
                 # addLight(hero.pos, 12, 'round_smooth')
 
             elif key == pygame.K_p:
-                ParticleManager.create(0, hero.pos, (10, 24), (600, 1200), (1, 2),
-                                       (1.0, 1.0, 0.0, 1.0), (10, 24), None, angle=(80, 100), gravity=1000.0)
+                # ParticleManager.create_simple(0, hero.pos, (10, 24), (600, 1200), (1.0, 2.0),
+                #                        (1.0, 1.0, 0.0, 1.0), (10, 24), None, angle=(80, 100), gravity=1000.0)
+                # ParticleManager.create_physic(0, hero.pos, (10, 24), (600, 1200), (2.0, 8.0),
+                #                                    (1.0, 0, 0, 1.0), (10, 24), None, delete_on_hit=False,
+                #                                    elasticity=0.3)
+                pos = hero.pos + Vec2d(250, 0)
+                LightingManager.newSource_explosion(0, pos, 16, 1.0, 0.1, color=(0.3, 0.1, 0.1))
+                ParticleManager.create_physic_light(
+                    0, pos, (30, 60), (700, 1200),
+                    (0.5, 1.5),
+                    (0.6, 0.4, 0.0, 1.0),
+                    (4, 6), None,
+                    light_params=(0, pos, 0.5, 1, (0.3, 0.15, 0.1), 0.3),
+                    elasticity=0.4,
+                    angles=(30, 150)
+                )
+                ParticleManager.create_simple(0, pos, (24, 24), (80, 240), (1.5, 3.0), (0.1, 0.1, 0.1, 1.0),
+                                              (12, 16), None, angles=(80, 100))
 
             elif key == K_GRAB:
                 hero.grab_nearest_put(objects)
@@ -133,7 +152,6 @@ def updateGroups(dt: float):
     player_gr.update(dt)
     obstacles_gr.update(dt)
     background_gr.update(dt, camera)
-    lights_gr.update(dt)
     items_gr.update(dt)
 
 
@@ -160,11 +178,17 @@ def initScreen(hero_life=False, first_load=False):
     DroppedItem(items_gr, pos=[700, 900], item="RustySword")
 
     WorldRectangleSensor(background_near_gr, (1300, 600), (2600, 900), layer=6)
-    addLight(FireLight, [1400, 700], 16, 'RoundFlat', layer=1, color='fire')
-
-    addLight(LightSource, [800, 700], 32, 'Round', 1)
-    addLight(LightSource, [600, 700], 18, 'Round', 1)
-    addLight(LightSource, [900, 700], 18, 'Round', 1)
+    # addLight(FireLight, [1400, 700], 16, 'RoundFlat', layer=1, color='fire')
+    #
+    LightingManager.newSource(0, (600, 700), 18, 1, color=(0.1, 0.1, 0.1), brightness=0.8)
+    # LightingManager.newSource(0, (800, 700), 9, 1, color=(0.1, 0.1, 0.1), brightness=1.0)
+    # LightingManager.newSource(0, (600, 900), 9, 1, color=(0.1, 0.1, 0.1), brightness=1.0)
+    # LightingManager.newSource(0, (800, 900), 9, 1, color=(0.1, 0.1, 0.1), brightness=1.0)
+    # LightingManager.newSource(0, (1000, 700), 9, 1, color=(0.1, 0.1, 0.1), brightness=1.0)
+    # LightingManager.newSource(0, (1000, 900), 9, 1, color=(0.1, 0.1, 0.1), brightness=1.0)
+    # LightingManager.newSource(0, (400, 700), 9, 1, color=(0.1, 0.1, 0.1), brightness=1.0)
+    # LightingManager.newSource(0, (400, 900), 9, 1, color=(0.1, 0.1, 0.1), brightness=1.0)
+    # LightingManager.newSource(0, (200, 700), 18, 1)
 
     # # #
     # #
@@ -197,4 +221,4 @@ def close():
     MainPhysicSpace.clear()
 
     # Delete light sources
-    clearLights()
+    LightingManager.clear()
