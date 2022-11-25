@@ -2,11 +2,11 @@ from core.physic.physics import MainPhysicSpace, objects
 from user.KeyMapping import *
 from core.objects.gObjects import *
 from core.rendering.PyOGL import RenderGroup, camera, preRender,\
-    postRender, Shaders, drawGroupsFinally, LightingManager
+    postRender, Shaders, drawGroupsFinally, LightingManager, RenderGroupNoDepth
 from core.rendering.PyOGL_line import renderAllLines
 from core.rendering.Particles import ParticleManager
 from core.rendering.TextRender import TextObject, DefaultFont
-from core.audio.PyOAL import AudioManager
+from core.audio.PyOAL import AudioManagerSingleton
 
 import pygame
 from beartype import beartype
@@ -16,7 +16,7 @@ from beartype import beartype
 background_gr = RenderGroup()
 background_near_gr = RenderGroup()
 obstacles_gr = RenderGroup()
-items_gr = RenderGroup(use_depth=False)
+items_gr = RenderGroupNoDepth()
 characters_gr = RenderGroup()
 player_gr = RenderGroup()
 front_gr = RenderGroup()
@@ -71,7 +71,7 @@ def update(dt):
     ParticleManager.update(dt)
 
     # SOUND
-    AudioManager.update_listener(hero.pos, hero.body.velocity)
+    AudioManagerSingleton.update_listener(hero.pos, hero.body.velocity)
 
 
 def userInput():

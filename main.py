@@ -1,7 +1,7 @@
 from core.Constants import FPS_LOCK, TITLE, FPS_SHOW, WINDOW_RESOLUTION
 import pygame as pg
 from core.rendering.PyOGL import initDisplay
-from core.audio.PyOAL import AudioManager
+from core.audio.PyOAL import AudioManagerSingleton
 # from cProfile import Profile
 # Profile = Profile()
 
@@ -42,12 +42,12 @@ def gameLoop():
     seconds += dt
     if seconds >= 1.0:
         seconds = 0.0
-        AudioManager.clear_empty_sources()
+        AudioManagerSingleton.clear_empty_sources()
         # Profile.disable()
         # Profile.print_stats('cumtime')
         # running = False
 
-    AudioManager.update_streams(dt)
+    AudioManagerSingleton.update_streams(dt)
 
     # Screen feedback
     if exit_code in {'menu', 'game', 'Quit'}:
@@ -80,4 +80,4 @@ if __name__ == '__main__':
         gameLoop()
 
     # finally
-    AudioManager.destroy()
+    AudioManagerSingleton.destroy()

@@ -9,6 +9,8 @@ import numpy as np
 
 shaders: Dict[str, "Shader"] = {}
 
+ActiveShader = None
+
 
 class Shader:
     __doc__ = """
@@ -62,6 +64,8 @@ class Shader:
         glDeleteShader(fragment)
         glDeleteShader(geometry)
 
+        self.active_shader = None
+
     @staticmethod
     def compile_shader(gl_shader, code: str, path: str):
         if not path:
@@ -79,7 +83,9 @@ class Shader:
         return cls.__instance
 
     def use(self):
-        glUseProgram(self.program)
+        global ActiveShader
+        if ActiveShader != self.program:
+            glUseProgram(self.program)
 
     def prepareDraw(self, pos, **kw):
         stride = 36

@@ -144,7 +144,7 @@ class InGameObject:
 
 class Mortal:
     """Mortal means that object have .health: int and if .health <= 0 object will .die_Mortal()
-       Apply this to every DESTRUCTABLE OBJECT"""
+       Apply this to every DESTRUCTIBLE OBJECT"""
 
     __Mortal_lethal_fall_velocity: int = -1
     """[y] velocity that will cause calling die_Mortal()
@@ -247,7 +247,7 @@ class Throwable:
 
 @dtc.dataclass
 class Tracer:
-    """This class remembers position of an given <actor> every <frequency> second.
+    """This class remembers position of a given <actor> every <frequency> second.
     Actor must have defined .pos method.
 
     Works as queue. Last added data deleted if max amount of points achieved"""

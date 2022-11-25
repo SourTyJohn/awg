@@ -38,6 +38,7 @@ import pygame
 clear_color = (0.0, 0.0, 0.0, 0.0)
 
 FIRST_EBO: uintc
+T_RENDER_OBJECT = Union["RenderObject", "RenderObjectComposite"]
 
 
 # CAMERA
@@ -116,18 +117,42 @@ camera: Camera
 
 
 # RENDER GROUP
-class RenderGroup(pygame.sprite.Group):
-    __slots__ = ('_visible', '_use_depth')
+class RenderGroup:
+    __slots__ = ('_visible', 'objects', 'updatable', '_use_depth')
     """Container for in-game Objects"""
 
-    def __init__(self, *args, visible=True, use_depth=True):
-        super().__init__(*args)
+    def __init__(self, *objects, visible=True):
+        self.objects = {}
+        self.updatable = []
+
+        for o in objects:
+            self.add(o)
         self._visible = visible
-        self._use_depth = use_depth
 
     def __repr__(self):
         #  Memory: {asizeof(self)}
-        return f'<RenderGroup({len(self.sprites())})>'
+        return f'<RenderGroup({len(self.objects)})>'
+
+    def add(self, obj: T_RENDER_OBJECT):
+        #  GETTING TEXTURE KEY
+        try:
+            key = obj.curr_image().key
+        except AttributeError as _:
+            key = "noTex"
+
+        #  ADDING OBJECT TO RENDER QUEUE
+        if key in self.objects.keys():
+            self.objects[key].append(obj)
+        else:
+            self.objects[key] = [obj, ]
+
+        #  ADDING OBJECT TO RENDER QUEUE AND UPDATE QUEUE, IF NEEDED
+        if hasattr(obj, "update"):
+            self.updatable.append(obj)
+
+    def update(self, dt, *args):
+        for o in self.updatable:
+            o.update(dt, *args)
 
     """drawing all of this group objects"""
     def draw_all(self, to_draw=None):
@@ -138,25 +163,32 @@ class RenderGroup(pygame.sprite.Group):
         if not self._visible:
             return
 
-        # DRAWING WITHOUT DEPTH BUFFER
-        if not self._use_depth:
-            glDisable(GL_DEPTH_TEST)
-            for obj in self.sprites():
-                obj.draw()
-            glEnable(GL_DEPTH_TEST)
-            return
-
         # DRAWING
-        for obj in self.sprites():
-            obj.draw()
+        for texture_key, objects in self.objects.items():
+            for obj in objects:
+                obj.draw()
 
     """Deleting all of group.sprites()"""
     def delete_all(self):
+        for objs in self.objects.values():
+            for obj in objs:
+                obj.delete()
+        self.objects = {}
 
-        for obj in self.sprites():
-            obj.delete()
+    def remove(self, obj):
+        try:
+            key = obj.curr_image().key
+        except Error as _:
+            key = "noTex"
+        ind = self.objects[key].index(obj)
+        del self.objects[key][ind]
 
-        self.empty()
+
+class RenderGroupNoDepth(RenderGroup):
+    def draw_all(self, to_draw=None):
+        glDisable(GL_DEPTH_TEST)
+        super().draw_all(to_draw)
+        glEnable(GL_DEPTH_TEST)
 
 
 # TEXTURE
@@ -202,7 +234,7 @@ class GlTexture:
         drawData(self.size, colors, layer=layer)
         return drawData(self.size, colors, layer=layer)
 
-    """Удаление текстуры из памяти"""
+    """Deleting texture from memory"""
     def delete(self):
         glDeleteTextures(1, [self.key, ])
         del self
@@ -242,15 +274,7 @@ class AttackAnimation(Animation):
             pass
 
 
-# RENDER OBJECT
-class Sprite(pygame.sprite.Sprite):
-    rect: Rect4f
-
-    def draw(self):
-        pass
-
-
-class RenderObject(Sprite):
+class RenderObject:
     """Base render object.
     Provides possibility for drawing given texture: GLTexture within given rect: Rect4f
     For :args info check in __init__"""
@@ -262,6 +286,7 @@ class RenderObject(Sprite):
                         np.array([1.0, 1.0, 1.0, 1.0], dtype=np.float32),
                         np.array([1.0, 1.0, 1.0, 1.0], dtype=np.float32)]
     visible = True
+    group: Union["RenderGroup", "RenderGroupNoDepth"]
 
     # private
     _vbo: int = 0
@@ -269,10 +294,9 @@ class RenderObject(Sprite):
     shader = 'DefaultShader'
 
     def __init__(self, group, pos, size=None, rotation=1, tex_offset=(0, 0), drawdata='auto', layer=5):
-        pass
-        """If no group provided, than this object won't be rendered,
-        unless it is part of GLObjectComposite"""
-        super().__init__(group) if group is not None else super().__init__()
+        if group is not None:
+            group.add(self)
+        self.group = group
 
         """Rect - rectangle where object's texture will be rendered
         rect[0, 1] - center position, rect[2, 3] - width, height of rectangle"""
@@ -305,7 +329,7 @@ class RenderObject(Sprite):
         self.shader = Shaders.shaders[self.shader]
 
     def __repr__(self):
-        return f'<{self.__class__.__name__} {self.rect}'
+        return f'<{self.__class__.__name__} {self.rect if hasattr(self, "rect") else "NO RECT"}'
 
     def curr_image(self) -> GlTexture:
         """Getting current image of object.
@@ -340,7 +364,8 @@ class RenderObject(Sprite):
         glBindBuffer(GL_ARRAY_BUFFER, self._vbo)
         glBufferData(GL_ARRAY_BUFFER, 0, None, GL_STATIC_DRAW)
         glDeleteBuffers(1, np.array(self._vbo, ))
-        self.kill()
+        if self.group is not None:
+            self.group.remove(self)
 
     # DRAW
     def draw(self):
@@ -415,21 +440,26 @@ class RenderObjectStatic(RenderObject):
         return self.__class__.TEXTURES[self.texture]
 
 
-class RenderObjectComposite(Sprite):
+class RenderObjectComposite:
     """Multiple GLObjects drawn, moved and rotated together.
     Little variant of GLObjectGroup"""
 
     def __init__(self, group, *objects):
-
-        """All of the objects must not be members of any SpriteGroups"""
-        if any(j.groups() for j in objects):
+        """None of the objects must not be members of any SpriteGroups"""
+        if any(j.group for j in objects):
             raise ValueError(f'One or more of objects are members of GLObjectGroups')
 
-        super().__init__(group)
+        if group is not None:
+            group.add(self)
+        self.group = group
+
         self.objects = objects
 
     def __getitem__(self, item):
         return self.objects[item]
+
+    def update(self, dt, *args):
+        pass
 
     def draw(self):
         for obj in self.objects:
@@ -615,6 +645,10 @@ def drawTexture(tex_key: TYPE_NUM, pos: TYPE_VEC, vbo: TYPE_NUM, shader: Shaders
     glActiveTexture(GL_TEXTURE0 + tex_slot)
     glBindTexture(GL_TEXTURE_2D, tex_key)
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, None)
+
+
+def drawTextureRepeat():
+    pass
 
 
 def renderLights(camera_):

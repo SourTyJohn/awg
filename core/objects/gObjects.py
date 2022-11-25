@@ -7,7 +7,7 @@ from core.physic.physics import triggers, reyCastFirst
 from pymunk import PinJoint
 from core.rendering.Textures import EssentialTextureStorage as Ets
 from core.Constants import *
-from core.audio.PyOAL import AudioManager
+from core.audio.PyOAL import AudioManagerSingleton
 from core.objects.gItems import InventoryAndItemsManager
 from core.math.linear import projectedMovement, degreesFromNormal
 from core.rendering.Particles import ParticleManager
@@ -138,7 +138,7 @@ class BackgroundColor(RObjectStatic):
         self.rect.pos = args[1].pos
 
 
-class Tringle(RObjectStatic, PObject, Direct):
+class Triangle(RObjectStatic, PObject, Direct):
     shape_filter = shapeFilter('obstacle', )
     body_type = 'static'
 
@@ -298,14 +298,13 @@ class Character(RObjectStatic, PObject):
         self.can_rotate(False)
 
         self.on_ground = False  # is Character standing on solid floor
-        self.in_air = 0  # How long din't Character touch solid flour
+        self.in_air = 0  # How long didn't Character touch solid flour
 
         # If False, unlocks velocity limits and ignores walking_direction, jump()
         self.can_move = True
 
     @beartype
     def update(self, dt: float) -> None:
-        super().update(dt)
         if self.body.is_sleeping:
             self.body.activate()
 
@@ -492,8 +491,8 @@ class WoodenCrate(RObjectStatic, PObject, Throwable, Direct, Mortal):
         if arbiter.is_first_contact:
             impulse = arbiter.total_impulse.length
             if impulse > 4000:
-                AudioManager.play_sound('crate_wood_hit', self.pos, self.body.velocity,
-                                        volume=impulse / 20000, pitch=(0.8, 1.0))
+                AudioManagerSingleton.play_sound('crate_wood_hit', self.pos, self.body.velocity,
+                                                 volume=impulse / 20000, pitch=(0.8, 1.0))
             if impulse > 25_000:
                 angle = int(degreesFromNormal(arbiter.normal))
                 amount = int((impulse - 25_000) // 3_000)

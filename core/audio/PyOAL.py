@@ -173,13 +173,13 @@ def loadSoundPack(name):
     path = get_full_path(join(name, 'sound'), file_type='snd')
     files = listdir(path)
     for file in files:
-        AudioManager.load_sound(path=join(path, file), name=splitext(file)[-2])
+        AudioManagerSingleton.load_sound(path=join(path, file), name=splitext(file)[-2])
 
     # SOUNDS [STREAM]
     path = get_full_path(join(name, 'music'), file_type='snd')
     files = listdir(path)
     for file in files:
-        AudioManager.ambient_paths[splitext(file)[-2]] = join(path, file)
+        AudioManagerSingleton.ambient_paths[splitext(file)[-2]] = join(path, file)
 
     dprint(f'-- Done.\n')
     
@@ -190,5 +190,5 @@ def gamePosToSoundPos(pos):
     return [x / 128 for x in (*pos, 0)]
 
 
-AudioManager = AudioManager()
+AudioManagerSingleton = AudioManager()
 loadSoundPack(SOUND_PACK)

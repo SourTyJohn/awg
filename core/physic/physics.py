@@ -53,7 +53,7 @@ class Body(pymunk.Body):
 class PhysicObject:
     # __slots__ = ('shape', 'body', )
     """Main class of game object with physic body powered by pymunk
-    Recommended to specify object's params in it's class attributes.
+    Recommended to specify object's params in its class attributes.
     """
 
     points: list
@@ -302,5 +302,5 @@ def attachSoft(a: "Body", b: "Body", rest_length: float, stiffness: float,
     return joint
 
 
-# singleton world class
+# singleton world object
 MainPhysicSpace = World()

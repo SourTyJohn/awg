@@ -1,4 +1,4 @@
-#version 460
+#version 410
 #constant vec2 WINDOW_RESOLUTION
 
 layout (lines) in;

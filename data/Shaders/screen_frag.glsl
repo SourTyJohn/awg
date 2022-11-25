@@ -1,4 +1,4 @@
-#version 460
+#version 410
 #constant float AMBIENT_LIGHT
 
 in vec4 Color;

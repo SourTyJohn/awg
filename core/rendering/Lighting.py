@@ -30,11 +30,14 @@ class LightSource:
     posXY: field(default_factory=np.ndarray)
     posZ: field(default_factory=FLOAT32)
 
-    def __init__(self, pos, power, layer, color, brightness):
+    def __init__(self, pos, power, layer, color, brightness, trigger=None):
         self.color = np.array([*color, brightness], dtype=FLOAT32)
         self.radius = FLOAT32(power * TILE_SIZE)
         self.posXY = np.array(pos, dtype=FLOAT32)
         self.posZ = FLOAT32(zFromLayer(layer))
+
+    def calculate_shadows(self, trigger):
+        pass
 
     def __repr__(self):
         return f'LS {list(self.posXY)}'
