@@ -1,7 +1,7 @@
 from core.physic.physics import MainPhysicSpace, objects
 from user.KeyMapping import *
 from core.objects.gObjects import *
-from core.rendering.PyOGL import RenderGroup, camera, preRender,\
+from core.rendering.PyOGL import RenderGroupStatic, camera, preRender,\
     postRender, Shaders, drawGroupsFinally, LightingManager, RenderGroupNoDepth
 from core.rendering.PyOGL_line import renderAllLines
 from core.rendering.Particles import ParticleManager
@@ -13,14 +13,14 @@ from beartype import beartype
 
 
 # GROUPS
-background_gr = RenderGroup()
-background_near_gr = RenderGroup()
-obstacles_gr = RenderGroup()
+background_gr = RenderGroupStatic(shader="BackgroundShader")
+background_near_gr = RenderGroupStatic()
+obstacles_gr = RenderGroupStatic()
 items_gr = RenderGroupNoDepth()
-characters_gr = RenderGroup()
-player_gr = RenderGroup()
-front_gr = RenderGroup()
-gui_gr = RenderGroup()
+characters_gr = RenderGroupStatic()
+player_gr = RenderGroupStatic()
+front_gr = RenderGroupStatic()
+gui_gr = RenderGroupStatic()
 
 
 hero_inited = False
@@ -151,7 +151,6 @@ def updateGroups(dt: float):
     # updating all GLSprite groups
     player_gr.update(dt)
     obstacles_gr.update(dt)
-    background_gr.update(dt, camera)
     items_gr.update(dt)
 
 
@@ -175,7 +174,7 @@ def initScreen(hero_life=False, first_load=False):
         WoodenCrate(obstacles_gr, pos=[700, 800 + r*20])
     WoodenCrate(obstacles_gr, pos=[760, 800])
     WoodenCrate(obstacles_gr, pos=[600, 800])
-    DroppedItem(items_gr, pos=[700, 900], item="RustySword")
+    # DroppedItem(items_gr, pos=[700, 900], item="RustySword")
 
     WorldRectangleSensor(background_near_gr, (1300, 600), (2600, 900), layer=6)
     # addLight(FireLight, [1400, 700], 16, 'RoundFlat', layer=1, color='fire')

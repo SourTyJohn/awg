@@ -39,6 +39,7 @@ clear_color = (0.0, 0.0, 0.0, 0.0)
 
 FIRST_EBO: uintc
 T_RENDER_OBJECT = Union["RenderObject", "RenderObjectComposite"]
+MAX_OBJECTS_PER_GROUP = 4096
 
 
 # CAMERA
@@ -117,41 +118,50 @@ camera: Camera
 
 
 # RENDER GROUP
-class RenderGroup:
-    __slots__ = ('_visible', 'objects', 'updatable', '_use_depth')
+class RenderGroupStatic:
+    __slots__ = (
+        '_visible', 'objects', 'updatable', 'frame_buffer', 'shader', 'free_ids', ''
+    )
     """Container for in-game Objects"""
 
-    def __init__(self, *objects, visible=True):
+    def __init__(self, shader="DefaultShader", frame_buffer=None, visible=True):
+        self.frame_buffer = frameBufferGeometry if frame_buffer is None else frame_buffer
         self.objects = {}
-        self.updatable = []
+        self.updatable = {}
+        self.free_ids = set(range(MAX_OBJECTS_PER_GROUP))
 
-        for o in objects:
-            self.add(o)
+        self.shader = Shaders.shaders.get(shader)
+        if self.shader is None:
+            raise Error(f"There is no shader with name: {shader}")
         self._visible = visible
 
     def __repr__(self):
-        #  Memory: {asizeof(self)}
-        return f'<RenderGroup({len(self.objects)})>'
+        return f'<RenderGroupStatic({len(self.objects)})>'
 
-    def add(self, obj: T_RENDER_OBJECT):
-        #  GETTING TEXTURE KEY
-        try:
-            key = obj.curr_image().key
-        except AttributeError as _:
-            key = "noTex"
+    def generate_group_id(self):
+        return self.free_ids.pop()
 
-        #  ADDING OBJECT TO RENDER QUEUE
-        if key in self.objects.keys():
-            self.objects[key].append(obj)
-        else:
-            self.objects[key] = [obj, ]
+    def add(self, *objs: [T_RENDER_OBJECT, ]):
+        for obj in objs:
+            #  GETTING TEXTURE KEY
+            try:
+                key = obj.curr_image().key
+            except AttributeError as _:
+                key = "noTex"
 
-        #  ADDING OBJECT TO RENDER QUEUE AND UPDATE QUEUE, IF NEEDED
-        if hasattr(obj, "update"):
-            self.updatable.append(obj)
+            #  ADDING OBJECT TO RENDER QUEUE
+            grp_id = self.generate_group_id()
+            obj.group_id = grp_id
+            if key not in self.objects.keys():
+                self.objects[key] = {}
+            self.objects[key][grp_id] = obj
+
+            #  ADDING OBJECT TO RENDER QUEUE AND UPDATE QUEUE, IF NEEDED
+            if hasattr(obj, "update"):
+                self.updatable[grp_id] = obj
 
     def update(self, dt, *args):
-        for o in self.updatable:
+        for o in self.updatable.values():
             o.update(dt, *args)
 
     """drawing all of this group objects"""
@@ -164,14 +174,19 @@ class RenderGroup:
             return
 
         # DRAWING
+        self.shader.use()
+
         for texture_key, objects in self.objects.items():
-            for obj in objects:
-                obj.draw()
+            glActiveTexture(GL_TEXTURE0)
+
+            for obj in objects.values():
+                glBindTexture(GL_TEXTURE_2D, obj.curr_image().key)
+                obj.draw(self.shader)
 
     """Deleting all of group.sprites()"""
     def delete_all(self):
         for objs in self.objects.values():
-            for obj in objs:
+            for obj in objs.values():
                 obj.delete()
         self.objects = {}
 
@@ -184,7 +199,7 @@ class RenderGroup:
         del self.objects[key][ind]
 
 
-class RenderGroupNoDepth(RenderGroup):
+class RenderGroupNoDepth(RenderGroupStatic):
     def draw_all(self, to_draw=None):
         glDisable(GL_DEPTH_TEST)
         super().draw_all(to_draw)
@@ -286,14 +301,16 @@ class RenderObject:
                         np.array([1.0, 1.0, 1.0, 1.0], dtype=np.float32),
                         np.array([1.0, 1.0, 1.0, 1.0], dtype=np.float32)]
     visible = True
-    group: Union["RenderGroup", "RenderGroupNoDepth"]
+    group: Union["RenderGroupStatic", "RenderGroupNoDepth"]
 
     # private
     _vbo: int = 0
     _render_type = 0  # 0 - classic RenderObject, 1 - RenderObject with physic body
-    shader = 'DefaultShader'
+
+    group_id: int
 
     def __init__(self, group, pos, size=None, rotation=1, tex_offset=(0, 0), drawdata='auto', layer=5):
+        self.group_id = 0
         if group is not None:
             group.add(self)
         self.group = group
@@ -324,9 +341,6 @@ class RenderObject:
         this object won't hide overlapped objects behind it. 
         Should be set False, if this object's texture has alpha channel other than 255"""
         # self.depth_mask = depth_mask
-
-        """Shader that will be used to drawTexture this object"""
-        self.shader = Shaders.shaders[self.shader]
 
     def __repr__(self):
         return f'<{self.__class__.__name__} {self.rect if hasattr(self, "rect") else "NO RECT"}'
@@ -368,17 +382,16 @@ class RenderObject:
             self.group.remove(self)
 
     # DRAW
-    def draw(self):
+    def draw(self, shader):
         if not self.visible:
             return
 
-        self.shader.use()
         frame = self.curr_image()
 
         if self._render_type == 0:
-            drawTexture(frame.key, self.rect.pos, self._vbo, self.shader, z_rotation=0)
+            drawTexture(frame.key, self.rect.pos, self._vbo, shader, z_rotation=0)
         else:
-            drawTexture(frame.key, self.body.pos_FLOAT32, self._vbo, self.shader, z_rotation=self.z_rotation)
+            drawTexture(frame.key, self.body.pos_FLOAT32, self._vbo, shader, z_rotation=self.z_rotation)
 
 
 class RenderObjectAnimated(RenderObject):
@@ -644,7 +657,17 @@ def drawTexture(tex_key: TYPE_NUM, pos: TYPE_VEC, vbo: TYPE_NUM, shader: Shaders
 
     glActiveTexture(GL_TEXTURE0 + tex_slot)
     glBindTexture(GL_TEXTURE_2D, tex_key)
-    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, None)
+    glDrawElements(GL_TRIANGLE_STRIP, 6, GL_UNSIGNED_INT, None)
+
+
+def drawBound(pos: TYPE_VEC, vbo: TYPE_NUM, shader: Shaders.Shader, z_rotation: TYPE_NUM = 0.0, **kwargs):
+    glBindBuffer(GL_ARRAY_BUFFER, vbo)
+
+    x_, y_ = pos
+    mat = lin.FullTransformMat(x_, y_, camera.get_matrix(), FLOAT32(-z_rotation))
+    shader.prepareDraw(pos, camera=camera, transform=mat, fbuffer=frameBufferGeometry, **kwargs)
+
+    glDrawArrays(GL_TRIANGLES, 6, GL_UNSIGNED_INT, None)
 
 
 def drawTextureRepeat():

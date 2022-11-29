@@ -21,7 +21,7 @@ def _main():
 
 
 running = True
-screen_type = 'menu'
+screen_type = 'game'
 start_time = 0.0
 seconds = 0.0
 

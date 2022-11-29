@@ -54,7 +54,7 @@ class DroppedItem(RObjectComposite):
         self.max_y = pos[1] + 8
         self.moving_to = -1  # -1 down, 1 up
 
-    def update(self, dt) -> None:
+    def update(self, dt, *args) -> None:
         super(DroppedItem, self).update(dt)
 
         self.move_by(np.array([0, dt * 8], dtype=np.float32) * self.moving_to)

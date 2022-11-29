@@ -1,7 +1,7 @@
 #version 460
 #constant vec2 WINDOW_RESOLUTION
 #constant int LIGHT_POLYGONS
-const float  ANGLE = 3.14159 * 2 / LIGHT_POLYGONS;
+const float  ANGLE = 6.28318 / LIGHT_POLYGONS;
 
 layout (points) in;
 layout (triangle_strip, max_vertices=LIGHT_POLYGONS * 3) out;

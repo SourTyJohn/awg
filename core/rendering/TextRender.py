@@ -129,15 +129,6 @@ class TextObject(RenderObjectStatic):
         TextTextures[self.texture] = texture
         super().__init__(gr, pos, texture.size, layer=layer, )
 
-    def draw(self):
-        if self.depth_mask:
-            super().draw()
-            return
-#
-        glDisable(GL_DEPTH_TEST)
-        super().draw()
-        glEnable(GL_DEPTH_TEST)
-
     def clear(self):
         TextTextures[self.texture].delete()
         del TextTextures[self.texture]
