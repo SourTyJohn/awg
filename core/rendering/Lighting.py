@@ -175,7 +175,7 @@ class __LightingManager:
         glBufferData(GL_ARRAY_BUFFER, data.nbytes, data, GL_STATIC_DRAW)
 
         mat = FullTransformMat(ZERO_FLOAT32, ZERO_FLOAT32, camera_.get_matrix(), ZERO_FLOAT32)
-        shader.prepareDraw(None, transform=mat)
+        shader.prepareDraw(transform=mat)
 
         glDrawElements(GL_POINTS, elements, GL_UNSIGNED_INT, None)
 

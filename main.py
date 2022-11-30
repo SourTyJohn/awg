@@ -40,7 +40,7 @@ def gameLoop():
     exit_code = scr.update(dt)
 
     seconds += dt
-    if seconds >= 1.0:
+    if seconds >= 0.5:
         seconds = 0.0
         AudioManagerSingleton.clear_empty_sources()
         # Profile.disable()
@@ -51,9 +51,8 @@ def gameLoop():
 
     # Screen feedback
     if exit_code in {'menu', 'game', 'Quit'}:
-        # if exit_code == 'game':
-        #     seconds = 0.0
-        #     Profile.enable()
+        if exit_code == 'game':
+            seconds = 0.0
 
         if exit_code == 'Quit':
             running = False
@@ -70,6 +69,7 @@ def gameLoop():
 
 if __name__ == '__main__':
     _main()
+    # Profile.enable()
 
     import core.screens.menu as rmenu
     import core.screens.game as rgame

@@ -2,7 +2,7 @@ from core.physic.physics import MainPhysicSpace, objects
 from user.KeyMapping import *
 from core.objects.gObjects import *
 from core.rendering.PyOGL import RenderGroupStatic, camera, preRender,\
-    postRender, Shaders, drawGroupsFinally, LightingManager, RenderGroupNoDepth
+    postRender, Shaders, drawGroupsFinally, LightingManager, RenderGroupNoDepth, RenderGroupInstanced
 from core.rendering.PyOGL_line import renderAllLines
 from core.rendering.Particles import ParticleManager
 from core.rendering.TextRender import TextObject, DefaultFont
@@ -13,14 +13,13 @@ from beartype import beartype
 
 
 # GROUPS
-background_gr = RenderGroupStatic(shader="BackgroundShader")
-background_near_gr = RenderGroupStatic()
-obstacles_gr = RenderGroupStatic()
-items_gr = RenderGroupNoDepth()
-characters_gr = RenderGroupStatic()
-player_gr = RenderGroupStatic()
-front_gr = RenderGroupStatic()
-gui_gr = RenderGroupStatic()
+background_gr = RenderGroupStatic(shader="BackgroundShader")  # BACKGROUND COLOR
+background_near_gr = RenderGroupStatic()    # BACKGROUND OBJECTS
+obstacles_gr = RenderGroupInstanced()       # DYNAMIC OBJECTS
+world_gr = RenderGroupStatic()              # WORLD GEOMETRY
+items_gr = RenderGroupNoDepth()             # ITEMS
+character_gr = RenderGroupStatic()          # ANIMATED CHARACTERS
+gui_gr = RenderGroupStatic()                # GUI
 
 
 hero_inited = False
@@ -52,9 +51,16 @@ def render():
 
 def drawGroups():
     # drawing all GLSprite groups
-    drawGroupsFinally(None, characters_gr, player_gr, obstacles_gr,
-                      front_gr, background_near_gr, background_gr, items_gr, gui_gr)
-    pass
+    drawGroupsFinally(
+        None,
+        character_gr,
+        obstacles_gr,
+        world_gr,
+        background_near_gr,
+        background_gr,
+        items_gr,
+        gui_gr
+    )
 
 
 def update(dt):
@@ -149,7 +155,7 @@ def updateHeroMovement():
 @beartype
 def updateGroups(dt: float):
     # updating all GLSprite groups
-    player_gr.update(dt)
+    character_gr.update(dt)
     obstacles_gr.update(dt)
     items_gr.update(dt)
 
@@ -162,13 +168,13 @@ def initScreen(hero_life=False, first_load=False):
     # #
     # # #
 
-    WorldRectangleRigid(obstacles_gr, pos=[0, 500], size=[8192, 64])
-    WorldRectangleRigidTrue(obstacles_gr, pos=[850, 500], size=[200, 200])
+    WorldRectangleRigid(world_gr, pos=[0, 500], size=[8192, 64])
+    WorldRectangleRigidTrue(world_gr, pos=[850, 500], size=[200, 200])
     # a = WorldRectangleRigid(obstacles_gr, pos=[500, 900], size=[64, 64])
     # b = WoodenCrate(obstacles_gr, pos=[400, 900])
 
     """This VVV is a way to the bright future"""
-    WorldRectangleRigidTrue(obstacles_gr, pos=[-400, 660], size=[512, 256])
+    WorldRectangleRigidTrue(world_gr, pos=[-400, 660], size=[512, 256])
 
     for r in range(4):
         WoodenCrate(obstacles_gr, pos=[700, 800 + r*20])
@@ -193,7 +199,7 @@ def initScreen(hero_life=False, first_load=False):
     # #
     #
 
-    hero = MainHero(player_gr, pos=[256, 800])
+    hero = MainHero(character_gr, pos=[256, 800])
     TextObject(background_gr, [256, 800], ['text?', 'text indeed...'], DefaultFont, layer=6, depth_mask=True)
 
     # GUIHeroHealthBar(gui_gr, [256, 800], layer=0)
@@ -210,9 +216,7 @@ def close():
     background_gr.delete_all()
     background_near_gr.delete_all()
     obstacles_gr.delete_all()
-    characters_gr.delete_all()
-    player_gr.delete_all()
-    front_gr.delete_all()
+    character_gr.delete_all()
     gui_gr.delete_all()
     items_gr.delete_all()
 

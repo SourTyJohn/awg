@@ -1,4 +1,4 @@
-#version 410
+#version 460
 #constant vec2 WINDOW_RESOLUTION
 
 layout (points) in;

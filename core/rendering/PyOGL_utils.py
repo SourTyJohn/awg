@@ -1,23 +1,4 @@
-from OpenGL.GL import \
-    glGenTextures, \
-    glBindTexture, \
-    glTexParameteri, \
-    glGenBuffers, \
-    glBindBuffer, \
-    glBufferData, \
-    glTexImage2D, \
-    GL_TEXTURE_2D, \
-    GL_TEXTURE_MIN_FILTER, \
-    GL_TEXTURE_MAG_FILTER, \
-    GL_NEAREST, \
-    GL_TEXTURE_WRAP_S, \
-    GL_TEXTURE_WRAP_T, \
-    GL_REPEAT, \
-    GL_ARRAY_BUFFER, \
-    GL_ZERO, \
-    GL_RGBA, \
-    GL_UNSIGNED_BYTE, \
-    GL_STATIC_DRAW
+from OpenGL.GL import *
 import numpy as np
 from core.Constants import FLOAT32
 from typing import Union, List, Tuple

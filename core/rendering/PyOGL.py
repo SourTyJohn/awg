@@ -120,7 +120,7 @@ camera: Camera
 # RENDER GROUP
 class RenderGroupStatic:
     __slots__ = (
-        '_visible', 'objects', 'updatable', 'frame_buffer', 'shader', 'free_ids', ''
+        '_visible', 'objects', 'updatable', 'frame_buffer', 'shader', 'free_ids',
     )
     """Container for in-game Objects"""
 
@@ -147,7 +147,7 @@ class RenderGroupStatic:
             try:
                 key = obj.curr_image().key
             except AttributeError as _:
-                key = "noTex"
+                key = 0
 
             #  ADDING OBJECT TO RENDER QUEUE
             grp_id = self.generate_group_id()
@@ -178,9 +178,9 @@ class RenderGroupStatic:
 
         for texture_key, objects in self.objects.items():
             glActiveTexture(GL_TEXTURE0)
+            glBindTexture(GL_TEXTURE_2D, texture_key)
 
             for obj in objects.values():
-                glBindTexture(GL_TEXTURE_2D, obj.curr_image().key)
                 obj.draw(self.shader)
 
     """Deleting all of group.sprites()"""
@@ -197,6 +197,36 @@ class RenderGroupStatic:
             key = "noTex"
         ind = self.objects[key].index(obj)
         del self.objects[key][ind]
+
+
+class RenderGroupInstanced(RenderGroupStatic):
+    def __init__(self, shader="DefaultInstancedShader", frame_buffer=None, visible=True):
+        super().__init__(shader, frame_buffer, visible)
+
+    def draw_all(self, to_draw=None):
+        """
+        to_draw:: Set of Physic Objects body hash, that should be rendered
+        If None, all object will be rendered"""
+
+        if not self._visible:
+            return
+
+        # DRAWING
+        self.shader.use()
+
+        for texture_key, objects in self.objects.items():
+            glActiveTexture(GL_TEXTURE0)
+            glBindTexture(GL_TEXTURE_2D, texture_key)
+
+            obj = None
+            for i, obj in enumerate(objects.values()):
+                data = obj.get_transform()
+                self.shader.passMat4(f"Transform[{i}]", data)
+
+            if obj is None: continue
+            glBindBuffer(GL_ARRAY_BUFFER, obj.vbo)
+            self.shader.prepareDraw()
+            glDrawElementsInstanced(GL_TRIANGLES, 6, GL_UNSIGNED_INT, None, len(objects.values()))
 
 
 class RenderGroupNoDepth(RenderGroupStatic):
@@ -303,7 +333,6 @@ class RenderObject:
     visible = True
     group: Union["RenderGroupStatic", "RenderGroupNoDepth"]
 
-    # private
     _vbo: int = 0
     _render_type = 0  # 0 - classic RenderObject, 1 - RenderObject with physic body
 
@@ -386,12 +415,22 @@ class RenderObject:
         if not self.visible:
             return
 
-        frame = self.curr_image()
-
         if self._render_type == 0:
-            drawTexture(frame.key, self.rect.pos, self._vbo, shader, z_rotation=0)
+            drawBound(self.rect.pos, self._vbo, shader, 0)
         else:
-            drawTexture(frame.key, self.body.pos_FLOAT32, self._vbo, shader, z_rotation=self.z_rotation)
+            drawBound(self.body.pos_FLOAT32, self._vbo, shader, self.z_rotation)
+
+    def get_transform(self):
+        if self._render_type == 0:
+            x_, y_ = self.rect.pos
+            return lin.FullTransformMat(x_, y_, camera.get_matrix(), FLOAT32(0))
+        else:
+            x_, y_ = self.body.pos_FLOAT32
+            return lin.FullTransformMat(x_, y_, camera.get_matrix(), FLOAT32(-self.z_rotation))
+
+    @property
+    def vbo(self):
+        return self._vbo
 
 
 class RenderObjectAnimated(RenderObject):
@@ -644,34 +683,14 @@ def drawGroupsFinally(render_zone, *groups):
         group.draw_all(to_draw=to_draw)
 
 
-@beartype
-def drawTexture(tex_key: TYPE_NUM, pos: TYPE_VEC, vbo: TYPE_NUM, shader: Shaders.Shader,
-                z_rotation: TYPE_NUM = 0.0, tex_slot: int = 0, **kwargs):
-
-    # :param tex is either integer Key or GLTexture
-    glBindBuffer(GL_ARRAY_BUFFER, vbo)
-
-    x_, y_ = pos
-    mat = lin.FullTransformMat(x_, y_, camera.get_matrix(), FLOAT32(-z_rotation))
-    shader.prepareDraw(pos, camera=camera, transform=mat, fbuffer=frameBufferGeometry, **kwargs)
-
-    glActiveTexture(GL_TEXTURE0 + tex_slot)
-    glBindTexture(GL_TEXTURE_2D, tex_key)
-    glDrawElements(GL_TRIANGLE_STRIP, 6, GL_UNSIGNED_INT, None)
-
-
 def drawBound(pos: TYPE_VEC, vbo: TYPE_NUM, shader: Shaders.Shader, z_rotation: TYPE_NUM = 0.0, **kwargs):
     glBindBuffer(GL_ARRAY_BUFFER, vbo)
 
     x_, y_ = pos
     mat = lin.FullTransformMat(x_, y_, camera.get_matrix(), FLOAT32(-z_rotation))
-    shader.prepareDraw(pos, camera=camera, transform=mat, fbuffer=frameBufferGeometry, **kwargs)
+    shader.prepareDraw(pos=pos, camera=camera, transform=mat, fbuffer=frameBufferGeometry, **kwargs)
 
-    glDrawArrays(GL_TRIANGLES, 6, GL_UNSIGNED_INT, None)
-
-
-def drawTextureRepeat():
-    pass
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, None)
 
 
 def renderLights(camera_):
@@ -707,7 +726,7 @@ def postRender(screen_shader):
     glDisable(GL_DEPTH_TEST)
 
     # SHADER
-    screen_shader.prepareDraw(None, )
+    screen_shader.prepareDraw()
 
     # DRAW SCENE AND GUI
     fbuff.bind_texture(0)        # bind scene texture

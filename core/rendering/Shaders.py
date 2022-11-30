@@ -66,6 +66,8 @@ class Shader:
 
         self.active_shader = None
 
+        self.cached_uniform_locations = {}
+
     @staticmethod
     def compile_shader(gl_shader, code: str, path: str):
         if not path:
@@ -82,59 +84,61 @@ class Shader:
         cls.__instance = super(Shader, cls).__new__(cls)
         return cls.__instance
 
-    def use(self):
+    def universal_use(self):
         global ActiveShader
         if ActiveShader != self.program:
             glUseProgram(self.program)
 
-    def prepareDraw(self, pos, **kw):
-        stride = 36
-        shader = self.program
+    def use(self):
+        self.universal_use()
 
-        # ATTRIBUTES POINTERS
-        glGetAttribLocation(shader, "position")
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, ctypes.c_void_p(0))
         glEnableVertexAttribArray(0)
-
-        glGetAttribLocation(shader, "color")
-        glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, stride, ctypes.c_void_p(12))
         glEnableVertexAttribArray(1)
-
-        glGetAttribLocation(shader, "InTexCoords")
-        glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, stride, ctypes.c_void_p(28))
         glEnableVertexAttribArray(2)
 
-        return shader
+    def prepareDraw(self, **kw):
+        stride = 36
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, ctypes.c_void_p(0))
+        glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, stride, ctypes.c_void_p(12))
+        glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, stride, ctypes.c_void_p(28))
+        return self.program
 
     # PASS UNIFORMS TO SHADER
+    def get_uniform_location(self, name_: str):
+        loc = self.cached_uniform_locations.get(name_)
+        if loc is None:
+            loc = glGetUniformLocation(self.program, name_)
+            self.cached_uniform_locations[name_] = loc
+        return loc
+
     @beartype
     def passMat4(self, name_: str, value: np.ndarray) -> None:
-        loc = glGetUniformLocation(self.program, name_)
+        loc = self.get_uniform_location(name_)
         glUniformMatrix4fv(loc, 1, GL_FALSE, value)
 
     @beartype
     def passFloat(self, name_: str, value: TYPE_FLOAT) -> None:
-        loc = glGetUniformLocation(self.program, name_)
+        loc = self.get_uniform_location(name_)
         glUniform1f(loc, value)
 
     @beartype
     def passInteger(self, name_: str, value: TYPE_INT):
-        loc = glGetUniformLocation(self.program, name_)
+        loc = self.get_uniform_location(name_)
         glUniform1i(loc, value)
 
     @beartype
     def passTexture(self, name_: str, value) -> None:
-        frame = glGetUniformLocation(self.program, name_)
-        glUniform1i(frame, value)
+        loc = self.get_uniform_location(name_)
+        glUniform1i(loc, value)
 
     @beartype
     def passVec2f(self, name_: str, value) -> None:
-        loc = glGetUniformLocation(self.program, name_)
+        loc = self.get_uniform_location(name_)
         glUniform2f(loc, *value)
 
     @beartype
     def passVec4f(self, name_: str, value: TYPE_VEC) -> None:
-        loc = glGetUniformLocation(self.program, name_)
+        loc = self.get_uniform_location(name_)
         glUniform4f(loc, *value)
 
 
@@ -147,9 +151,19 @@ class DefaultShader(Shader):
     def __init__(self):
         super().__init__('default_vert.glsl', 'default_frag.glsl')
 
-    def prepareDraw(self, pos, **kw):
-        super().prepareDraw(pos, **kw)
+    def prepareDraw(self, **kw):
+        super().prepareDraw()
         self.passMat4('Transform', kw['transform'])
+
+
+class DefaultInstancedShader(Shader):
+    __instance = None
+
+    def __init__(self):
+        super().__init__('default_vert.glsl', 'default_frag.glsl')
+
+    def prepareDraw(self, **kw):
+        super().prepareDraw()
 
 
 class BackgroundShader(Shader):
@@ -160,8 +174,8 @@ class BackgroundShader(Shader):
     def __init__(self):
         super().__init__('back_vert.glsl', 'back_frag.glsl')
 
-    def prepareDraw(self, pos, **kw):
-        super().prepareDraw(pos, **kw)
+    def prepareDraw(self, **kw):
+        super().prepareDraw(**kw)
 
         self.passMat4('Transform', kw['transform'])
         self.passFloat('cameraPos', kw['camera'].pos[1] / Const.WINDOW_SIZE[1])
@@ -174,20 +188,16 @@ class RoundLightShader(Shader):
                          'light_round_frag.glsl',
                          'light_round_geo.glsl')
 
-    def prepareDraw(self, pos, **kw):
-        shader = self.program
+    def prepareDraw(self, **kw):
         stride = 32
 
         # ATTRIBUTES POINTERS
-        glGetAttribLocation(shader, "position")
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, ctypes.c_void_p(0))
         glEnableVertexAttribArray(0)
 
-        glGetAttribLocation(shader, "color")
         glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, stride, ctypes.c_void_p(12))
         glEnableVertexAttribArray(1)
 
-        glGetAttribLocation(shader, "radius")
         glVertexAttribPointer(2, 1, GL_FLOAT, GL_FALSE, stride, ctypes.c_void_p(28))
         glEnableVertexAttribArray(2)
 
@@ -203,8 +213,8 @@ class ScreenShaderGame(Shader):
     def __init__(self):
         super().__init__('screen_vert.glsl', 'screen_frag.glsl')
 
-    def prepareDraw(self, pos, **kw):
-        super().prepareDraw(pos, **kw)
+    def prepareDraw(self, **kw):
+        super().prepareDraw(**kw)
         self.passTexture("lightMap", 1)
         self.passTexture("depthMap", 2)
         self.passFloat('brightness', Const.BRIGHTNESS)
@@ -214,8 +224,8 @@ class ScreenShaderMenu(Shader):
     def __init__(self):
         super().__init__('screen_vert.glsl', 'screen_nolight_frag.glsl')
 
-    def prepareDraw(self, pos, **kw):
-        super().prepareDraw(pos, **kw)
+    def prepareDraw(self, **kw):
+        super().prepareDraw(**kw)
         self.passFloat('brightness', Const.BRIGHTNESS)
 
 
@@ -223,8 +233,8 @@ class GUIShader(Shader):
     def __init__(self):
         super().__init__('gui_vert.glsl', 'gui_frag.glsl')
 
-    def prepareDraw(self, pos, **kw):
-        super().prepareDraw(pos, **kw)
+    def prepareDraw(self, **kw):
+        super().prepareDraw(**kw)
         self.passMat4('Transform', kw['transform'])
 
 
@@ -235,7 +245,7 @@ class StraightLineShader(Shader):
                          'straight_line_frag.glsl',
                          'straight_line_geo.glsl')
 
-    def prepareDraw(self, pos, **kw):
+    def prepareDraw(self, **kw):
         shader = self.program
 
         # ATTRIBUTES POINTERS
@@ -253,7 +263,7 @@ class ParticlePolyShader(Shader):
                          'particle_frag.glsl',
                          'particle_poly_geo.glsl')
 
-    def prepareDraw(self, pos, **kw):
+    def prepareDraw(self, **kw):
         shader = self.program
         stride = 36
 
