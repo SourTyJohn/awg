@@ -1,8 +1,8 @@
-from OpenGL.GL import *
-import numpy as np
-from core.Constants import FLOAT32
+from core.Constants import FLOAT32, LIGHT_POWER_UNIT
 from typing import Union, List, Tuple
 
+from OpenGL.GL import *
+import numpy as np
 
 __all__ = [
     "makeGLTexture",
@@ -10,7 +10,8 @@ __all__ = [
     "drawDataFullScreen",
     "drawData",
     "splitDrawData",
-    "zFromLayer"
+    "zFromLayer",
+    "drawDataLightSource"
 ]
 
 
@@ -86,6 +87,21 @@ def drawData(size: tuple, colors: Union[List, Tuple, np.ndarray], rotation=1, la
     return data
 
 
+def drawDataLightSource():
+    w_t, h_t = 1, 1
+    w_o, h_o = LIGHT_POWER_UNIT, LIGHT_POWER_UNIT
+
+    data = np.array([
+        # obj cords     # tex cords
+        -w_o, -h_o, 0,  0.0, h_t,
+        +w_o, -h_o, 0,  w_t, h_t,
+        +w_o, +h_o, 0,  w_t, 0.0,
+        -w_o, +h_o, 0,  0.0, 0.0,
+    ], dtype=FLOAT32)
+
+    return data
+
+
 def zFromLayer(layer: int):
     return (5 - layer) / 10
 
@@ -109,3 +125,7 @@ def drawDataFullScreen(colors: Union[List, Tuple, np.ndarray]) -> np.ndarray:
 def splitDrawData(data: np.array) -> tuple:
     yield [list(data[h * 8: h * 8 + 2]) for h in range(4)]
     yield [list(data[h * 8 + 6: h * 8 + 8]) for h in range(4)]
+
+
+def bindTexture(key):
+    pass

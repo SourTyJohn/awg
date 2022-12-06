@@ -115,19 +115,19 @@ class PhysicParticle:
 
 
 class PhysicLightedParticle(PhysicParticle):
-    __slots__ = ("light_source", "idd_source", "type_source")
+    __slots__ = ("light_source", "idd_source")
 
     def __init__(self, idd, ptype, body, shape, curr_time,
-                 start_time, color, size, delete_on_hit, *light_params):
+                 start_time, color, size, delete_on_hit, **light_params):
         super().__init__(idd, ptype, body, shape, curr_time, start_time, color, size, delete_on_hit)
-        self.idd_source, self.light_source = LightingManager.newSource(*light_params)
-        self.type_source = light_params[0]
+        l_tex, l_type = light_params.pop("texture"), light_params.pop("s_type")
+        self.idd_source, self.light_source = LightingManager.newSource(l_tex, l_type, **light_params)
 
     def update(self, dt: float) -> bool:
         if not super().update(dt):
             self.light_source.posXY = self.body.position
             return False
-        LightingManager.delete_source(self.type_source, self.idd_source)
+        LightingManager.delete_source(self.idd_source)
         return True
 
 

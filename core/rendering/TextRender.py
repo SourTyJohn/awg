@@ -1,9 +1,10 @@
-from core.rendering.PyOGL import GlTexture
 from utils.files import load_font, load_text_localization
 from core.Constants import FONT_SETTINGS, LANGUAGE
-from PIL import Image, ImageDraw
 from core.rendering.PyOGL import RenderObjectStatic, bufferize, drawData
-from OpenGL.GL import glEnable, glDisable, GL_DEPTH_TEST
+from core.rendering.Textures import GlTexture, EssentialTextureStorage
+
+from PIL import Image, ImageDraw
+from typing import Union
 import numpy as np
 
 
@@ -56,8 +57,21 @@ def loadText():
     lts = load_text_localization(key=LANGUAGE)
     LocalizedTextsStorage = {f'txt_{key}': lts[key] for key in lts.keys()}
 
+    buttons_text = [
+        GlText(LocalizedText('txt_menu_newgame'), font=MenuFont),
+        GlText(LocalizedText('txt_menu_loadgame'), font=MenuFont),
+        GlText(LocalizedText('txt_menu_savegame'), font=MenuFont),
+        GlText(LocalizedText('txt_menu_settings'), font=MenuFont),
+        GlText(LocalizedText('txt_menu_exit'), font=MenuFont),
 
-loadText()
+        GlText(LocalizedText('txt_menu_settings_brightness'), font=MenuFont),
+        GlText(LocalizedText('txt_menu_settings_resolution'), font=MenuFont),
+        GlText(LocalizedText('txt_menu_settings_volume'), font=MenuFont),
+        GlText(LocalizedText('txt_menu_settings_language'), font=MenuFont),
+        GlText(LocalizedText('txt_menu_settings_menu'), font=MenuFont),
+    ]
+
+    EssentialTextureStorage.load(buttons_text)
 
 
 class LocalizedText:
@@ -73,7 +87,7 @@ class LocalizedText:
 class GlText(GlTexture):
     __slots__ = ()
 
-    def __init__(self, text='', font=DefaultFont):
+    def __init__(self, text: Union[str, LocalizedText] = '', font=DefaultFont):
         if isinstance(text, LocalizedText):
             name = text.token
             text = text()

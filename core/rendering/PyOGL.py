@@ -6,8 +6,9 @@ from core.rendering.Lighting import __LightingManager
 from core.rendering.PyOGL_utils import *
 from core.math.rect4f import Rect4f
 from core.Constants import *
+from core.rendering.Textures import GlTexture
+from core.rendering.Textures import EssentialTextureStorage as Ets
 
-from utils.files import load_image
 from collections import namedtuple
 from beartype import beartype
 import numpy as np
@@ -118,17 +119,18 @@ camera: Camera
 
 
 # RENDER GROUP
-class RenderGroupStatic:
+class RenderGroup:
     __slots__ = (
-        '_visible', 'objects', 'updatable', 'frame_buffer', 'shader', 'free_ids',
+        '_visible', 'objects', 'updatable', 'frame_buffer', 'shader', 'free_ids', 'depth_write'
     )
     """Container for in-game Objects"""
 
-    def __init__(self, shader="DefaultShader", frame_buffer=None, visible=True):
+    def __init__(self, shader="DefaultShader", frame_buffer=None, visible=True, depth_write=True):
         self.frame_buffer = frameBufferGeometry if frame_buffer is None else frame_buffer
         self.objects = {}
         self.updatable = {}
         self.free_ids = set(range(MAX_OBJECTS_PER_GROUP))
+        self.depth_write = depth_write
 
         self.shader = Shaders.shaders.get(shader)
         if self.shader is None:
@@ -136,7 +138,7 @@ class RenderGroupStatic:
         self._visible = visible
 
     def __repr__(self):
-        return f'<RenderGroupStatic({len(self.objects)})>'
+        return f'<RenderGroup({len(self.objects)})>'
 
     def generate_group_id(self):
         return self.free_ids.pop()
@@ -170,11 +172,7 @@ class RenderGroupStatic:
         to_draw:: Set of Physic Objects body hash, that should be rendered
         If None, all object will be rendered"""
 
-        if not self._visible:
-            return
-
-        # DRAWING
-        self.shader.use()
+        if not self.pre_draw(): return
 
         for texture_key, objects in self.objects.items():
             glActiveTexture(GL_TEXTURE0)
@@ -182,6 +180,18 @@ class RenderGroupStatic:
 
             for obj in objects.values():
                 obj.draw(self.shader)
+
+    def pre_draw(self):
+        if not self._visible:
+            return False
+
+        if not self.depth_write:
+            glDisable(GL_DEPTH_TEST)
+        else:
+            glEnable(GL_DEPTH_TEST)
+
+        self.shader.use()
+        return True
 
     """Deleting all of group.sprites()"""
     def delete_all(self):
@@ -199,20 +209,16 @@ class RenderGroupStatic:
         del self.objects[key][ind]
 
 
-class RenderGroupInstanced(RenderGroupStatic):
-    def __init__(self, shader="DefaultInstancedShader", frame_buffer=None, visible=True):
-        super().__init__(shader, frame_buffer, visible)
+class RenderGroupInstanced(RenderGroup):
+    def __init__(self, shader="DefaultInstancedShader", frame_buffer=None, visible=True, depth_write=True):
+        super().__init__(shader, frame_buffer, visible, depth_write)
 
     def draw_all(self, to_draw=None):
         """
         to_draw:: Set of Physic Objects body hash, that should be rendered
         If None, all object will be rendered"""
 
-        if not self._visible:
-            return
-
-        # DRAWING
-        self.shader.use()
+        if not self.pre_draw(): return
 
         for texture_key, objects in self.objects.items():
             glActiveTexture(GL_TEXTURE0)
@@ -227,62 +233,6 @@ class RenderGroupInstanced(RenderGroupStatic):
             glBindBuffer(GL_ARRAY_BUFFER, obj.vbo)
             self.shader.prepareDraw()
             glDrawElementsInstanced(GL_TRIANGLES, 6, GL_UNSIGNED_INT, None, len(objects.values()))
-
-
-class RenderGroupNoDepth(RenderGroupStatic):
-    def draw_all(self, to_draw=None):
-        glDisable(GL_DEPTH_TEST)
-        super().draw_all(to_draw)
-        glEnable(GL_DEPTH_TEST)
-
-
-# TEXTURE
-class GlTexture:
-    __slots__ = ('size', 'key', 'repeat', 'name', 'normals')
-
-    def __init__(self, data: np.ndarray, size, tex_name, repeat=False):
-        self.size = size  # units
-        self.key = makeGLTexture(data, *self.size, repeat=repeat)
-        self.repeat = repeat
-        self.name = tex_name.replace('.png', '')
-
-        # DEBUG
-        if DEBUG:
-            print(self)
-
-    def __repr__(self):
-        return f'<GLTexture[{self.key}] \t size: {self.size[0]}x{self.size[1]}px. \t name: "{self.name}">'
-
-    @classmethod
-    def load_file(cls, image_name, repeat=False):
-        data, size = load_image(image_name, TEXTURE_PACK)
-
-        if data is None:
-            print(f'texture: {image_name} error. Not loaded')
-
-        return GlTexture(data, size, image_name, repeat)
-
-    @classmethod
-    def load_image(cls, image_name, image, repeat=False):
-        data = np.fromstring(image.tobytes(), np.uint8)
-        size = image.size
-
-        return GlTexture(data, size, image_name, repeat)
-
-    def make_draw_data(self, layer, colors=None):
-        """Make drawTexture data with size of this texture
-        Usually GlObjects have their own drawData, but you can calculate drawData,
-        which will perfectly match this texture"""
-        if colors is None:
-            colors = ((1.0, 1.0, 1.0, 1.0), ) * 4
-
-        drawData(self.size, colors, layer=layer)
-        return drawData(self.size, colors, layer=layer)
-
-    """Deleting texture from memory"""
-    def delete(self):
-        glDeleteTextures(1, [self.key, ])
-        del self
 
 
 # ANIMATION
@@ -331,7 +281,7 @@ class RenderObject:
                         np.array([1.0, 1.0, 1.0, 1.0], dtype=np.float32),
                         np.array([1.0, 1.0, 1.0, 1.0], dtype=np.float32)]
     visible = True
-    group: Union["RenderGroupStatic", "RenderGroupNoDepth"]
+    group: Union["RenderGroup", "RenderGroupInstanced"]
 
     _vbo: int = 0
     _render_type = 0  # 0 - classic RenderObject, 1 - RenderObject with physic body
@@ -693,18 +643,47 @@ def drawBound(pos: TYPE_VEC, vbo: TYPE_NUM, shader: Shaders.Shader, z_rotation: 
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, None)
 
 
-def renderLights(camera_):
+def renderLights(camera_, ):
     lm = LightingManager
+    shader = lm.shader
 
     if lm.do_render:
-        bindEBO(2)
+        glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA)
         frameBufferLight.bind()
         clearDisplay()
 
-        lm.render(camera_)
+        light_groups = lm.generate_groups()
+        previous_tex = -1
+        shader.use()
+        for group in light_groups:
+            tex = Ets[ group["texture"] ].key
+
+            if tex != previous_tex:
+                previous_tex = tex
+                glActiveTexture(GL_TEXTURE0)
+                glBindTexture(GL_TEXTURE_2D, tex)
+
+            colors = []
+            scales = []
+            stencils = []
+            transforms = []
+
+            for i, source in enumerate( group["sources"] ):
+                transforms.append(source.get_transform(camera_))
+                colors.append(source.color)
+                scales.append(source.size)
+                stencils.append(0)
+
+            shader.passMat4V(f"sTransform[0]", np.asfortranarray(transforms, dtype=FLOAT32))
+            shader.passVec4fV(f"sColor[0]", np.asfortranarray(colors, dtype=FLOAT32))
+            shader.passVec2fV(f"sScale[0]", np.asfortranarray(scales, dtype=FLOAT32))
+            shader.passUIntV(f"sStencil[0]", np.asfortranarray(stencils, dtype=UINT))
+
+            glBindBuffer(GL_ARRAY_BUFFER, lm.vbo)
+            shader.prepareDraw()
+            glDrawElementsInstanced(GL_TRIANGLES, 6, GL_UNSIGNED_INT, None, len(group["sources"]))
 
         FrameBuffer.unbind()
-        bindEBO(0)
 
 
 def postRender(screen_shader):
@@ -723,6 +702,7 @@ def postRender(screen_shader):
     glBindBuffer(GL_ARRAY_BUFFER, fbuff.vbo)
 
     # DISABLE STUFF 1
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
     glDisable(GL_DEPTH_TEST)
 
     # SHADER

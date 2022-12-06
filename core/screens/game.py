@@ -1,8 +1,8 @@
 from core.physic.physics import MainPhysicSpace, objects
 from user.KeyMapping import *
 from core.objects.gObjects import *
-from core.rendering.PyOGL import RenderGroupStatic, camera, preRender,\
-    postRender, Shaders, drawGroupsFinally, LightingManager, RenderGroupNoDepth, RenderGroupInstanced
+from core.rendering.PyOGL import RenderGroup, camera, preRender,\
+    postRender, Shaders, drawGroupsFinally, LightingManager, RenderGroupInstanced
 from core.rendering.PyOGL_line import renderAllLines
 from core.rendering.Particles import ParticleManager
 from core.rendering.TextRender import TextObject, DefaultFont
@@ -13,13 +13,13 @@ from beartype import beartype
 
 
 # GROUPS
-background_gr = RenderGroupStatic(shader="BackgroundShader")  # BACKGROUND COLOR
-background_near_gr = RenderGroupStatic()    # BACKGROUND OBJECTS
-obstacles_gr = RenderGroupInstanced()       # DYNAMIC OBJECTS
-world_gr = RenderGroupStatic()              # WORLD GEOMETRY
-items_gr = RenderGroupNoDepth()             # ITEMS
-character_gr = RenderGroupStatic()          # ANIMATED CHARACTERS
-gui_gr = RenderGroupStatic()                # GUI
+background_gr = RenderGroup(shader="BackgroundShader")  # BACKGROUND COLOR
+background_near_gr = RenderGroup()    # BACKGROUND OBJECTS
+obstacles_gr = RenderGroupInstanced(depth_write=False)       # DYNAMIC OBJECTS
+world_gr = RenderGroup()              # WORLD GEOMETRY
+items_gr = RenderGroup(depth_write=False)             # ITEMS
+character_gr = RenderGroup()          # ANIMATED CHARACTERS
+gui_gr = RenderGroup()                # GUI
 
 
 hero_inited = False
@@ -180,12 +180,21 @@ def initScreen(hero_life=False, first_load=False):
         WoodenCrate(obstacles_gr, pos=[700, 800 + r*20])
     WoodenCrate(obstacles_gr, pos=[760, 800])
     WoodenCrate(obstacles_gr, pos=[600, 800])
+    WoodenCrate(obstacles_gr, pos=[650, 980])
     # DroppedItem(items_gr, pos=[700, 900], item="RustySword")
 
     WorldRectangleSensor(background_near_gr, (1300, 600), (2600, 900), layer=6)
     # addLight(FireLight, [1400, 700], 16, 'RoundFlat', layer=1, color='fire')
-    #
-    LightingManager.newSource(0, (600, 700), 18, 1, color=(0.1, 0.1, 0.1), brightness=0.8)
+
+    # for _x in range(30):
+    _x = 0
+    LightingManager.newSource("Light/light_round", 0, pos=(600 + _x * 20, 700), size=40.0, layer=1,
+                              color=(0.1, 0.1, 0.1), brightness=0.6)
+    LightingManager.newSource("Light/light_round", 0, pos=(800, 800), size=30.0, layer=1,
+                              color=(0.1, 0.1, 0.1), brightness=0.6)
+    LightingManager.newSource("Light/light_round", 0, pos=(1000, 800), size=30.0, layer=1,
+                              color=(0.1, 0.1, 0.1), brightness=0.6)
+
     # LightingManager.newSource(0, (800, 700), 9, 1, color=(0.1, 0.1, 0.1), brightness=1.0)
     # LightingManager.newSource(0, (600, 900), 9, 1, color=(0.1, 0.1, 0.1), brightness=1.0)
     # LightingManager.newSource(0, (800, 900), 9, 1, color=(0.1, 0.1, 0.1), brightness=1.0)

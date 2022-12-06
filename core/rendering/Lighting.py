@@ -1,19 +1,16 @@
-from OpenGL.GL import *
-
-from core.Constants import TILE_SIZE, FLOAT32, TYPE_NUM,\
-    TYPE_VEC, MAX_LIGHT_SOURCES, ZERO_FLOAT32
+from core.Constants import FLOAT32, MAX_LIGHT_SOURCES, INT64, MAX_TEXTURES_BIND
 from core.math.linear import FullTransformMat
-from core.rendering.PyOGL_utils import zFromLayer
+from core.rendering.PyOGL_utils import zFromLayer, bufferize, drawDataLightSource
 from core.rendering.Shaders import shaders
 
 from dataclasses import dataclass, field
-from typing import Tuple, Dict, Union
+from typing import Dict, List, Union
 import numpy as np
 from beartype import beartype
 
 
 LIGHT_COLOR_PRESETS = {
-    'fire': (1.0, 0.3, 0.0, 0.0)
+    'fire': (1.0, 0.3, 0.0)
 }
 
 __all__ = [
@@ -23,33 +20,55 @@ __all__ = [
 
 @dataclass
 class LightSource:
-    __slots__ = ("color", "radius", "posXY", "posZ")
+    __slots__ = ("color", "size", "posXY", "posZ", "z_rotation", "visible")
 
     color: field(default_factory=np.ndarray)
-    radius: field(default_factory=FLOAT32)
+    size: field(default_factory=FLOAT32)
     posXY: field(default_factory=np.ndarray)
     posZ: field(default_factory=FLOAT32)
 
-    def __init__(self, pos, power, layer, color, brightness, trigger=None):
-        self.color = np.array([*color, brightness], dtype=FLOAT32)
-        self.radius = FLOAT32(power * TILE_SIZE)
+    z_rotation: field(default_factory=FLOAT32)
+    shadow_mask_key: field(default_factory=INT64)
+
+    visible: field(default_factory=bool)
+
+    @beartype
+    def __init__(
+            self,
+            pos: Union[List, tuple, np.ndarray],
+            size: Union[float, List, np.ndarray],
+            layer: int,
+            color: Union[str, List, np.ndarray, tuple],
+            brightness: float,
+            z_rotation: float = 0.0
+    ):
+        if type(color) == str:
+            self.color = np.array([*LIGHT_COLOR_PRESETS[color], brightness], dtype=FLOAT32)
+        else:
+            self.color = np.array([*color, brightness], dtype=FLOAT32)
+
+        if type(size) == float:
+            self.size = np.array([size, size], dtype=FLOAT32)
+        else:
+            self.size = np.array([*size], dtype=FLOAT32)
+
         self.posXY = np.array(pos, dtype=FLOAT32)
         self.posZ = FLOAT32(zFromLayer(layer))
-
-    def calculate_shadows(self, trigger):
-        pass
+        self.z_rotation = FLOAT32(z_rotation)
+        self.visible = True
 
     def __repr__(self):
         return f'LS {list(self.posXY)}'
+
+    def calculate_shadows(self):
+        pass
 
     @beartype
     def update(self, dt: float):
         pass
 
-    def get_data(self):
-        return np.array(
-            [*self.posXY, self.posZ, *self.color, self.radius]
-        ).flatten()
+    def get_transform(self, camera):
+        return FullTransformMat(*self.posXY, camera.get_matrix(), self.z_rotation)
 
 
 class ExplosionLightSource(LightSource):
@@ -61,7 +80,7 @@ class ExplosionLightSource(LightSource):
 
     def __init__(self, pos, power, layer, color, brightness, time, peak):
         super().__init__(pos, power, layer, color, brightness)
-        assert peak < time, "Max time must be greater than peak time"
+        assert peak < time, "Max time must be greater or equal to peak time"
         self.curr_time = 0.0
         self.end_time = time
         self.peak_time = peak
@@ -85,75 +104,62 @@ class ExplosionLightSource(LightSource):
 
 
 class __LightingManager:
-    sources: Dict[int, Dict] = {}
-    free_ids = set(range(MAX_LIGHT_SOURCES))
+    sources: Dict[str, Dict] = {}
 
-    vbo_id: int
-    shaders = {
-        0: "RoundLightShader",
-    }
-    do_render = True
+    def __init__(self, shader="LightSourceShader"):
+        self.sources: Dict[ str, Dict[int, LightSource] ] = {}
+        self.vbo: int = bufferize( drawDataLightSource() )
+        self.shader = shaders[shader]
+        self.free_ids = set(range(MAX_LIGHT_SOURCES))
+        self.do_render = True
 
-    def __init__(self):
-        self.sources = {
-            i: dict() for i in self.__class__.shaders.keys()
-        }
-        self.vbo_id = glGenBuffers(1)
-        self.frame_buffer = None
+        self.changed = True
+        self.groups = []
 
     @beartype
-    def newSource(self, ltype: int, pos: Union[TYPE_VEC, Tuple], power: TYPE_NUM,
-                  layer: int = 1, color: Tuple[float, float, float] = (0.1, 0.1, 0.1),
-                  brightness: float = 0.8):
+    def newSource(self, texture: str, s_type=0, **kwargs):
+        if s_type == 0:
+            source = LightSource(**kwargs)
+        else:
+            source = ExplosionLightSource(**kwargs)
 
-        if isinstance(color, str):
-            assert color in LIGHT_COLOR_PRESETS.keys(),\
-                KeyError(f'No such color preset. Chose from {LIGHT_COLOR_PRESETS.keys()}')
+        idd = self.new_id()
+        if texture in self.sources.keys():
+            self.sources[texture][idd] = source
+        else:
+            self.sources[texture] = {idd: source, }
 
-        source = LightSource(pos, power, layer, color, brightness)
-        idd = self.new_id(ltype)
-        self.sources[ltype][idd] = source
+        self.changed = True
         return idd, source
 
-    @beartype
-    def newSource_explosion(self, ltype: int, pos: Union[TYPE_VEC, Tuple], power: TYPE_NUM,
-                            time: float, peak_time: float,
-                            layer: int = 1, color: Tuple[float, float, float] = (0.1, 0.1, 0.1),
-                            brightness: float = 0.8):
+    def new_id(self):
+        return self.free_ids.pop()
 
-        if isinstance(color, str):
-            assert color in LIGHT_COLOR_PRESETS.keys(),\
-                KeyError(f'No such color preset. Chose from {LIGHT_COLOR_PRESETS.keys()}')
+    def generate_groups(self) -> List[ Dict ]:
+        """If new LightSource is added"""
 
-        source = ExplosionLightSource(pos, power, layer, color, brightness, time, peak_time)
-        idd = self.new_id(ltype)
-        self.sources[ltype][idd] = source
-        return source
+        if self.changed:
+            self.changed = False
+            self.groups = []
 
-    @beartype
-    def new_id(self, ltype: int):
-        """If the is no free ids for Source,
-        then it returns last added Source's id"""
-        if self.free_ids:
-            return self.free_ids.pop()
-        return self.sources[ltype].popitem()[0]
+            sources_all = self.sources
+            group_n = 0
+            for tex, sources in sources_all.items():
 
-    def render(self, camera_):
-        for key in self.sources.keys():
-            if not (sources := self.sources[key]):
-                continue
-            Shader = shaders[self.shaders[key]]
-            Shader.use()
+                while sources:
+                    self.groups.append({"texture": tex, "sources": []})
+                    limit = min(MAX_TEXTURES_BIND - 1, len(sources))
 
-            data = np.array(
-                [p.get_data() for p in sources.values()], dtype=FLOAT32
-            ).flatten()
+                    for _ in range(limit):
+                        _, source = sources.popitem()
+                        self.groups[group_n]["sources"].append(source)
+                    group_n += 1
 
-            self.__drawGL_from_data(data, camera_, len(sources), Shader)
+        return self.groups
 
-    def delete_source(self, ltype, idd):
+    def delete_source(self, texture, idd):
         self.free_ids.add(idd)
-        s = self.sources[ltype]
+        s = self.sources[texture]
         if idd in s.keys():
             del s[idd]
 
@@ -169,18 +175,6 @@ class __LightingManager:
 
             for _ in range(len(to_delete)):
                 del self.sources[key][to_delete.pop()]
-
-    def __drawGL_from_data(self, data, camera_, elements, shader):
-        glBindBuffer(GL_ARRAY_BUFFER, self.vbo_id)
-        glBufferData(GL_ARRAY_BUFFER, data.nbytes, data, GL_STATIC_DRAW)
-
-        mat = FullTransformMat(ZERO_FLOAT32, ZERO_FLOAT32, camera_.get_matrix(), ZERO_FLOAT32)
-        shader.prepareDraw(transform=mat)
-
-        glDrawElements(GL_POINTS, elements, GL_UNSIGNED_INT, None)
-
-    def bind_buffer(self):
-        self.frame_buffer.bind()
 
     def clear(self):
         pass

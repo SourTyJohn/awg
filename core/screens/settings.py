@@ -4,9 +4,9 @@ from core.rendering.PyOGL import *
 from core.rendering.Textures import EssentialTextureStorage as Ets
 
 
-decoration = RenderGroupStatic()
-back = RenderGroupStatic()
-buttons_group = RenderGroupStatic()
+decoration = RenderGroup()
+back = RenderGroup()
+buttons_group = RenderGroup()
 
 buttons_count = 4
 selected_button = 0

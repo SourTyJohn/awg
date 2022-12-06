@@ -117,6 +117,17 @@ class Shader:
         glUniformMatrix4fv(loc, 1, GL_FALSE, value)
 
     @beartype
+    def passTexture(self, name_: str, value) -> None:
+        loc = self.get_uniform_location(name_)
+        glUniform1i(loc, value)
+
+    # PASS NUMBERS
+    @beartype
+    def passUInt(self, name_: str, value: TYPE_INT):
+        loc = self.get_uniform_location(name_)
+        glUniform1ui(loc, value)
+
+    @beartype
     def passFloat(self, name_: str, value: TYPE_FLOAT) -> None:
         loc = self.get_uniform_location(name_)
         glUniform1f(loc, value)
@@ -126,20 +137,42 @@ class Shader:
         loc = self.get_uniform_location(name_)
         glUniform1i(loc, value)
 
-    @beartype
-    def passTexture(self, name_: str, value) -> None:
-        loc = self.get_uniform_location(name_)
-        glUniform1i(loc, value)
-
+    # PASS VECTORS
     @beartype
     def passVec2f(self, name_: str, value) -> None:
         loc = self.get_uniform_location(name_)
         glUniform2f(loc, *value)
 
     @beartype
+    def passVec3f(self, name_: str, value) -> None:
+        loc = self.get_uniform_location(name_)
+        glUniform3f(loc, *value)
+
+    @beartype
     def passVec4f(self, name_: str, value: TYPE_VEC) -> None:
         loc = self.get_uniform_location(name_)
         glUniform4f(loc, *value)
+
+    # PASS ARRAYS
+    @beartype
+    def passVec2fV(self, name_: str, value: np.ndarray) -> None:
+        loc = self.get_uniform_location(name_)
+        glUniform2fv(loc, len(value), value)
+
+    @beartype
+    def passVec4fV(self, name_: str, value: np.ndarray) -> None:
+        loc = self.get_uniform_location(name_)
+        glUniform4fv(loc, len(value), value)
+
+    @beartype
+    def passMat4V(self, name_: str, value: np.ndarray) -> None:
+        loc = self.get_uniform_location(name_)
+        glUniformMatrix4fv(loc, len(value), GL_FALSE, value)
+
+    @beartype
+    def passUIntV(self, name_: str, value: np.ndarray) -> None:
+        loc = self.get_uniform_location(name_)
+        glUniform1uiv(loc, len(value), value)
 
 
 # DEFAULT
@@ -162,9 +195,6 @@ class DefaultInstancedShader(Shader):
     def __init__(self):
         super().__init__('default_vert.glsl', 'default_frag.glsl')
 
-    def prepareDraw(self, **kw):
-        super().prepareDraw()
-
 
 class BackgroundShader(Shader):
     """Shader for fancy :) gradient background drawing"""
@@ -182,26 +212,21 @@ class BackgroundShader(Shader):
 
 
 # LIGHTING
-class RoundLightShader(Shader):
+class LightSourceShader(Shader):
     def __init__(self):
-        super().__init__('light_round_vert.glsl',
-                         'light_round_frag.glsl',
-                         'light_round_geo.glsl')
+        super().__init__('light_vert.glsl', 'light_frag.glsl')
 
     def prepareDraw(self, **kw):
-        stride = 32
-
-        # ATTRIBUTES POINTERS
+        stride = 20
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, ctypes.c_void_p(0))
+        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, stride, ctypes.c_void_p(12))
+        return self.program
+
+    def use(self):
+        self.universal_use()
+
         glEnableVertexAttribArray(0)
-
-        glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, stride, ctypes.c_void_p(12))
         glEnableVertexAttribArray(1)
-
-        glVertexAttribPointer(2, 1, GL_FLOAT, GL_FALSE, stride, ctypes.c_void_p(28))
-        glEnableVertexAttribArray(2)
-
-        self.passMat4('Transform', kw['transform'])
 
 
 # SCREENS AND GUIS
