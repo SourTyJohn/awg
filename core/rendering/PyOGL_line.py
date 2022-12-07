@@ -49,6 +49,8 @@ def drawLineBackend(vbo_key: TYPE_NUM, pos: TYPE_VEC, color: np.ndarray, width, 
 
 @beartype
 def renderAllLines():
+    if not lines:
+        return
     Shader.use()
     bindEBO(1)
     for line in lines.values():

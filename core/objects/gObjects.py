@@ -469,7 +469,7 @@ class WoodenCrate(RObjectStatic, PObject, Throwable, Direct, Mortal):
     shape_filter = shapeFilter('obstacle', ignore=('enemy', 'particle'))
 
     # static
-    TEXTURES = (Ets['LevelOne/damaged_crate'], )
+    TEXTURES = (Ets['LevelOne/crate'], )
     size = (72, 72)
     points = rectPoints(*size)
 

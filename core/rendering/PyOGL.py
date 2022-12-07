@@ -167,7 +167,7 @@ class RenderGroup:
             o.update(dt, *args)
 
     """drawing all of this group objects"""
-    def draw_all(self, to_draw=None):
+    def draw_all(self, object_ids=None):
         """
         to_draw:: Set of Physic Objects body hash, that should be rendered
         If None, all object will be rendered"""
@@ -184,11 +184,6 @@ class RenderGroup:
     def pre_draw(self):
         if not self._visible:
             return False
-
-        if not self.depth_write:
-            glDisable(GL_DEPTH_TEST)
-        else:
-            glEnable(GL_DEPTH_TEST)
 
         self.shader.use()
         return True
@@ -213,7 +208,7 @@ class RenderGroupInstanced(RenderGroup):
     def __init__(self, shader="DefaultInstancedShader", frame_buffer=None, visible=True, depth_write=True):
         super().__init__(shader, frame_buffer, visible, depth_write)
 
-    def draw_all(self, to_draw=None):
+    def draw_all(self, object_ids=()):
         """
         to_draw:: Set of Physic Objects body hash, that should be rendered
         If None, all object will be rendered"""
@@ -225,9 +220,11 @@ class RenderGroupInstanced(RenderGroup):
             glBindTexture(GL_TEXTURE_2D, texture_key)
 
             obj = None
+            transform = []
             for i, obj in enumerate(objects.values()):
-                data = obj.get_transform()
-                self.shader.passMat4(f"Transform[{i}]", data)
+                if obj.bhash not in object_ids: continue
+                transform.append( obj.get_transform() )
+            self.shader.passMat4V(f"Transform[0]", np.asfortranarray(transform, dtype=FLOAT32))
 
             if obj is None: continue
             glBindBuffer(GL_ARRAY_BUFFER, obj.vbo)
@@ -485,7 +482,7 @@ class FrameBuffer:
     vbo: int
     shader: Shaders.Shader
 
-    def __init__(self, depth_buff=False):
+    def __init__(self):
         size = WINDOW_RESOLUTION
 
         self.key = glGenFramebuffers(1)
@@ -499,17 +496,6 @@ class FrameBuffer:
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
         glBindTexture(GL_TEXTURE_2D, 0)
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, self.tex, 0)
-
-        self.rbo = 0
-        if depth_buff:
-            self.rbo = glGenTextures(1)
-            glBindTexture(GL_TEXTURE_2D, self.rbo)
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, *size, 0, GL_DEPTH_COMPONENT, GL_FLOAT, None)
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_NONE)
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST)
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST)
-            glBindTexture(GL_TEXTURE_2D, 0)
-            glFramebufferTexture(GL_DRAW_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, self.rbo, 0)
 
         # SHADER
         color = ((1.0, 1.0, 1.0, 1.0),
@@ -526,7 +512,7 @@ class FrameBuffer:
     def bind(self):
         glBindFramebuffer(GL_FRAMEBUFFER, self.key)
 
-    def bind_texture(self, slot=0):
+    def bind_texture(self, slot):
         glActiveTexture(GL_TEXTURE0 + slot)
         glBindTexture(GL_TEXTURE_2D, self.tex)
 
@@ -539,15 +525,31 @@ class FrameBuffer:
             return True
         raise GLerror(f'FrameBuffer[{self.key}] Buffer Incomplete; Status: {status}')
 
-    def bind_depth_texture(self, slot=2):
+    @staticmethod
+    def unbind():
+        glBindFramebuffer(GL_FRAMEBUFFER, 0)
+
+
+class FrameBufferDepth(FrameBuffer):
+    def __init__(self):
+        super(FrameBufferDepth, self).__init__()
+        size = WINDOW_RESOLUTION
+        self.bind()
+
+        self.rbo = glGenTextures(1)
+        glBindTexture(GL_TEXTURE_2D, self.rbo)
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, *size, 0, GL_DEPTH_COMPONENT, GL_FLOAT, None)
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_NONE)
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST)
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST)
+        glBindTexture(GL_TEXTURE_2D, 0)
+        glFramebufferTexture(GL_DRAW_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, self.rbo, 0)
+
+    def bind_depth_texture(self, slot):
         if not self.rbo:
             raise ReferenceError('FrameBuffer has no render buffer (depth buffer)')
         glActiveTexture(GL_TEXTURE0 + slot)
         glBindTexture(GL_TEXTURE_2D, self.rbo)
-
-    @staticmethod
-    def unbind():
-        glBindFramebuffer(GL_FRAMEBUFFER, 0)
 
 
 frameBufferGeometry: FrameBuffer
@@ -565,19 +567,22 @@ def initDisplay(size=WINDOW_RESOLUTION):
     pygame.display.set_mode(size, flags=flags)
     
     #  Correct OpenGL Version requirement
-    pygame.display.gl_set_attribute(pygame.GL_CONTEXT_MAJOR_VERSION, 3)
-    pygame.display.gl_set_attribute(pygame.GL_CONTEXT_MINOR_VERSION, 2)
+    pygame.display.gl_set_attribute(pygame.GL_CONTEXT_MAJOR_VERSION, 4)
+    pygame.display.gl_set_attribute(pygame.GL_CONTEXT_MINOR_VERSION, 0)
 
     # Initialize modules
     Shaders.init()
     LightingManager = __LightingManager()
 
-    frameBufferGeometry = FrameBuffer(depth_buff=True)
-    frameBufferLight = FrameBuffer(depth_buff=False)
+    frameBufferGeometry = FrameBufferDepth()
+    frameBufferLight = FrameBuffer()
     clearDisplay()
     camera = Camera()
     glClearColor(*clear_color)
     glDepthFunc(GL_LEQUAL)
+
+    glEnable(GL_SCISSOR_TEST)
+    glScissor(0, 0, *WINDOW_SIZE)
 
     # Order of vertexes when drawing
     indices = [
@@ -613,6 +618,7 @@ def preRender(do_depth_test=True):
 
     # ENABLE STUFF
     glEnable(GL_TEXTURE_2D)
+    glEnable(GL_STENCIL_TEST)
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
     glEnable(GL_BLEND)
 
@@ -620,17 +626,12 @@ def preRender(do_depth_test=True):
         glEnable(GL_DEPTH_TEST)
 
 
-def drawGroupsFinally(render_zone, *groups):
+def drawGroupsFinally(object_ids, *groups):
     # THE ONLY WAY TO DRAW ON SCREEN
     # Drawing each object in each group
 
-    # Getting objects that should be rendered
-    to_draw = None
-    # if render_zone is not None:
-    #     to_draw = render_zone.entities
-
     for group in groups:
-        group.draw_all(to_draw=to_draw)
+        group.draw_all(object_ids)
 
 
 def drawBound(pos: TYPE_VEC, vbo: TYPE_NUM, shader: Shaders.Shader, z_rotation: TYPE_NUM = 0.0, **kwargs):

@@ -168,6 +168,15 @@ class PhysicObject:
         # rewrite in child-classes
         return True
 
+    def should_update(self) -> bool:
+        pass
+
+    def update(self, dt) -> bool:
+        if not self.should_update(): return False
+        if self.body_type == "dynamic":
+            pass  # CHECKS CHUNK
+        return True
+
 
 class World:
     __instance = None

@@ -49,10 +49,9 @@ def render():
     postRender(Shaders.shaders['ScreenShaderGame'], )
 
 
-def drawGroups():
-    # drawing all GLSprite groups
+def drawGroups(object_ids: tuple = ()):
     drawGroupsFinally(
-        None,
+        object_ids,
         character_gr,
         obstacles_gr,
         world_gr,
@@ -181,6 +180,10 @@ def initScreen(hero_life=False, first_load=False):
     WoodenCrate(obstacles_gr, pos=[760, 800])
     WoodenCrate(obstacles_gr, pos=[600, 800])
     WoodenCrate(obstacles_gr, pos=[650, 980])
+
+    for r in range(20):
+        WoodenCrate(obstacles_gr, pos=[1400 + r*70, 800 + r*70])
+
     # DroppedItem(items_gr, pos=[700, 900], item="RustySword")
 
     WorldRectangleSensor(background_near_gr, (1300, 600), (2600, 900), layer=6)

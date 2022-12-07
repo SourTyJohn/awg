@@ -1,5 +1,5 @@
 from pymunk import ShapeFilter, Shape
-from core.physic.physics import PhysicObject, Body
+from core.physic.physics import PhysicObject, Body, World
 from core.rendering.PyOGL import RenderObjectAnimated, RenderObjectStatic, RenderObjectComposite
 from core.rendering.PyOGL_line import drawLine
 from core.Constants import FLOAT32, TYPE_FLOAT, INT64, TYPE_INT, INF, TYPE_VEC, TYPE_NUM
