@@ -1,13 +1,13 @@
-from distutils.core import setup
-from distutils.extension import Extension
-from Cython.Distutils import build_ext
+from setuptools import setup
+from Cython.Build import cythonize
+
+import numpy
+import pymunk
+import beartype
 
 
-if __name__ == "__main__":  # setup.py build_ext -i clean
-    ext_modules = [Extension('linear', sources=['core/math/linear.pyx'], language='c',)]
+MATH_LINEAR_BUILD = [numpy.get_include(), ]
 
-    setup(
-        name='linear',
-        cmdclass={'build_ext': build_ext},
-        ext_modules=ext_modules
-    )
+setup(
+    ext_modules=cythonize("core/accelerated/linear.pyx")
+)

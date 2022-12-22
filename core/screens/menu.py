@@ -91,7 +91,7 @@ def userInput():
                 buttons[selected_button].pressed()
 
 
-class MainFrame(RenderObjectStatic):
+class MainFrame(StaticRenderComponent):
     TEXTURES = (Ets['GUI/menu_frame'], )
     size = WINDOW_SIZE
 
@@ -100,7 +100,7 @@ class MainFrame(RenderObjectStatic):
 
 
 # ---- BUTTONS----
-class ButtonText(RenderObjectStatic):
+class ButtonText(StaticRenderComponent):
     TEXTURES = [Ets[x] for x in [
         'txt_menu_newgame', 'txt_menu_loadgame', 'txt_menu_savegame', 'txt_menu_settings', 'txt_menu_exit'
     ]]
@@ -114,7 +114,7 @@ class ButtonText(RenderObjectStatic):
         self.rect.size = ButtonText.TEXTURES[number].size
 
 
-class Button(RenderObjectStatic):
+class Button(StaticRenderComponent):
     # 0 - Non Selected Button, 1 - Selected
     TEXTURES = (Ets['GUI/button_menu_default'], Ets['GUI/button_menu_selected'])
 

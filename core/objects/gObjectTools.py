@@ -1,6 +1,7 @@
 from pymunk import ShapeFilter, Shape
-from core.physic.physics import PhysicObject, Body, World
-from core.rendering.PyOGL import RenderObjectAnimated, RenderObjectStatic, RenderObjectComposite
+from core.physic.physics import PhysicObject, Body
+from core.rendering.PyOGL import \
+    AnimatedRenderComponent, StaticRenderComponent, RenderObjectComposite, RenderObjectPhysic, RenderObjectPlaced
 from core.rendering.PyOGL_line import drawLine
 from core.Constants import FLOAT32, TYPE_FLOAT, INT64, TYPE_INT, INF, TYPE_VEC, TYPE_NUM
 
@@ -9,6 +10,7 @@ import dataclasses as dtc
 import numpy as np
 from collections import deque
 from beartype import beartype
+from random import randint
 
 
 __all__ = [
@@ -22,10 +24,14 @@ __all__ = [
     'posFromLeftBottomPoint',
     'drawLine',
 
-    'RObjectAnimated',
-    'RObjectStatic',
-    'PObject',
-    'RObjectComposite',
+    'Animated',
+    'Static',
+    'PhysObject',
+
+    'Composite',
+    'ROPlaced',
+    'ROPhysic',
+
     'Direct',
     'Mortal',
     'Tracer',
@@ -136,10 +142,12 @@ def posFromLeftBottomPoint(l_: TYPE_FLOAT, b_: TYPE_FLOAT, size):
 class InGameObject:
     """Direct access means that object complete and ready to be placed on level
        Subclasses of this class will be added to allObjects dict"""
-    rect = None
 
-    def __repr__(self):
-        return f'<Direct obj: {self.__class__.__name__}> at pos: {self.rect[:2]}'
+    _ID = None
+
+    def get_UID(self):
+        if self._ID is None:
+            ID = 0
 
 
 class Mortal:
@@ -323,8 +331,12 @@ class Projectile(PhysicObject):
         cls.__init__()
 
 
-RObjectAnimated = RenderObjectAnimated
-RObjectStatic = RenderObjectStatic
-RObjectComposite = RenderObjectComposite
-PObject = PhysicObject
+Animated = AnimatedRenderComponent
+Static = StaticRenderComponent
+Composite = RenderObjectComposite
+
+ROPlaced = RenderObjectPlaced
+ROPhysic = RenderObjectPhysic
+
+PhysObject = PhysicObject
 Direct = InGameObject

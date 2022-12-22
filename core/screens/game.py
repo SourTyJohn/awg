@@ -15,9 +15,9 @@ from beartype import beartype
 # GROUPS
 background_gr = RenderGroup(shader="BackgroundShader")  # BACKGROUND COLOR
 background_near_gr = RenderGroup()    # BACKGROUND OBJECTS
-obstacles_gr = RenderGroupInstanced(depth_write=False)       # DYNAMIC OBJECTS
+obstacles_gr = RenderGroupInstanced()       # DYNAMIC OBJECTS
 world_gr = RenderGroup()              # WORLD GEOMETRY
-items_gr = RenderGroup(depth_write=False)             # ITEMS
+items_gr = RenderGroup()             # ITEMS
 character_gr = RenderGroup()          # ANIMATED CHARACTERS
 gui_gr = RenderGroup()                # GUI
 
@@ -169,8 +169,6 @@ def initScreen(hero_life=False, first_load=False):
 
     WorldRectangleRigid(world_gr, pos=[0, 500], size=[8192, 64])
     WorldRectangleRigidTrue(world_gr, pos=[850, 500], size=[200, 200])
-    # a = WorldRectangleRigid(obstacles_gr, pos=[500, 900], size=[64, 64])
-    # b = WoodenCrate(obstacles_gr, pos=[400, 900])
 
     """This VVV is a way to the bright future"""
     WorldRectangleRigidTrue(world_gr, pos=[-400, 660], size=[512, 256])
@@ -181,15 +179,8 @@ def initScreen(hero_life=False, first_load=False):
     WoodenCrate(obstacles_gr, pos=[600, 800])
     WoodenCrate(obstacles_gr, pos=[650, 980])
 
-    for r in range(20):
-        WoodenCrate(obstacles_gr, pos=[1400 + r*70, 800 + r*70])
-
-    # DroppedItem(items_gr, pos=[700, 900], item="RustySword")
-
     WorldRectangleSensor(background_near_gr, (1300, 600), (2600, 900), layer=6)
-    # addLight(FireLight, [1400, 700], 16, 'RoundFlat', layer=1, color='fire')
 
-    # for _x in range(30):
     _x = 0
     LightingManager.newSource("Light/light_round", 0, pos=(600 + _x * 20, 700), size=40.0, layer=1,
                               color=(0.1, 0.1, 0.1), brightness=0.6)
@@ -206,13 +197,13 @@ def initScreen(hero_life=False, first_load=False):
     # LightingManager.newSource(0, (400, 700), 9, 1, color=(0.1, 0.1, 0.1), brightness=1.0)
     # LightingManager.newSource(0, (400, 900), 9, 1, color=(0.1, 0.1, 0.1), brightness=1.0)
     # LightingManager.newSource(0, (200, 700), 18, 1)
-
+    #
+    # # # #
     # # #
     # #
-    #
 
     hero = MainHero(character_gr, pos=[256, 800])
-    TextObject(background_gr, [256, 800], ['text?', 'text indeed...'], DefaultFont, layer=6, depth_mask=True)
+    # TextObject(background_gr, [256, 800], ['text?', 'text indeed...'], DefaultFont, layer=6, depth_mask=True)
 
     # GUIHeroHealthBar(gui_gr, [256, 800], layer=0)
 

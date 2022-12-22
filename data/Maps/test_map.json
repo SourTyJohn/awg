@@ -1,0 +1,20 @@
+{
+  "tags": [],
+  "start_functions": [],
+  "ambient_light": 1.0,
+  "start_chunk": "0.0",
+  "background_color": [],
+  "hero_pos": [],
+
+  "chunks": {
+    "0.0": [
+      {
+        "type": "WorldRectangleRigid", "args": ["world_gr"], "kwargs": {"pos":  [0, 500], "size": [8192, 64]}
+      },
+      {
+        "type": "WorldRectangleRigidTrue", "args": ["world_gr"], "kwargs": {"pos":  [850, 500], "size": [200, 200]}
+      }
+    ],
+    "1.1": []
+  }
+}

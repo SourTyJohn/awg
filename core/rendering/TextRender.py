@@ -1,6 +1,6 @@
 from utils.files import load_font, load_text_localization
 from core.Constants import FONT_SETTINGS, LANGUAGE
-from core.rendering.PyOGL import RenderObjectStatic, bufferize, drawData
+from core.rendering.PyOGL import StaticRenderComponent, bufferize, drawData
 from core.rendering.Textures import GlTexture, EssentialTextureStorage
 
 from PIL import Image, ImageDraw
@@ -123,7 +123,7 @@ class GlText(GlTexture):
 TextTextures = {}
 
 
-class TextObject(RenderObjectStatic):
+class TextObject(StaticRenderComponent):
     TEXTURES = TextTextures
 
     shader = 'GUIShader'

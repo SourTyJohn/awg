@@ -105,3 +105,15 @@ def load_text_localization(file: str = None, key: str = None):
 
     else:
         raise ValueError('Provide only one of given args: file, key')
+
+
+def load_map(name):
+    fullname = get_full_path(name, file_type='maps')
+    if os.path.exists(fullname):
+        # TODO: MAPS SHOULD BE COMPRESSED AS FILES
+        # HERE YOU SHOULD DECOMPRESS THEM
+
+        with open(fullname, mode="r") as file:
+            return file.readlines()
+
+    raise FileExistsError(f'Not Found: {fullname}')

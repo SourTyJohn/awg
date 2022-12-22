@@ -21,6 +21,7 @@ def loadTexturePack(_name):
         textures = listdir(f'data/Textures/{_name}/{dr}')
 
         for tex in textures:
+            if not tex.endswith(".png"): continue
             t = GlTexture.load_file(f'{dr}/{tex}', (tex[0] == 'r'))
             pack.append(t)
 

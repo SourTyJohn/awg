@@ -74,7 +74,7 @@ class PhysicObject:
     """
     shape_filter = None
 
-    def __init__(self, pos, points=None, shape_filter=None, radius=None, mass=None):
+    def __init__(self, pos, points=None, shape_filter=None, radius=None, mass=None, **kwargs):
         """You can specify points for polygon shape or radius for circle shape
         Do not specify both of them"""
         """If no data given, than take it from class. Usually it is not given.

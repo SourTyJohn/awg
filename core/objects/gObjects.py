@@ -18,8 +18,8 @@ import numpy as np
 
 
 # DROPPED ITEMS
-class DroppedItem(RObjectComposite):
-    class DIF(RObjectStatic):
+class DroppedItem(Composite):
+    class DIF(Static):
         TEXTURES = [Ets['Item/item_frame'], ]
         texture = 0
         size = (72, 72)
@@ -31,7 +31,7 @@ class DroppedItem(RObjectComposite):
             ]
             super().__init__(None, pos, layer=4,)
 
-    class DI(RObjectStatic):
+    class DI(Static):
         TEXTURES = Ets
         __slots__ = ("item", "item_name")
 
@@ -67,12 +67,10 @@ class DroppedItem(RObjectComposite):
 
 
 # WORLD GEOMETRY
-class WorldRectangleRigid(RObjectStatic, PObject, Direct):
+class WorldRectangleRigid(ROPhysic, Static, PhysObject, Direct):
     # This class represents base level geometry with rigid body
     shape_filter = shapeFilter('level', )
     body_type = 'static'
-
-    TEXTURES = Ets
 
     def __init__(self, gr, pos, size, tex_offset=(0, 0), texture='Devs/r_devs_1', shape_f=None, layer=4):
         # IMAGE
@@ -81,7 +79,7 @@ class WorldRectangleRigid(RObjectStatic, PObject, Direct):
 
         # PHYSIC
         points = rectPoints(*size)
-        PObject.__init__(self, pos, points=points)
+        PhysObject.__init__(self, pos, points=points)
         if shape_f:
             self.shape.filter = shape_f
 
@@ -106,10 +104,7 @@ class WorldRectangleSensor(WorldRectangleRigid):
     shape_filter = shapeFilter('no_collision', collide_with=())
 
 
-class BackgroundColor(RObjectStatic):
-    # Texture is not actually visible. Only color
-    TEXTURES = (Ets['Devs/error'], )
-
+class BackgroundColor(ROPlaced, Static):
     # BackgroundColor
     color: np.array = [0.35, 0.35, 0.5, 1.0]
     color2: np.array = [1.0, 0.35, 0.5, 1.0]
@@ -120,7 +115,7 @@ class BackgroundColor(RObjectStatic):
     shader = 'BackgroundShader'
 
     def __init__(self, gr):
-        self.texture = 0
+        self.texture = 'Devs/error'
         self.colors = [
             BackgroundColor.color,
             BackgroundColor.color2,
@@ -138,15 +133,8 @@ class BackgroundColor(RObjectStatic):
         self.rect.pos = args[1].pos
 
 
-class Triangle(RObjectStatic, PObject, Direct):
-    shape_filter = shapeFilter('obstacle', )
-    body_type = 'static'
-
-    TEXTURES = Ets
-
-
 # TRIGGERS
-class Trigger(PObject):
+class Trigger(PhysObject):
     shape_filter = shapeFilter('trigger', )
     body_type = 'kinematic'
 
@@ -204,7 +192,7 @@ class Trigger(PObject):
                              f'Chose from {COLLISION_CATEGORIES.keys()}')
 
         self.triggers_by, self.ignore = triggers_by, ignore
-        self.bound_to, self.offset = bound_to, offset
+        self.bound_to, self.offset = bound_to, np.array(offset, dtype=FLOAT32)
         self.entities = set()
 
         # Add to new triggers. Check core.screens.game.update() for more info
@@ -224,7 +212,7 @@ class Trigger(PObject):
             return
 
         # Trigger bounded to object
-        self.body.pos = self.bound_to.pos + self.offset
+        self.body.pos = self.bound_to.body.pos + self.offset
 
     # ---
     def enter(self, actor, key, arbiter):
@@ -254,7 +242,7 @@ class Trigger(PObject):
 
 
 #
-class Character(RObjectStatic, PObject):
+class Character(ROPhysic, Static, PhysObject):
     body_type = 'dynamic'
 
     MAX_JUMPS = 2
@@ -273,7 +261,7 @@ class Character(RObjectStatic, PObject):
 
     def __init__(self, group, pos, *args, **kwargs):
         super().__init__(group, pos, *args, **kwargs)
-        PObject.__init__(self, pos, )
+        PhysObject.__init__(self, pos, )
 
         # Walking, Running
         self.walk_direction = 0  # may be -1 - move to  the left, 0 - standing, 1 - move to the right
@@ -408,7 +396,6 @@ class Character(RObjectStatic, PObject):
 
 class MainHero(Character, Direct, Mortal):
     # RENDER
-    TEXTURES = [Ets['LevelOne/r_pebble_grass_1'], ]
     size = (64, 144)
 
     # PHYSIC
@@ -430,6 +417,7 @@ class MainHero(Character, Direct, Mortal):
     lethal_fall_velocity = 256
 
     def __init__(self, gr, pos, layer=4):
+        self.texture = 'LevelOne/r_pebble_grass_1'
         cls = self.__class__
         Character.__init__(self, gr, pos, cls.size, layer=layer)
         self.init_Mortal(cls, [cls.max_health, ] * 2)
@@ -464,12 +452,11 @@ class MainHero(Character, Direct, Mortal):
         return True
 
 
-class WoodenCrate(RObjectStatic, PObject, Throwable, Direct, Mortal):
+class WoodenCrate(ROPhysic, Static, PhysObject, Direct, Throwable, Mortal):
     body_type = 'dynamic'
     shape_filter = shapeFilter('obstacle', ignore=('enemy', 'particle'))
 
     # static
-    TEXTURES = (Ets['LevelOne/crate'], )
     size = (72, 72)
     points = rectPoints(*size)
 
@@ -481,9 +468,10 @@ class WoodenCrate(RObjectStatic, PObject, Throwable, Direct, Mortal):
     lethal_fall_velocity = 64
 
     def __init__(self, gr, pos):
+        self.texture = 'LevelOne/crate'
         cls = self.__class__
         super().__init__(gr, pos, size=cls.size)
-        PObject.__init__(self, pos)
+        PhysObject.__init__(self, pos)
         self.init_Throwable(cls)
         self.init_Mortal(cls, [cls.max_health, ] * 2)
 

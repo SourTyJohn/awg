@@ -40,7 +40,7 @@ clear_color = (0.0, 0.0, 0.0, 0.0)
 
 FIRST_EBO: uintc
 T_RENDER_OBJECT = Union["RenderObject", "RenderObjectComposite"]
-MAX_OBJECTS_PER_GROUP = 4096
+MAX_OBJECTS_PER_GROUP = 8_192
 
 
 # CAMERA
@@ -173,13 +173,12 @@ class RenderGroup:
         If None, all object will be rendered"""
 
         if not self.pre_draw(): return
+        glActiveTexture(GL_TEXTURE0)
 
         for texture_key, objects in self.objects.items():
-            glActiveTexture(GL_TEXTURE0)
             glBindTexture(GL_TEXTURE_2D, texture_key)
-
             for obj in objects.values():
-                obj.draw(self.shader)
+                obj.draw_single(self.shader)
 
     def pre_draw(self):
         if not self._visible:
@@ -196,9 +195,9 @@ class RenderGroup:
         self.objects = {}
 
     def remove(self, obj):
-        try:
+        if hasattr(obj, "curr_image"):
             key = obj.curr_image().key
-        except Error as _:
+        else:
             key = "noTex"
         ind = self.objects[key].index(obj)
         del self.objects[key][ind]
@@ -222,7 +221,7 @@ class RenderGroupInstanced(RenderGroup):
             obj = None
             transform = []
             for i, obj in enumerate(objects.values()):
-                if obj.bhash not in object_ids: continue
+                # if obj.bhash not in object_ids: continue
                 transform.append( obj.get_transform() )
             self.shader.passMat4V(f"Transform[0]", np.asfortranarray(transform, dtype=FLOAT32))
 
@@ -278,22 +277,16 @@ class RenderObject:
                         np.array([1.0, 1.0, 1.0, 1.0], dtype=np.float32),
                         np.array([1.0, 1.0, 1.0, 1.0], dtype=np.float32)]
     visible = True
-    group: Union["RenderGroup", "RenderGroupInstanced"]
-
     _vbo: int = 0
-    _render_type = 0  # 0 - classic RenderObject, 1 - RenderObject with physic body
 
+    group: Union["RenderGroup", "RenderGroupInstanced"]
     group_id: int
 
-    def __init__(self, group, pos, size=None, rotation=1, tex_offset=(0, 0), drawdata='auto', layer=5):
+    def __init__(self, group, size=None, rotation=1, tex_offset=(0, 0), drawdata='auto', layer=5):
         self.group_id = 0
         if group is not None:
             group.add(self)
         self.group = group
-
-        """Rect - rectangle where object's texture will be rendered
-        rect[0, 1] - center position, rect[2, 3] - width, height of rectangle"""
-        self.rect = Rect4f(*pos, *self.__class__.size if not size else size)
 
         # Offset of a texture on this object
         self.tex_offset = np.array(tex_offset, dtype=np.float32)
@@ -305,11 +298,12 @@ class RenderObject:
         self.y_Rotation = rotation
         assert abs(rotation) <= 1 and isinstance(rotation, int),\
             ValueError(f'Wrong rotation value: {rotation}. Must be -1, 0 or 1')
+        self.size = size if size else self.__class__.size
 
         """Load and bufferize (load to gl buffer) all data, that is required for drawing
         This data includes: texture coords, object coords and color"""
         if isinstance(drawdata, str) and drawdata == 'auto':
-            drawdata = drawData(self.rect.size, self.colors, rotation=rotation, layer=layer)
+            drawdata = drawData(size, self.colors, rotation=rotation, layer=layer)
         self._vbo = bufferize(drawdata)
         self._layer = layer
 
@@ -320,12 +314,6 @@ class RenderObject:
 
     def __repr__(self):
         return f'<{self.__class__.__name__} {self.rect if hasattr(self, "rect") else "NO RECT"}'
-
-    def curr_image(self) -> GlTexture:
-        """Getting current image of object.
-        In this class it does not work as intended.
-        True functions defined in subclasses"""
-        pass
 
     # VISUAL
     def change_offset(self, offset):
@@ -338,16 +326,8 @@ class RenderObject:
         #  y-axis: left or right
         if self.y_Rotation != new_rotation:
             self.y_Rotation = new_rotation
-            drawdata = drawData(self.rect.size, self.colors, rotation=new_rotation, layer=self._layer)
+            drawdata = drawData(self.size, self.colors, rotation=new_rotation, layer=self._layer)
             bufferize(drawdata, self._vbo)
-
-    # MOVE
-    def move_to(self, pos):
-        self.rect.x = pos[0]
-        self.rect.y = pos[1]
-
-    def move_by(self, vector):
-        self.rect.move_by(vector)
 
     # DELETE
     def delete(self):
@@ -357,30 +337,66 @@ class RenderObject:
         if self.group is not None:
             self.group.remove(self)
 
-    # DRAW
-    def draw(self, shader):
-        if not self.visible:
-            return
-
-        if self._render_type == 0:
-            drawBound(self.rect.pos, self._vbo, shader, 0)
-        else:
-            drawBound(self.body.pos_FLOAT32, self._vbo, shader, self.z_rotation)
-
-    def get_transform(self):
-        if self._render_type == 0:
-            x_, y_ = self.rect.pos
-            return lin.FullTransformMat(x_, y_, camera.get_matrix(), FLOAT32(0))
-        else:
-            x_, y_ = self.body.pos_FLOAT32
-            return lin.FullTransformMat(x_, y_, camera.get_matrix(), FLOAT32(-self.z_rotation))
-
     @property
     def vbo(self):
         return self._vbo
 
 
-class RenderObjectAnimated(RenderObject):
+class RenderObjectPlaced(RenderObject):
+    """Alternative for RenderObjectPhysic
+    This object will be rendered in place, taken from self.pos"""
+
+    def __init__(self, group, pos, size=None, rotation=1, tex_offset=(0, 0), drawdata='auto', layer=5):
+        super().__init__(group, size, rotation, tex_offset, drawdata, layer)
+        self.rect = Rect4f(*pos, *self.__class__.size if not size else size)
+
+    @property
+    def pos(self):
+        return self.rect.pos
+
+    @pos.setter
+    def pos(self, value):
+        self.rect.pos = value
+
+    def move_to(self, pos):
+        self.rect.x = pos[0]
+        self.rect.y = pos[1]
+
+    def move_by(self, vector):
+        self.rect.move_by(vector)
+
+    def draw_single(self, shader):
+        if not self.visible: return
+        drawBound(self.rect.pos, self._vbo, shader, 0)
+
+    def get_transform(self):
+        x_, y_ = self.rect.pos
+        return lin.FullTransformMat(x_, y_, camera.get_matrix(), FLOAT32(0))
+
+
+class RenderObjectPhysic(RenderObject):
+    """Alternative for RenderObjectPlaced
+    This object will be rendered in place, taken from its physic body pos (self.body.pos)
+    It will also take rotation from physic body"""
+
+    def __init__(self, group, body, size=None, rotation=1, tex_offset=(0, 0), drawdata='auto', layer=5):
+        super().__init__(group, size, rotation, tex_offset, drawdata, layer)
+        self.body = body
+
+    @property
+    def z_rotation(self):
+        return lin.degreesFromNormal(self.body.rotation_vector)
+
+    def draw_single(self, shader):
+        if not self.visible: return
+        drawBound(self.body.pos_FLOAT32, self._vbo, shader, self.z_rotation)
+
+    def get_transform(self):
+        x_, y_ = self.body.pos_FLOAT32
+        return lin.FullTransformMat(x_, y_, camera.get_matrix(), FLOAT32(-self.z_rotation))
+
+
+class AnimatedRenderComponent:
     ANIMATIONS: [Animation, ] = None
     animation = 0
     # ANIMATIONS[0] - always idle animation
@@ -431,12 +447,26 @@ class RenderObjectAnimated(RenderObject):
         return self.__class__.ANIMATIONS[self.animation][self.a_frame][0]
 
 
-class RenderObjectStatic(RenderObject):
-    TEXTURES: [GlTexture, ] = None
-    texture = 0
+class StaticRenderComponent:
+    _texture: Union["GlTexture", "str"]
 
     def curr_image(self):
-        return self.__class__.TEXTURES[self.texture]
+        return self.texture
+
+    @property
+    def texture(self):
+        return self._texture
+
+    @texture.setter
+    def texture(self, tex_or_key: Union["str", "GlTexture"]):
+        if type(tex_or_key) == str:
+            self._texture = Ets[tex_or_key]
+        else:
+            self._texture = tex_or_key
+
+    @texture.getter
+    def texture(self, ):
+        return self._texture
 
 
 class RenderObjectComposite:
@@ -552,7 +582,7 @@ class FrameBufferDepth(FrameBuffer):
         glBindTexture(GL_TEXTURE_2D, self.rbo)
 
 
-frameBufferGeometry: FrameBuffer
+frameBufferGeometry: FrameBufferDepth
 frameBufferLight: FrameBuffer
 LightingManager: __LightingManager
 
@@ -714,10 +744,6 @@ def postRender(screen_shader):
     lbuff.bind_texture(1)        # bind light texture
     fbuff.bind_depth_texture(2)  # bind depth texture
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, None)
-
-    # DISABLE STUFF 2
-    glDisable(GL_TEXTURE_2D)
-    glDisable(GL_BLEND)
 
 
 def clearDisplay():
