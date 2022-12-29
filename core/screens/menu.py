@@ -3,12 +3,12 @@ from user.KeyMapping import K_CLOSE, K_MOVE_UP, K_MOVE_DOWN, K_MENU_PRESS
 from core.rendering.PyOGL import *
 from core.rendering.Textures import EssentialTextureStorage as Ets
 
-from core.audio.PyOAL import AudioManager
+from core.audio.PyOAL import AudioManagerSingleton
 
 
-decoration = RenderGroup()
-back = RenderGroup()
-buttons_group = RenderGroup()
+decoration = RenderUpdateGroup()
+back = RenderUpdateGroup()
+buttons_group = RenderUpdateGroup()
 
 buttons_count = 4
 selected_button = 0
@@ -22,13 +22,13 @@ hero_is_alive = True
 
 
 def initScreen(hero_life=True, first_load=False):
-    AudioManager.reset_listener()
-    AudioManager.set_stream('music', 'main_menu', True)
+    AudioManagerSingleton.reset_listener()
+    AudioManagerSingleton.set_stream('music', 'main_menu', True, volume=0.2)
 
     global buttons, selected_button
     selected_button = 0
 
-    camera.set_filed(WINDOW_RECT)
+    camera.to_default_position()
 
     global first, exit_code, hero_is_alive
     exit_code, first, hero_is_alive = None, first_load, hero_is_alive
@@ -40,7 +40,7 @@ def initScreen(hero_life=True, first_load=False):
 
 
 def closeMenu():
-    AudioManager.fade_stream('music', 2)
+    AudioManagerSingleton.fade_stream('music', 2)
     decoration.delete_all()
     back.delete_all()
     buttons_group.delete_all()
@@ -62,8 +62,8 @@ def update(dt):
 
     userInput()
 
-    buttons_group.update()
-    decoration.update()
+    buttons_group.update(dt)
+    decoration.update(dt)
 
 
 def userInput():
@@ -91,7 +91,7 @@ def userInput():
                 buttons[selected_button].pressed()
 
 
-class MainFrame(RenderObjectStatic):
+class MainFrame(StaticRenderComponent):
     TEXTURES = (Ets['GUI/menu_frame'], )
     size = WINDOW_SIZE
 
@@ -100,7 +100,7 @@ class MainFrame(RenderObjectStatic):
 
 
 # ---- BUTTONS----
-class ButtonText(RenderObjectStatic):
+class ButtonText(StaticRenderComponent):
     TEXTURES = [Ets[x] for x in [
         'txt_menu_newgame', 'txt_menu_loadgame', 'txt_menu_savegame', 'txt_menu_settings', 'txt_menu_exit'
     ]]
@@ -114,7 +114,7 @@ class ButtonText(RenderObjectStatic):
         self.rect.size = ButtonText.TEXTURES[number].size
 
 
-class Button(RenderObjectStatic):
+class Button(StaticRenderComponent):
     # 0 - Non Selected Button, 1 - Selected
     TEXTURES = (Ets['GUI/button_menu_default'], Ets['GUI/button_menu_selected'])
 
@@ -128,7 +128,7 @@ class Button(RenderObjectStatic):
         if -1 < prev <= buttons_count:
             buttons[prev].setTexture(0)
         buttons[this].setTexture(1)
-        AudioManager.play_sound('menu_button_select', [0, 0, 0])
+        AudioManagerSingleton.play_sound('menu_button_select', [0, 0, 0], pitch=(0.9, 1.0))
 
 
 class FullButton(RenderObjectComposite):

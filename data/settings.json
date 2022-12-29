@@ -1,8 +1,8 @@
 {
 	"Brightness": 0.9,
 	"Texture Pack": "b_past",
-	"Resolution": "16x10low",
-	"Window Mode": "windowed",
+	"Resolution": "16x10FHD",
+	"Window Mode": "full screen",
 
 	"Sound Pack": "base_pack",
 	"Master Volume": 0.6,

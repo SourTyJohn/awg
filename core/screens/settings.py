@@ -4,9 +4,9 @@ from core.rendering.PyOGL import *
 from core.rendering.Textures import EssentialTextureStorage as Ets
 
 
-decoration = RenderGroup()
-back = RenderGroup()
-buttons_group = RenderGroup()
+decoration = RenderUpdateGroup()
+back = RenderUpdateGroup()
+buttons_group = RenderUpdateGroup()
 
 buttons_count = 4
 selected_button = 0
@@ -81,7 +81,7 @@ def user_input():
                 buttons[selected_button].pressed()
 
 
-class MainFrame(RenderObjectStatic):
+class MainFrame(StaticRenderComponent):
     TEXTURES = (Ets['GUI/menu_frame'], )
     size = WINDOW_SIZE
 
@@ -90,7 +90,7 @@ class MainFrame(RenderObjectStatic):
 
 
 # ---- BUTTONS----
-class ButtonText(RenderObjectStatic):
+class ButtonText(StaticRenderComponent):
     TEXTURES = [Ets[x] for x in [
         'txt_settings_brightness', 'txt_settings_resolution', 'txt_settings_volume', 'txt_settings_language', 'txt_settings_menu'
     ]]
@@ -104,7 +104,7 @@ class ButtonText(RenderObjectStatic):
         self.rect.size = ButtonText.TEXTURES[number].size
 
 
-class Button(RenderObjectStatic):
+class Button(StaticRenderComponent):
     # 0 - Non Selected Button, 1 - Selected
     TEXTURES = (Ets['GUI/button_menu_default'], Ets['GUI/button_menu_selected'])
 

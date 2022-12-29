@@ -1,4 +1,4 @@
-#version 460
+#version 410
 #constant float LIGHT_MULTIPLY
 
 in float dist;

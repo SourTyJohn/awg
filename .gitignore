@@ -6,6 +6,7 @@
 
 VirtaulEnvirment/*
 venv/*
+__testing/*
 .idea/*
 data/DLLs/collision/Release/*
 data/DLLs/collision/Debug/*

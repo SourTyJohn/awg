@@ -1,24 +1,25 @@
 from core.physic.physics import MainPhysicSpace, objects
 from user.KeyMapping import *
 from core.objects.gObjects import *
-from core.rendering.PyOGL import *
-from core.rendering.Lighting import addLight, LightSource, FireLight, clearLights, lights_gr
-from core.rendering.Particles import Particle
+from core.rendering.PyOGL import RenderUpdateGroup, camera, preRender,\
+    postRender, Shaders, drawGroupsFinally, LightingManager, RenderUpdateGroup_Instanced
+from core.rendering.PyOGL_line import renderAllLines
+from core.rendering.Particles import ParticleManager
 from core.rendering.TextRender import TextObject, DefaultFont
-from core.audio.PyOAL import AudioManager
+from core.audio.PyOAL import AudioManagerSingleton
+
 import pygame
 from beartype import beartype
 
 
 # GROUPS
-background_gr = RenderGroup()
-background_near_gr = RenderGroup()
-obstacles_gr = RenderGroup()
-items_gr = RenderGroup(use_depth=False)
-characters_gr = RenderGroup()
-player_gr = RenderGroup()
-front_gr = RenderGroup()
-gui_gr = RenderGroup()
+background_gr = RenderUpdateGroup(shader="BackgroundShader")  # BACKGROUND COLOR
+background_near_gr = RenderUpdateGroup()    # BACKGROUND OBJECTS
+obstacles_gr = RenderUpdateGroup_Instanced()       # DYNAMIC OBJECTS
+world_gr = RenderUpdateGroup()              # WORLD GEOMETRY
+items_gr = RenderUpdateGroup()             # ITEMS
+character_gr = RenderUpdateGroup()          # ANIMATED CHARACTERS
+gui_gr = RenderUpdateGroup()                # GUI
 
 
 hero_inited = False
@@ -40,14 +41,25 @@ def render():
     background_gr.update(1, camera)
 
     preRender()
+    #
     drawGroups()
+    renderAllLines()
+    ParticleManager.render(camera)
+    #
     postRender(Shaders.shaders['ScreenShaderGame'], )
 
 
-def drawGroups():
-    # drawing all GLSprite groups
-    drawGroupsFinally(None, characters_gr, player_gr, obstacles_gr,
-                      front_gr, background_near_gr, background_gr, items_gr, gui_gr)
+def drawGroups(object_ids: tuple = ()):
+    drawGroupsFinally(
+        object_ids,
+        character_gr,
+        obstacles_gr,
+        world_gr,
+        background_near_gr,
+        background_gr,
+        items_gr,
+        gui_gr
+    )
 
 
 def update(dt):
@@ -58,12 +70,13 @@ def update(dt):
 
     # PHYSIC AND UPDATE [!!! PHYSICS UPDATE FIXED AND NOT BASED ON FPS !!!]
     # TODO: JUST WARNING ^
-    puf = PHYSIC_UPDATE_FREQUENCY
-    MainPhysicSpace.step(dt=puf)
-    updateGroups(dt=puf)
+    updateGroups(dt)
+    LightingManager.update(dt)
+    MainPhysicSpace.step(dt)
+    ParticleManager.update(dt)
 
     # SOUND
-    AudioManager.update_listener(hero.pos, hero.body.velocity)
+    AudioManagerSingleton.update_listener(hero.pos, hero.body.velocity)
 
 
 def userInput():
@@ -86,7 +99,24 @@ def userInput():
                 # addLight(hero.pos, 12, 'round_smooth')
 
             elif key == pygame.K_p:
-                Particle.create(items_gr, 'Particle/fire', hero.pos, (10, 24), (600, 1200), (0, 45))
+                # ParticleManager.create_simple(0, hero.pos, (10, 24), (600, 1200), (1.0, 2.0),
+                #                        (1.0, 1.0, 0.0, 1.0), (10, 24), None, angle=(80, 100), gravity=1000.0)
+                # ParticleManager.create_physic(0, hero.pos, (10, 24), (600, 1200), (2.0, 8.0),
+                #                                    (1.0, 0, 0, 1.0), (10, 24), None, delete_on_hit=False,
+                #                                    elasticity=0.3)
+                pos = hero.pos + Vec2d(250, 0)
+                LightingManager.newSource_explosion(0, pos, 16, 1.0, 0.1, color=(0.3, 0.1, 0.1))
+                ParticleManager.create_physic_light(
+                    0, pos, (30, 60), (700, 1200),
+                    (0.5, 1.5),
+                    (0.6, 0.4, 0.0, 1.0),
+                    (4, 6), None,
+                    light_params=(0, pos, 0.5, 1, (0.3, 0.15, 0.1), 0.3),
+                    elasticity=0.4,
+                    angles=(30, 150)
+                )
+                ParticleManager.create_simple(0, pos, (24, 24), (80, 240), (1.5, 3.0), (0.1, 0.1, 0.1, 1.0),
+                                              (12, 16), None, angles=(80, 100))
 
             elif key == K_GRAB:
                 hero.grab_nearest_put(objects)
@@ -94,9 +124,6 @@ def userInput():
             elif key == K_CLOSE:
                 close()
                 return 'menu'
-
-            else:
-                t.set_text(str(event.key), DefaultFont)
 
         elif event.type == pygame.KEYUP:
             key = event.key
@@ -127,53 +154,60 @@ def updateHeroMovement():
 @beartype
 def updateGroups(dt: float):
     # updating all GLSprite groups
-    player_gr.update(dt)
+    character_gr.update(dt)
     obstacles_gr.update(dt)
-    background_gr.update(dt, camera)
-    lights_gr.update(dt)
     items_gr.update(dt)
 
 
 def initScreen(hero_life=False, first_load=False):
-    global hero, hero_inited, render_zone, t
+    global hero, hero_inited, render_zone
     BackgroundColor(background_gr)
-    # #  render distance
-    # render_zone = Trigger(None, 't_*', bound_to=camera, size=WINDOW_SIZE)
-    # render_zone.visible = False
-
-    # --- TEST LEVEL ---
-    WorldRectangleRigid(obstacles_gr, pos=[0, 500], size=[8192, 64])
-    WorldRectangleRigid(obstacles_gr, pos=[850, 700], size=[200, 200])
-
-    a = WorldRectangleRigid(obstacles_gr, pos=[-400, 660], size=[512, 256])
-    WorldRectangleRigid(obstacles_gr, pos=[-400, 792], size=[512, 8])
-    a.bfriction = 0.0
 
     #
-    # WorldRectangleRigid(obstacles_gr, pos=[1600, 1200], size=[50, 900])
-    # WorldRectangleRigid(obstacles_gr, pos=[2000, 1000], size=[50, 900])
-    #
-    # WorldRectangleSensor(obstacles_gr, pos=[-500, 575],
-    # size=[2000, 2000], texture='LevelOne/r_tile_grey_1', layer=0.7)
-    #
+    # #
+    # # #
+
+    WorldRectangleRigid(world_gr, pos=[0, 500], size=[8192, 64])
+    WorldRectangleRigidTrue(world_gr, pos=[850, 500], size=[200, 200])
+
+    """This VVV is a way to the bright future"""
+    WorldRectangleRigidTrue(world_gr, pos=[-400, 660], size=[512, 256])
+
     for r in range(4):
         WoodenCrate(obstacles_gr, pos=[700, 800 + r*20])
+    WoodenCrate(obstacles_gr, pos=[760, 800], texture="LevelOne/crate_metal")
+    WoodenCrate(obstacles_gr, pos=[760, 800], texture="LevelOne/crate_metal")
+    WoodenCrate(obstacles_gr, pos=[760, 800], texture="LevelOne/crate_metal")
+    WoodenCrate(obstacles_gr, pos=[760, 800], texture="LevelOne/crate_metal")
     WoodenCrate(obstacles_gr, pos=[760, 800])
     WoodenCrate(obstacles_gr, pos=[600, 800])
-    DroppedItem(items_gr, pos=[700, 900], item="RustySword")
-    # WorldRectangleSensor(front_gr, pos=[0, 640], size=[128, 256], texture='LevelOne/glass', layer=1)
+    WoodenCrate(obstacles_gr, pos=[650, 980])
 
     WorldRectangleSensor(background_near_gr, (1300, 600), (2600, 900), layer=6)
-    # addLight(LightSource, [1400, 700], 32, 'Round', 1)
-    addLight(FireLight, [1400, 700], 16, 'RoundFlat', layer=1, color='fire')
 
-    addLight(LightSource, [800, 700], 32, 'Round', 1)
-    addLight(LightSource, [600, 700], 18, 'Round', 1)
-    addLight(LightSource, [900, 700], 18, 'Round', 1)
-    # --- TEST LEVEL ---
+    _x = 0
+    LightingManager.newSource("Light/light_round", 0, pos=(600 + _x * 20, 700), size=40.0, layer=1,
+                              color=(0.1, 0.1, 0.1), brightness=0.6)
+    LightingManager.newSource("Light/light_round", 0, pos=(800, 800), size=30.0, layer=1,
+                              color=(0.1, 0.1, 0.1), brightness=0.6)
+    LightingManager.newSource("Light/light_round", 0, pos=(1000, 800), size=30.0, layer=1,
+                              color=(0.1, 0.1, 0.1), brightness=0.6)
 
-    hero = MainHero(player_gr, pos=[256, 800])
-    t = TextObject(background_gr, [256, 800], ['text?', 'text indeed...'], DefaultFont, layer=6, depth_mask=True)
+    # LightingManager.newSource(0, (800, 700), 9, 1, color=(0.1, 0.1, 0.1), brightness=1.0)
+    # LightingManager.newSource(0, (600, 900), 9, 1, color=(0.1, 0.1, 0.1), brightness=1.0)
+    # LightingManager.newSource(0, (800, 900), 9, 1, color=(0.1, 0.1, 0.1), brightness=1.0)
+    # LightingManager.newSource(0, (1000, 700), 9, 1, color=(0.1, 0.1, 0.1), brightness=1.0)
+    # LightingManager.newSource(0, (1000, 900), 9, 1, color=(0.1, 0.1, 0.1), brightness=1.0)
+    # LightingManager.newSource(0, (400, 700), 9, 1, color=(0.1, 0.1, 0.1), brightness=1.0)
+    # LightingManager.newSource(0, (400, 900), 9, 1, color=(0.1, 0.1, 0.1), brightness=1.0)
+    # LightingManager.newSource(0, (200, 700), 18, 1)
+    #
+    # # # #
+    # # #
+    # #
+
+    hero = MainHero(character_gr, pos=[256, 800])
+    # TextObject(background_gr, [256, 800], ['text?', 'text indeed...'], DefaultFont, layer=6, depth_mask=True)
 
     # GUIHeroHealthBar(gui_gr, [256, 800], layer=0)
 
@@ -189,9 +223,7 @@ def close():
     background_gr.delete_all()
     background_near_gr.delete_all()
     obstacles_gr.delete_all()
-    characters_gr.delete_all()
-    player_gr.delete_all()
-    front_gr.delete_all()
+    character_gr.delete_all()
     gui_gr.delete_all()
     items_gr.delete_all()
 
@@ -199,4 +231,4 @@ def close():
     MainPhysicSpace.clear()
 
     # Delete light sources
-    clearLights()
+    LightingManager.clear()

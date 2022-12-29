@@ -1,9 +1,10 @@
 import pymunk
-from core.math.linear import normalized_to_degree
+from core.math.linear import degreesFromNormal
 from core.Constants import \
-    GRAVITY_VECTOR, COLL_TYPES, BODY_TYPES, FLOAT32, SLEEP_TIME_THRESHOLD
+    GRAVITY_VECTOR, BODY_TYPES, FLOAT32, SLEEP_TIME_THRESHOLD, TYPE_VEC
 inf = float('inf')
 from beartype import beartype
+from typing import List
 
 
 objects = {}
@@ -52,16 +53,16 @@ class Body(pymunk.Body):
 class PhysicObject:
     # __slots__ = ('shape', 'body', )
     """Main class of game object with physic body powered by pymunk
-    Recommended to specify object's params in it's class attributes.
+    Recommended to specify object's params in its class attributes.
     """
 
     points: list
     """points of hitbox shape
     Must define in subclasses, except WorldRectangle objects"""
 
-    mass: float = 1.0
-    density: float = 1.0
-    friction: float = 1.0
+    _mass: float = 1.0
+    _density: float = 1.0
+    _friction: float = 1.0
     """Physic body params.
     Can be changed in subclasses."""
 
@@ -71,36 +72,28 @@ class PhysicObject:
     'dynamic': pymunk.Body.DYNAMIC,     Moving objects
     'kinematic': pymunk.Body.KINEMATIC  Level objects, that can be moved by The Power of Code
     """
-    collision_type = 'obstacle'
     shape_filter = None
 
-    def __init__(self, pos, points=None, collision_type=None, shape_filter=None, radius=None, mass=None):
+    def __init__(self, pos, points=None, shape_filter=None, radius=None, mass=None, **kwargs):
         """You can specify points for polygon shape or radius for circle shape
         Do not specify both of them"""
         """If no data given, than take it from class. Usually it is not given.
         Only exception is WorldRectangles"""
         cls = self.__class__
         points = (cls.points if points is None else points) if not radius else None
-        collision_type = cls.collision_type if not collision_type else collision_type
         shape_filter = cls.shape_filter if not shape_filter else shape_filter
-        mass = cls.mass if not mass else mass
+        mass = cls._mass if not mass else mass
         body_type = cls.body_type
 
         # Pymunk things. Make Shape and Body
         if radius:  # Circle
             self.body = makeBodyCircle(pos, radius, body_type, mass)
-            self.shape = makeShapeCircle(self.body, radius, collision_type,
-                                         cls.friction, shape_filter=shape_filter)
+            self.shape = makeShapeCircle(self.body, radius,
+                                         cls._friction, shape_filter=shape_filter)
         else:       # Polygon
             self.body = makeBodyPolygon(pos, points, body_type, mass)
-            self.shape = makeShapePolygon(self.body, points, collision_type,
-                                          cls.friction, shape_filter=shape_filter)
-
-        # Collision type
-        if collision_type not in COLL_TYPES.keys():
-            raise ValueError(f'Wrong collision type: {collision_type}.\n'
-                             f'Select from {list(COLL_TYPES.keys())}')
-        self.shape.collision_type = COLL_TYPES[collision_type]
+            self.shape = makeShapePolygon(self.body, points,
+                                          cls._friction, shape_filter=shape_filter)
 
         # Collision handler
         pass
@@ -110,11 +103,6 @@ class PhysicObject:
 
         if hasattr(self, '_render_type'):
             self._render_type = 1
-
-    @classmethod  # factory method
-    def make_circle(cls, pos, radius, collision_type=None, shape_filter=None):
-        return PhysicObject(pos, points=None, collision_type=collision_type,
-                            shape_filter=shape_filter, radius=radius)
 
     def can_rotate(self, b):
         if b:
@@ -126,32 +114,29 @@ class PhysicObject:
     def bhash(self):
         return self.body.get_hash_key
 
-    def update(self, *args, **kwargs) -> None:
-        pass
-
-    def delete_physic(self):
+    def delete_from_physic(self):
         # Fully deleting object from physic world
         MainPhysicSpace.vanish(self)
 
     # PHYSIC
     @property
     def z_rotation(self):
-        return normalized_to_degree(self.body.rotation_vector)
+        return degreesFromNormal(self.body.rotation_vector)
 
     @property
-    def bmass(self):
+    def mass(self):
         return self.body.mass
 
-    @bmass.setter
-    def bmass(self, value):
-        self.bmass = value
+    @mass.setter
+    def mass(self, value):
+        self.mass = value
 
     @property
-    def bfriction(self):
+    def friction(self):
         return self.shape.friction
 
-    @bfriction.setter
-    def bfriction(self, value):
+    @friction.setter
+    def friction(self, value):
         self.shape.friction = value
 
     @property
@@ -162,12 +147,34 @@ class PhysicObject:
     def pos(self, value):
         self.body.pos = value
 
-    def post_collision_handle(self, impulse, **data) -> bool:
+    @property
+    def velocity(self):
+        return self.body.velocity
+
+    @velocity.setter
+    def velocity(self, value: TYPE_VEC):
+        self.body.velocity = value
+
+    def set_shape_filter(self, shape_filter):
+        self.shape_filter = shape_filter
+        self.shape.filter = shape_filter
+        self.shape.collision_type = shape_filter.categories
+
+    def post_collision_handle(self, arbiter: pymunk.Arbiter, space: pymunk.Space) -> bool:
         # rewrite in child-classes
         return True
 
-    def pre_collision_handle(self, impulse, **data) -> bool:
+    def pre_collision_handle(self, arbiter: pymunk.Arbiter, space: pymunk.Space) -> bool:
         # rewrite in child-classes
+        return True
+
+    def should_update(self) -> bool:
+        pass
+
+    def update(self, dt) -> bool:
+        if not self.should_update(): return False
+        if self.body_type == "dynamic":
+            pass  # CHECKS CHUNK
         return True
 
 
@@ -200,6 +207,15 @@ class World:
         self.space.add(body, *shapes)
         objects[body.get_hash_key] = obj
 
+    def simple_add(self, *to_add):
+        self.space.add(*to_add)
+
+    def simple_delete(self, *to_delete):
+        self.space.remove(*to_delete)
+
+    def add_joints(self, *joints):
+        self.space.add(*joints)
+
     def step(self, dt):
         self.space.step(dt)
         self.update_triggers(dt)
@@ -215,43 +231,33 @@ class World:
         # Clearing physic world
         while objects.values():
             obj = list(objects.values())[0]
-            # Physically delete object
-            obj.__class__.delete_physic(obj, )
+            # Physically delete_Mortal object
+            obj.__class__.delete_from_physic(obj, )
 
 
+# MAKE BODY
 def makeBodyPolygon(pos, points, body_type, mass=0.0, moment=0):
-    if mass:
+    if moment == 0:
         moment = pymunk.moment_for_poly(mass, points, (0, 0))
     body = Body(mass, moment, body_type=BODY_TYPES[body_type])
     body.pos = pos if pos else (0, 0)
     return body
 
 
-def makeShapePolygon(body, points, collision_type, friction=0.0, sensor=False, shape_filter=None):
-    shape = pymunk.Poly(body, points)
-    shape.collision_type = COLL_TYPES[collision_type]
-    shape.friction = friction
-    shape.sensor = sensor
-
-    if shape_filter:
-        shape.filter = shape_filter
-
-    return shape
-
-
 def makeBodyCircle(pos, radius, body_type, mass=0.0, moment=0):
-    if mass:
+    if moment == 0:
         moment = pymunk.moment_for_circle(mass, radius, radius)
     body = Body(mass, moment, body_type=BODY_TYPES[body_type])
     body.pos = pos if pos else (0, 0)
     return body
 
 
-def makeShapeCircle(body, radius, collision_type, friction=0.0, sensor=False, shape_filter=None):
-    shape = pymunk.Circle(body, radius)
-    shape.collision_type = COLL_TYPES[collision_type]
+# MAKE SHAPE
+def makeShapePolygon(body, points, friction=0.0, sensor=False, shape_filter=None):
+    shape = pymunk.Poly(body, points)
     shape.friction = friction
     shape.sensor = sensor
+    shape.collision_type = shape_filter.categories
 
     if shape_filter:
         shape.filter = shape_filter
@@ -259,10 +265,51 @@ def makeShapeCircle(body, radius, collision_type, friction=0.0, sensor=False, sh
     return shape
 
 
-def reyCast(start, end, shape_filter: pymunk.ShapeFilter = None, first_only=False, radius=1):
-    if first_only:
-        return MainPhysicSpace.space.segment_query_first(start, end, shape_filter=shape_filter, radius=radius)
-    return MainPhysicSpace.space.segment_query(start, end, shape_filter=shape_filter, radius=radius)
+def makeShapeCircle(body, radius, friction=0.0, sensor=False, shape_filter=None):
+    shape = pymunk.Circle(body, radius)
+    shape.friction = friction
+    shape.sensor = sensor
+    shape.collision_type = shape_filter.categories
+
+    if shape_filter:
+        shape.filter = shape_filter
+
+    return shape
 
 
+# REY CAST
+def reyCast(start: TYPE_VEC, end: TYPE_VEC,
+            shape_filter: pymunk.ShapeFilter = None,
+            radius=1) -> List[pymunk.SegmentQueryInfo]:
+    return MainPhysicSpace.space.segment_query(
+        start, end, radius, shape_filter)
+
+
+def reyCastFirst(start: TYPE_VEC, end: TYPE_VEC,
+                 shape_filter: pymunk.ShapeFilter = None,
+                 radius=1) -> pymunk.SegmentQueryInfo:
+    return MainPhysicSpace.space.segment_query_first(
+        start, end, radius, shape_filter)
+
+
+# JOINTS
+def attachHard(a: "Body", b: "Body", point_a=None, point_b=None):
+    point_a = point_a if point_a else a.center_of_gravity
+    point_b = point_b if point_b else b.center_of_gravity
+    joint = pymunk.PinJoint(a, b, point_a, point_b)
+    MainPhysicSpace.add_joints(joint)
+    return joint
+
+
+def attachSoft(a: "Body", b: "Body", rest_length: float, stiffness: float,
+               damping: float, point_a=None, point_b=None):
+    point_a = point_a if point_a else a.center_of_gravity
+    point_b = point_b if point_b else b.center_of_gravity
+    joint = pymunk.DampedSpring(
+        a, b, point_a, point_b, rest_length, stiffness, damping)
+    MainPhysicSpace.add_joints(joint)
+    return joint
+
+
+# singleton world object
 MainPhysicSpace = World()

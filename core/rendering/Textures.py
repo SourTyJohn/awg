@@ -1,40 +1,46 @@
-from core.rendering import PyOGL as Gl
-from core.rendering.TextRender import GlText, LocalizedText, MenuFont
+from OpenGL.GL import *
+
+from core.rendering.PyOGL_utils import makeGLTexture, drawData
+from core.Constants import *
+
+from utils.files import get_full_path, load_image
+from utils.debug import dprint
 
 from os import listdir
-
-from utils.files import get_full_path
-
-from core.Constants import *
-T_ERROR_TEXTURE = Gl.GlTexture.load_file('Devs/r_error.png', repeat=True)
+import numpy as np
 
 
-def loadTexturePack(name):
-    print(f'\n-- loading Texture Pack: {name}')
+def loadTexturePack(_name):
+    print(f'\n-- loading Texture Pack: {_name}')
 
-    path = get_full_path(name, file_type='tex')
+    path = get_full_path(_name, file_type='tex')
     directories = listdir(path)
 
     pack = []
     for dr in directories:
-        textures = listdir(f'data/Textures/{name}/{dr}')
+        textures = listdir(f'data/Textures/{_name}/{dr}')
 
         for tex in textures:
-            t = Gl.GlTexture.load_file(f'{dr}/{tex}', (tex[0] == 'r'))
+            if not tex.endswith(".png"): continue
+            t = GlTexture.load_file(f'{dr}/{tex}', (tex[0] == 'r'))
             pack.append(t)
 
-    print(f'-- Done.\n')
+    dprint(f'-- Done.\n')
     return pack
 
 
 class TextureStorage:
     def __init__(self):
         self.textures = {}
+        self.error_tex = None
 
     def __getitem__(self, item):
         if item in self.textures.keys():
             return self.textures[item]
-        return T_ERROR_TEXTURE
+
+        if not self.error_tex:
+            self.error_tex = GlTexture.load_file('Devs/r_error.png', repeat=True)
+        return self.error_tex
 
     def __repr__(self):
         return f'<TextureStorage. Size: {len(self.textures)}\n{self.textures}>'
@@ -44,37 +50,64 @@ class TextureStorage:
             self.textures[tex.name] = tex
 
     def empty(self):
-        for x in self.textures.keys():
-            self.textures[x].delete_physic()
+        for t in self.textures.keys():
+            self.textures[t].delete_from_physic()
         self.textures.clear()
 
     def keys(self):
         return self.textures.keys()
 
 
+class GlTexture:
+    __slots__ = ('size', 'key', 'repeat', 'name', 'normals')
+
+    def __init__(self, data: np.ndarray, size, tex_name, repeat):
+        self.size = size  # units
+        self.key = makeGLTexture(data, *self.size, repeat=repeat)
+        self.repeat = repeat
+        self.name = tex_name.replace('.png', '')
+
+        # DEBUG
+        if DEBUG:
+            print(self)
+
+    def __repr__(self):
+        return f'<GLTexture[{self.key}] \t size: {self.size[0]}x{self.size[1]}px. \t name: "{self.name}">'
+
+    @classmethod
+    def load_file(cls, image_name, repeat):
+        data, size = load_image(image_name, TEXTURE_PACK)
+
+        if data is None:
+            print(f'texture: {image_name} error. Not loaded')
+        return GlTexture(data, size, image_name, repeat)
+
+    @classmethod
+    def load_image(cls, image_name, image, repeat):
+        data = np.fromstring(image.tobytes(), np.uint8)
+        size = image.size
+        return GlTexture(data, size, image_name, repeat)
+
+    def make_draw_data(self, layer, colors=None):
+        """Make drawTexture data with size of this texture
+        Usually GlObjects have their own drawData, but you can calculate drawData,
+        which will perfectly match this texture"""
+        if colors is None:
+            colors = ((1.0, 1.0, 1.0, 1.0), ) * 4
+
+        drawData(self.size, colors, layer=layer)
+        return drawData(self.size, colors, layer=layer)
+
+    """Deleting texture from memory"""
+    def delete(self):
+        glDeleteTextures(1, [self.key, ])
+        del self
+
+
 EssentialTextureStorage = TextureStorage()
 DynamicTextureStorage = TextureStorage()
 
 
-def load_essential():
+def loadTextures():
     pack = loadTexturePack(TEXTURE_PACK)
     EssentialTextureStorage.load(pack)
-
-    buttons_text = [
-        GlText(LocalizedText('txt_menu_newgame'), font=MenuFont),
-        GlText(LocalizedText('txt_menu_loadgame'), font=MenuFont),
-        GlText(LocalizedText('txt_menu_savegame'), font=MenuFont),
-        GlText(LocalizedText('txt_menu_settings'), font=MenuFont),
-        GlText(LocalizedText('txt_menu_exit'), font=MenuFont),
-
-        GlText(LocalizedText('txt_menu_settings_brightness'), font=MenuFont),
-        GlText(LocalizedText('txt_menu_settings_resolution'), font=MenuFont),
-        GlText(LocalizedText('txt_menu_settings_volume'), font=MenuFont),
-        GlText(LocalizedText('txt_menu_settings_language'), font=MenuFont),
-        GlText(LocalizedText('txt_menu_settings_menu'), font=MenuFont),
-    ]
-
-    EssentialTextureStorage.load(buttons_text)
-
-
-load_essential()
