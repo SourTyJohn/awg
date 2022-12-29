@@ -10,7 +10,6 @@ import dataclasses as dtc
 import numpy as np
 from collections import deque
 from beartype import beartype
-from random import randint
 
 
 __all__ = [
@@ -139,15 +138,20 @@ def posFromLeftBottomPoint(l_: TYPE_FLOAT, b_: TYPE_FLOAT, size):
     return l_ + size[0] / 2, b_ + size[1]
 
 
+free_render_UIDs = set( range( 2 ** 16 ) )
+
+
 class InGameObject:
     """Direct access means that object complete and ready to be placed on level
        Subclasses of this class will be added to allObjects dict"""
 
-    _ID = None
+    _UID = 0
 
-    def get_UID(self):
-        if self._ID is None:
-            ID = 0
+    @property
+    def UID(self):
+        if not self._UID:
+            self._UID = free_render_UIDs.pop()
+        return self._UID
 
 
 class Mortal:

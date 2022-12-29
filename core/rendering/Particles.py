@@ -2,7 +2,7 @@ from core.rendering.PyOGL import bindEBO, LightingManager
 from core.rendering.Shaders import shaders
 from core.Constants import FLOAT32, ZERO_FLOAT32, MAX_PARTICLES
 from core.math.linear import FullTransformMat
-from core.math.random import randf
+from core.math.prandom import randf
 from pymunk import Body, Shape
 from core.physic.physics import MainPhysicSpace, makeBodyCircle, makeShapeCircle
 from core.objects.gObjectTools import shapeFilter, COLLISION_CATEGORIES

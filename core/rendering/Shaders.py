@@ -64,9 +64,8 @@ class Shader:
         glDeleteShader(fragment)
         glDeleteShader(geometry)
 
-        self.active_shader = None
-
         self.cached_uniform_locations = {}
+        self.attrib_array_count = 0
 
     @staticmethod
     def compile_shader(gl_shader, code: str, path: str):
@@ -84,24 +83,26 @@ class Shader:
         cls.__instance = super(Shader, cls).__new__(cls)
         return cls.__instance
 
-    def universal_use(self):
-        global ActiveShader
-        if ActiveShader != self.program:
-            glUseProgram(self.program)
+    def close(self):
+        for y in range(self.attrib_array_count):
+            glDisableVertexAttribArray(y)
 
     def use(self):
-        self.universal_use()
+        global ActiveShader
 
-        glEnableVertexAttribArray(0)
-        glEnableVertexAttribArray(1)
-        glEnableVertexAttribArray(2)
+        if ActiveShader == self:
+            return
+
+        if ActiveShader:
+            ActiveShader.close()
+        glUseProgram(self.program)
+        ActiveShader = self
+
+        for y in range(self.attrib_array_count):
+            glEnableVertexAttribArray(y)
 
     def prepareDraw(self, **kw):
-        stride = 36
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, ctypes.c_void_p(0))
-        glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, stride, ctypes.c_void_p(12))
-        glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, stride, ctypes.c_void_p(28))
-        return self.program
+        pass
 
     # PASS UNIFORMS TO SHADER
     def get_uniform_location(self, name_: str):
@@ -181,52 +182,56 @@ class DefaultShader(Shader):
 
     __instance = None
 
-    def __init__(self):
-        super().__init__('default_vert.glsl', 'default_frag.glsl')
+    def __init__(self, vertex_path='default.vert', fragment_path='default.frag', geometry_path: str = ''):
+        self.attrib_array_count = 3
+        super().__init__(vertex_path, fragment_path, geometry_path)
 
     def prepareDraw(self, **kw):
-        super().prepareDraw()
         self.passMat4('Transform', kw['transform'])
+
+        stride = 36
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, ctypes.c_void_p(0))
+        glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, stride, ctypes.c_void_p(12))
+        glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, stride, ctypes.c_void_p(28))
 
 
 class DefaultInstancedShader(Shader):
     __instance = None
 
     def __init__(self):
-        super().__init__('default_vert.glsl', 'default_frag.glsl')
+        super().__init__('default.vert', 'default.frag')
+
+    def prepareDraw(self, **kw):
+        stride = 36
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, ctypes.c_void_p(0))
+        glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, stride, ctypes.c_void_p(12))
+        glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, stride, ctypes.c_void_p(28))
 
 
-class BackgroundShader(Shader):
+class BackgroundShader(DefaultShader):
     """Shader for fancy :) gradient background drawing"""
 
     __instance = None
 
     def __init__(self):
-        super().__init__('back_vert.glsl', 'back_frag.glsl')
+        super().__init__('background.vert', 'background.frag')
 
     def prepareDraw(self, **kw):
         super().prepareDraw(**kw)
-
-        self.passMat4('Transform', kw['transform'])
         self.passFloat('cameraPos', kw['camera'].pos[1] / Const.WINDOW_SIZE[1])
 
 
 # LIGHTING
 class LightSourceShader(Shader):
     def __init__(self):
-        super().__init__('light_vert.glsl', 'light_frag.glsl')
+        self.attrib_array_count = 2
+        super().__init__('light_source.vert', 'light_source.frag')
 
     def prepareDraw(self, **kw):
         stride = 20
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, ctypes.c_void_p(0))
         glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, stride, ctypes.c_void_p(12))
         return self.program
-
-    def use(self):
-        self.universal_use()
-
-        glEnableVertexAttribArray(0)
-        glEnableVertexAttribArray(1)
 
 
 # SCREENS AND GUIS
@@ -236,10 +241,15 @@ class ScreenShaderGame(Shader):
     __instance = None
 
     def __init__(self):
-        super().__init__('screen_vert.glsl', 'screen_frag.glsl')
+        self.attrib_array_count = 3
+        super().__init__('screen.vert', 'screen.frag')
 
     def prepareDraw(self, **kw):
-        super().prepareDraw(**kw)
+        stride = 36
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, ctypes.c_void_p(0))
+        glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, stride, ctypes.c_void_p(12))
+        glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, stride, ctypes.c_void_p(28))
+
         self.passTexture("lightMap", 1)
         self.passTexture("depthMap", 2)
         self.passFloat('brightness', Const.BRIGHTNESS)
@@ -247,7 +257,8 @@ class ScreenShaderGame(Shader):
 
 class ScreenShaderMenu(Shader):
     def __init__(self):
-        super().__init__('screen_vert.glsl', 'screen_nolight_frag.glsl')
+        self.attrib_array_count = 3
+        super().__init__('screen.vert', 'screen_nolight.frag')
 
     def prepareDraw(self, **kw):
         super().prepareDraw(**kw)
@@ -256,7 +267,7 @@ class ScreenShaderMenu(Shader):
 
 class GUIShader(Shader):
     def __init__(self):
-        super().__init__('gui_vert.glsl', 'gui_frag.glsl')
+        super().__init__('gui.vert', 'gui.frag')
 
     def prepareDraw(self, **kw):
         super().prepareDraw(**kw)
@@ -266,9 +277,9 @@ class GUIShader(Shader):
 # PARTICLES AND EFFECTS
 class StraightLineShader(Shader):
     def __init__(self):
-        super().__init__('straight_line_vert.glsl',
-                         'straight_line_frag.glsl',
-                         'straight_line_geo.glsl')
+        super().__init__('straight_line.vert',
+                         'straight_line.frag',
+                         'straight_line.geom')
 
     def prepareDraw(self, **kw):
         shader = self.program
@@ -284,9 +295,9 @@ class StraightLineShader(Shader):
 
 class ParticlePolyShader(Shader):
     def __init__(self):
-        super().__init__('particle_vert.glsl',
-                         'particle_frag.glsl',
-                         'particle_poly_geo.glsl')
+        super().__init__('particle_base.vert',
+                         'particle_base.frag',
+                         'particle_poly.geom')
 
     def prepareDraw(self, **kw):
         shader = self.program
@@ -309,12 +320,15 @@ class ParticlePolyShader(Shader):
 
 
 def init():
+    def checkRecursive(clss):
+        shaders[clss.__name__] = clss()
+        dprint(f'Inited: {clss.__name__}')
+        for clsR in clss.__subclasses__():
+            checkRecursive(clsR)
+
     print('\n-- Shaders initialization')
-
     for cls in Shader.__subclasses__():
-        shaders[cls.__name__] = cls()
-        dprint(f'Inited: {cls.__name__}')
-
+        checkRecursive(cls)
     dprint('-- Done.\n')
 
 

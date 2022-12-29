@@ -3,7 +3,7 @@ from math import atan2, pi, sin, cos, radians
 from pymunk.vec2d import Vec2d
 from functools import lru_cache
 from beartype import beartype
-from core.Constants import FLOAT32, INT64, ZERO_FLOAT32, TYPE_VEC, TYPE_FLOAT
+from core.Constants import FLOAT32, INT64, ZERO_FLOAT32, TYPE_VEC, TYPE_FLOAT, ONE_INT64, TYPE_MAT, ONE_FLOAT32
 
 
 @lru_cache()
@@ -56,24 +56,6 @@ def scale(x, y, z=1):
 
 # ROTATION
 @lru_cache()
-def rotx(a):
-    s, c = sincos(a)
-    return np.asfortranarray([[1, 0,  0, 0],
-                              [0, c, -s, 0],
-                              [0, s,  c, 0],
-                              [0, 0,  0, 1]])
-
-
-@lru_cache()
-def roty(a):
-    s, c = sincos(a)
-    return np.asfortranarray([[+c, 0, s, 0],
-                              [+0, 1, 0, 0],
-                              [-s, 0, c, 0],
-                              [+0, 0, 0, 1]])
-
-
-@lru_cache()
 def rotz(a):
     s, c = sincos(a)
     return np.asfortranarray([[c, -s, 0, 0],
@@ -82,16 +64,28 @@ def rotz(a):
                               [0,  0, 0, 1]])
 
 
-def reflectY():
-    return np.asfortranarray([[-1,  0, 0, 0],
-                              [+0,  1, 0, 0],
-                              [+0,  0, 1, 0],
-                              [+0,  0, 0, 1]])
+@beartype
+def reflectY(y):
+    return np.asfortranarray([[y,  0,  0, 0],
+                              [0,  1,  0, 0],
+                              [0,  0,  1, 0],
+                              [0,  0,  0, 1]])
 
 
 # FULL TRANSFORM -> POSITION, CAMERA AND ROTATION IN ONE MATRIX
 @beartype
-def FullTransformMat(x: FLOAT32, y: FLOAT32, camera_matrix, z_rotation: FLOAT32):
-    t = translate(x, y)
-    r = rotz(z_rotation)
-    return np.matmul(np.matmul(camera_matrix, t), r)
+def FullTransformMat(
+        x: FLOAT32,
+        y: FLOAT32,
+        camera_matrix: TYPE_MAT,
+        z_rotation: FLOAT32,
+        y_reflect: INT64 = ONE_INT64,
+        scale_x: FLOAT32 = ONE_FLOAT32,
+        scale_y: FLOAT32 = ONE_FLOAT32
+):
+    transM = translate(x, y)
+    rot_xM = rotz(z_rotation)
+    rot_yM = reflectY(y_reflect)
+    scaleM = scale(scale_x, scale_y)
+
+    return np.matmul( np.matmul( np.matmul( np.matmul( camera_matrix, transM ), rot_xM ), rot_yM ), scaleM )

@@ -1,8 +1,8 @@
 from core.physic.physics import MainPhysicSpace, objects
 from user.KeyMapping import *
 from core.objects.gObjects import *
-from core.rendering.PyOGL import RenderGroup, camera, preRender,\
-    postRender, Shaders, drawGroupsFinally, LightingManager, RenderGroupInstanced
+from core.rendering.PyOGL import RenderUpdateGroup, camera, preRender,\
+    postRender, Shaders, drawGroupsFinally, LightingManager, RenderUpdateGroup_Instanced
 from core.rendering.PyOGL_line import renderAllLines
 from core.rendering.Particles import ParticleManager
 from core.rendering.TextRender import TextObject, DefaultFont
@@ -13,13 +13,13 @@ from beartype import beartype
 
 
 # GROUPS
-background_gr = RenderGroup(shader="BackgroundShader")  # BACKGROUND COLOR
-background_near_gr = RenderGroup()    # BACKGROUND OBJECTS
-obstacles_gr = RenderGroupInstanced()       # DYNAMIC OBJECTS
-world_gr = RenderGroup()              # WORLD GEOMETRY
-items_gr = RenderGroup()             # ITEMS
-character_gr = RenderGroup()          # ANIMATED CHARACTERS
-gui_gr = RenderGroup()                # GUI
+background_gr = RenderUpdateGroup(shader="BackgroundShader")  # BACKGROUND COLOR
+background_near_gr = RenderUpdateGroup()    # BACKGROUND OBJECTS
+obstacles_gr = RenderUpdateGroup_Instanced()       # DYNAMIC OBJECTS
+world_gr = RenderUpdateGroup()              # WORLD GEOMETRY
+items_gr = RenderUpdateGroup()             # ITEMS
+character_gr = RenderUpdateGroup()          # ANIMATED CHARACTERS
+gui_gr = RenderUpdateGroup()                # GUI
 
 
 hero_inited = False
@@ -175,6 +175,10 @@ def initScreen(hero_life=False, first_load=False):
 
     for r in range(4):
         WoodenCrate(obstacles_gr, pos=[700, 800 + r*20])
+    WoodenCrate(obstacles_gr, pos=[760, 800], texture="LevelOne/crate_metal")
+    WoodenCrate(obstacles_gr, pos=[760, 800], texture="LevelOne/crate_metal")
+    WoodenCrate(obstacles_gr, pos=[760, 800], texture="LevelOne/crate_metal")
+    WoodenCrate(obstacles_gr, pos=[760, 800], texture="LevelOne/crate_metal")
     WoodenCrate(obstacles_gr, pos=[760, 800])
     WoodenCrate(obstacles_gr, pos=[600, 800])
     WoodenCrate(obstacles_gr, pos=[650, 980])

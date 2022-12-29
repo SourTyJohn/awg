@@ -117,7 +117,7 @@ class GlText(GlTexture):
         draw.text((0, 0), text, fill=(0, 0, 0, 255), font=font)
         image = image.crop(image.getbbox())
         data = np.fromstring(image.tobytes(), np.uint8)
-        super().__init__(data, image.size, tex_name=name)
+        super().__init__(data, image.size, tex_name=name, repeat=False)
 
 
 TextTextures = {}

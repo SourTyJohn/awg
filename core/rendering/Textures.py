@@ -50,8 +50,8 @@ class TextureStorage:
             self.textures[tex.name] = tex
 
     def empty(self):
-        for x in self.textures.keys():
-            self.textures[x].delete_from_physic()
+        for t in self.textures.keys():
+            self.textures[t].delete_from_physic()
         self.textures.clear()
 
     def keys(self):
@@ -61,7 +61,7 @@ class TextureStorage:
 class GlTexture:
     __slots__ = ('size', 'key', 'repeat', 'name', 'normals')
 
-    def __init__(self, data: np.ndarray, size, tex_name, repeat=False):
+    def __init__(self, data: np.ndarray, size, tex_name, repeat):
         self.size = size  # units
         self.key = makeGLTexture(data, *self.size, repeat=repeat)
         self.repeat = repeat
@@ -75,19 +75,17 @@ class GlTexture:
         return f'<GLTexture[{self.key}] \t size: {self.size[0]}x{self.size[1]}px. \t name: "{self.name}">'
 
     @classmethod
-    def load_file(cls, image_name, repeat=False):
+    def load_file(cls, image_name, repeat):
         data, size = load_image(image_name, TEXTURE_PACK)
 
         if data is None:
             print(f'texture: {image_name} error. Not loaded')
-
         return GlTexture(data, size, image_name, repeat)
 
     @classmethod
-    def load_image(cls, image_name, image, repeat=False):
+    def load_image(cls, image_name, image, repeat):
         data = np.fromstring(image.tobytes(), np.uint8)
         size = image.size
-
         return GlTexture(data, size, image_name, repeat)
 
     def make_draw_data(self, layer, colors=None):

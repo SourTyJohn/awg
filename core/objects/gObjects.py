@@ -104,7 +104,7 @@ class WorldRectangleSensor(WorldRectangleRigid):
     shape_filter = shapeFilter('no_collision', collide_with=())
 
 
-class BackgroundColor(ROPlaced, Static):
+class BackgroundColor(Direct, ROPlaced, Static):
     # BackgroundColor
     color: np.array = [0.35, 0.35, 0.5, 1.0]
     color2: np.array = [1.0, 0.35, 0.5, 1.0]
@@ -172,7 +172,7 @@ class Trigger(PhysObject):
         If empty, than there is no ignored objects
 
         ::arg entities - list of body.__hash__ of all objects that entered
-        and d'nt leave Trigger"""
+        and did not leave Trigger"""
 
         # Checking errors
         if pos != (0, 0) and bound_to:
@@ -467,10 +467,10 @@ class WoodenCrate(ROPhysic, Static, PhysObject, Direct, Throwable, Mortal):
     max_health = 10
     lethal_fall_velocity = 64
 
-    def __init__(self, gr, pos):
-        self.texture = 'LevelOne/crate'
+    def __init__(self, gr, pos, texture='LevelOne/crate'):
+        self.texture = texture
         cls = self.__class__
-        super().__init__(gr, pos, size=cls.size)
+        super().__init__(gr, pos, size=cls.size, instanced=True)
         PhysObject.__init__(self, pos)
         self.init_Throwable(cls)
         self.init_Mortal(cls, [cls.max_health, ] * 2)

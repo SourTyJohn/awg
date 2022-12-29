@@ -6,9 +6,9 @@ from core.rendering.Textures import EssentialTextureStorage as Ets
 from core.audio.PyOAL import AudioManagerSingleton
 
 
-decoration = RenderGroup()
-back = RenderGroup()
-buttons_group = RenderGroup()
+decoration = RenderUpdateGroup()
+back = RenderUpdateGroup()
+buttons_group = RenderUpdateGroup()
 
 buttons_count = 4
 selected_button = 0

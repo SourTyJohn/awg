@@ -2,7 +2,7 @@ from openal import *
 from os import listdir
 from utils.files import get_full_path
 from utils.debug import dprint
-from core.math.random import randf
+from core.math.prandom import randf
 from core.Constants import MASTER_VOLUME, GAME_VOLUME, MUSIC_VOLUME, SOUND_PACK
 from pyogg import VorbisFile
 from os.path import join, splitext

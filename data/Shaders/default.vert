@@ -10,10 +10,12 @@ uniform mat4[MAX_INSTANCES] Transform;
 
 out vec4 Color;
 out vec2 TexCoords;
+flat out uint InstanceID;
 
 
 void main() {
     gl_Position = vec4(position, 1.0) * Transform[gl_InstanceID];
     Color = color;
     TexCoords = InTexCoords;
+    InstanceID = gl_InstanceID;
 }

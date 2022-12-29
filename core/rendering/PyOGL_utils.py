@@ -15,7 +15,7 @@ __all__ = [
 ]
 
 
-def makeGLTexture(image_data: np.ndarray, w: int, h: int, repeat=False) -> int:
+def makeGLTexture(image_data: np.ndarray, w: int, h: int, repeat) -> int:
     """Loading pygame.Surface as OpenGL texture
     :return New Texture key"""
 
@@ -25,13 +25,12 @@ def makeGLTexture(image_data: np.ndarray, w: int, h: int, repeat=False) -> int:
     key = glGenTextures(1)
     glBindTexture(GL_TEXTURE_2D, key)
 
-    # SETTING UP
+    if repeat:
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_BORDER)
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER)
+
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST)  # настройка сжатия
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST)  # настройка растяжения
-
-    if repeat:
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT)
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT)
 
     glTexImage2D(GL_TEXTURE_2D, GL_ZERO, GL_RGBA, w, h, GL_ZERO, GL_RGBA, GL_UNSIGNED_BYTE, image_data)
     #
@@ -45,7 +44,7 @@ def makeGLTexture(image_data: np.ndarray, w: int, h: int, repeat=False) -> int:
 def bufferize(data: np.ndarray, vbo=None) -> int:
     """Generating Buffer to store this object's vertex data,
     necessary for drawing"""
-    if vbo is None:
+    if not vbo:
         vbo = glGenBuffers(1)
 
     glBindBuffer(GL_ARRAY_BUFFER, vbo)
@@ -125,7 +124,3 @@ def drawDataFullScreen(colors: Union[List, Tuple, np.ndarray]) -> np.ndarray:
 def splitDrawData(data: np.array) -> tuple:
     yield [list(data[h * 8: h * 8 + 2]) for h in range(4)]
     yield [list(data[h * 8 + 6: h * 8 + 8]) for h in range(4)]
-
-
-def bindTexture(key):
-    pass
