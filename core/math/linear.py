@@ -3,7 +3,7 @@ from math import atan2, pi, sin, cos, radians
 from pymunk.vec2d import Vec2d
 from functools import lru_cache
 from beartype import beartype
-from core.Constants import FLOAT32, INT64, ZERO_FLOAT32, TYPE_VEC, TYPE_FLOAT, ONE_INT64, TYPE_MAT, ONE_FLOAT32
+from core.Typing import FLOAT32, INT64, ZERO_FLOAT32, TYPE_VEC, TYPE_FLOAT, ONE_INT64, TYPE_MAT, ONE_FLOAT32
 
 
 @lru_cache()
@@ -34,10 +34,10 @@ def ortho(l_: INT64, r: INT64, b: INT64, t: INT64, n: INT64 = - 1, f: INT64 = 1)
     ry = -(t + b) / (t - b)
     rz = -(f + n) / (f - n)
 
-    return np.asfortranarray([[2.0 / dx, 0.0, 0.0, rx],
-                              [0.0, 2.0 / dy, 0.0, ry],
-                              [0.0, 0.0, -2.0 / dz, rz],
-                              [0.0, 0.0, 0.0, 1.0]])
+    return np.asfortranarray([[2.0 / dx, 0.0,       0.0,        rx],
+                              [0.0,      2.0 / dy,  0.0,        ry],
+                              [0.0,      0.0,       -2.0 / dz,  rz],
+                              [0.0,      0.0,       0.0,        1.0]])
 
 
 # MOVING

@@ -3,7 +3,7 @@ from core.physic.physics import PhysicObject, Body
 from core.rendering.PyOGL import \
     AnimatedRenderComponent, StaticRenderComponent, RenderObjectComposite, RenderObjectPhysic, RenderObjectPlaced
 from core.rendering.PyOGL_line import drawLine
-from core.Constants import FLOAT32, TYPE_FLOAT, INT64, TYPE_INT, INF, TYPE_VEC, TYPE_NUM
+from core.Typing import FLOAT32, TYPE_FLOAT, INT64, TYPE_INT, INF, TYPE_VEC, TYPE_NUM
 
 from typing import Tuple
 import dataclasses as dtc

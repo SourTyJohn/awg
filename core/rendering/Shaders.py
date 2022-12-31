@@ -2,7 +2,7 @@ from OpenGL.GL import *
 from utils.files import get_full_path
 from utils.debug import dprint
 import core.Constants as Const
-from core.Constants import TYPE_VEC, TYPE_FLOAT, TYPE_INT
+from core.Typing import TYPE_VEC, TYPE_FLOAT, TYPE_INT
 from beartype import beartype
 from typing import Dict
 import numpy as np

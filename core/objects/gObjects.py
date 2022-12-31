@@ -7,6 +7,7 @@ from core.physic.physics import triggers, reyCastFirst
 from pymunk import PinJoint
 from core.rendering.Textures import EssentialTextureStorage as Ets
 from core.Constants import *
+from core.Typing import FLOAT32
 from core.audio.PyOAL import AudioManagerSingleton
 from core.objects.gItems import InventoryAndItemsManager
 from core.math.linear import projectedMovement, degreesFromNormal
@@ -72,10 +73,10 @@ class WorldRectangleRigid(ROPhysic, Static, PhysObject, Direct):
     shape_filter = shapeFilter('level', )
     body_type = 'static'
 
-    def __init__(self, gr, pos, size, tex_offset=(0, 0), texture='Devs/r_devs_1', shape_f=None, layer=4):
+    def __init__(self, gr, pos, size, texture='Devs/r_devs_1', shape_f=None, layer=4):
         # IMAGE
         self.texture = texture
-        super().__init__(gr, pos, size, tex_offset=tex_offset, layer=layer)
+        super().__init__(gr, pos, size, layer=layer)
 
         # PHYSIC
         points = rectPoints(*size)
@@ -87,16 +88,16 @@ class WorldRectangleRigid(ROPhysic, Static, PhysObject, Direct):
 class WorldRectangleRigidTrue:
     """Level Rectangle with no friction on side parts"""
 
-    def __init__(self, gr, pos, size, tex_offset=(0, 0), texture='Devs/r_devs_1', shape_f=None, layer=4):
+    def __init__(self, gr, pos, size, texture='Devs/r_devs_1', shape_f=None, layer=4):
         xp, yp = pos
         w, h = size
         main = WorldRectangleRigid(
             gr, pos=[xp, yp - 4], size=[w, h - 8],
-            tex_offset=tex_offset, texture=texture, shape_f=shape_f, layer=layer)
+            texture=texture, shape_f=shape_f, layer=layer)
         main.friction = 0.0
         top_ = WorldRectangleRigid(
             gr, pos=[xp, yp + h / 2 - 4], size=[w, 8],
-            tex_offset=tex_offset, texture=texture, shape_f=shape_f, layer=layer)
+            texture=texture, shape_f=shape_f, layer=layer)
         top_.visible = True
 
 
@@ -116,7 +117,7 @@ class BackgroundColor(Direct, ROPlaced, Static):
 
     def __init__(self, gr):
         self.texture = 'Devs/error'
-        self.colors = [
+        self._colors = [
             BackgroundColor.color,
             BackgroundColor.color2,
             BackgroundColor.color2,
@@ -282,7 +283,7 @@ class Character(ROPhysic, Static, PhysObject):
                                     size=(80, 80), triggers_by=['WoodenCrate', ])
         self.__grabbedFilter = None
 
-        # Blocks rotation. Characters stand on their feet
+        # Blocks orientation. Characters stand on their feet
         self.can_rotate(False)
 
         self.on_ground = False  # is Character standing on solid floor
@@ -303,7 +304,7 @@ class Character(ROPhysic, Static, PhysObject):
 
         go = self.grabbed_object
         if go:
-            go.pos = self.pos + self.grabbed_item_offset * self.y_Rotation
+            go.pos = self.pos + self.grabbed_item_offset * self.orientation
             go.velocity = Vec2d(0, 0)
 
         # Walking
@@ -329,7 +330,7 @@ class Character(ROPhysic, Static, PhysObject):
 
         body = self.body
         body.apply_force_at_local_point(vecFinal, body.center_of_gravity)
-        self.set_rotation_y(direction)
+        self.orientation = direction
 
         if body.velocity[0] > 0:
             body.velocity = Vec2d(
@@ -374,7 +375,7 @@ class Character(ROPhysic, Static, PhysObject):
 
     def throw_grabbed(self):
         if obj := self.put_grabbed():
-            vec = Vec2d(self.THROW_POWER[0] * self.y_Rotation, self.THROW_POWER[1])
+            vec = Vec2d(self.THROW_POWER[0] * self.orientation, self.THROW_POWER[1])
             obj.thrown_Throwable(self, vec)
             obj.velocity = Vec2d(0, 0)
             obj.body.apply_impulse_at_local_point(vec)

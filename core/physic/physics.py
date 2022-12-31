@@ -1,7 +1,8 @@
 import pymunk
 from core.math.linear import degreesFromNormal
 from core.Constants import \
-    GRAVITY_VECTOR, BODY_TYPES, FLOAT32, SLEEP_TIME_THRESHOLD, TYPE_VEC
+    GRAVITY_VECTOR, BODY_TYPES, SLEEP_TIME_THRESHOLD
+from core.Typing import FLOAT32, TYPE_VEC
 inf = float('inf')
 from beartype import beartype
 from typing import List

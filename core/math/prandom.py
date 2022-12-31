@@ -1,5 +1,5 @@
 from random import random
-from core.Constants import TYPE_FLOAT
+from core.Typing import TYPE_FLOAT
 from beartype import beartype
 
 

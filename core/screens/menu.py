@@ -169,7 +169,7 @@ class ButtonFunctions:
     @classmethod
     def loadGame(cls):
         global exit_code
-        buttons[selected_button].set_rotation_y(-buttons[selected_button][0].y_Rotation)
+        buttons[selected_button].orientation(-buttons[selected_button][0].y_Rotation)
 
     @classmethod
     def openSettings(cls):

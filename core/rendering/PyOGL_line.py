@@ -3,7 +3,7 @@ from OpenGL.GL import *
 from typing import Dict, Union
 from beartype import beartype
 
-from core.Constants import FLOAT32, ZERO_FLOAT32, TYPE_VEC, TYPE_NUM
+from core.Typing import FLOAT32, ZERO_FLOAT32, TYPE_VEC, TYPE_NUM
 from core.rendering.PyOGL_utils import zFromLayer, bufferize
 from core.rendering.PyOGL import frameBufferGeometry, camera, bindEBO
 from core.rendering.Shaders import shaders, StraightLineShader

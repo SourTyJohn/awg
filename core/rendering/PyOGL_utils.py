@@ -1,4 +1,5 @@
-from core.Constants import FLOAT32, LIGHT_POWER_UNIT
+from core.Constants import LIGHT_POWER_UNIT
+from core.Typing import FLOAT32
 from typing import Union, List, Tuple
 
 from OpenGL.GL import *

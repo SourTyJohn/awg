@@ -6,8 +6,8 @@ import core.rendering.Shaders as Shaders
 import core.math.linear as lin
 from core.rendering.Lighting import __LightingManager
 from core.rendering.PyOGL_utils import *
-from core.math.rect4f import Rect4f
 from core.Constants import *
+from core.Typing import *
 from core.rendering.Textures import GlTexture
 from core.rendering.Textures import EssentialTextureStorage as Ets
 
@@ -295,36 +295,35 @@ class RenderObject:
     For :args info check in __init__"""
 
     # public
-    size: tuple = None
-    colors: np.array = [np.array([1.0, 1.0, 1.0, 1.0], dtype=np.float32),
-                        np.array([1.0, 1.0, 1.0, 1.0], dtype=np.float32),
-                        np.array([1.0, 1.0, 1.0, 1.0], dtype=np.float32),
-                        np.array([1.0, 1.0, 1.0, 1.0], dtype=np.float32)]
     visible = True
+    group: Union["RenderUpdateGroup", "RenderUpdateGroup_Instanced"]
+
+    _size: tuple = None
+    _colors: np.array = [ np.array([1.0, 1.0, 1.0, 1.0], dtype=np.float32) for _ in range(4) ]
     _vbo: int = 0
 
-    group: Union["RenderUpdateGroup", "RenderUpdateGroup_Instanced"]
+    _y_rotation: int
+    _scaleX: FLOAT32
+    _scaleY: FLOAT32
+
     _UID: int = 0  # It will be auto set if object is InGameObject's child
 
-    def __init__(self, group, size=None, rotation=1, tex_offset=(0, 0), drawdata='auto', layer=5, instanced=False):
-        # Offset of a texture on this object
-        self.tex_offset = np.array(tex_offset, dtype=np.float32)
-
+    def __init__(self, group, size=None, orientation=1, drawdata='auto', layer=5, instanced=False):
         # if False object wont be rendered
         self.visible = True
 
         #  -1 for left   1 for right
-        self.y_Rotation = INT64( rotation )
+        self._y_rotation = INT64( orientation )
         if drawdata != "auto" and instanced:
             instanced = False
             warnings.warn("You can not use instanced rending with given drawdata")
         self._instanced = instanced
-        self.size = size if size else self.__class__.size
+        self._size = size if size else self.__class__._size
         self._layer = layer
 
         if instanced:  # Instanced rendering
             if not self.__class__._vbo:  # If there is VBO for this type of objects, this instance will use ready VBO
-                self.__class__._vbo = self.bufferize(0)
+                self.__class__._vbo = self.bufferize()
             self._vbo = self.__class__._vbo
 
         else:
@@ -337,30 +336,18 @@ class RenderObject:
             group.add(self)
         self.group = group
 
-        self.scaleX = 1.0
+        self._scaleX = FLOAT32( 1.0 )
+        self._scaleY = FLOAT32( 1.0 )
 
     def __repr__(self):
         return f'<{self.__class__.__name__}>'
-
-    # VISUAL
-    def change_offset(self, offset):
-        pass
-        # no_offset = [[i - self.tex_offset[0], j - self.tex_offset[1]] for i, j in baseEdgesTex]
-        # self.tex_offset = np.array(offset, dtype=np.int16)
-        # self.vertexesTex = np.array([[i + offset[0], j + offset[1]] for i, j in no_offset], dtype=np.int32)
-
-    def set_rotation_y(self, new_rotation: Union[int, INT64]):
-        if not new_rotation: return
-        assert abs(new_rotation) == 1
-        if self.y_Rotation == new_rotation: return
-        self.y_Rotation = INT64( new_rotation )
 
     def bufferize(self, vbo=None):
         """
         y_rotation::if None, then object will be bufferized as it have y_rotation
         vbo::if given, object won't change, but save its new VBO data to given <vbo>
         """
-        drawdata = drawData(self.size, self.colors, layer=self._layer)
+        drawdata = drawData(self._size, self._colors, layer=self._layer)
         if vbo is None:
             self._vbo = bufferize(drawdata, self._vbo)
             return self._vbo
@@ -382,10 +369,6 @@ class RenderObject:
         if self.group is not None:
             self.group.remove(self)
 
-    @property
-    def vbo(self):
-        return self._vbo
-
     def get_transform(self) -> TYPE_MAT:
         """Redefined in child classes"""
         pass
@@ -398,6 +381,36 @@ class RenderObject:
         shader.prepareDraw(camera=camera, transform=self.get_transform(), fbuffer=frameBufferGeometry)
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, None)
 
+    @property
+    def vbo(self):
+        return self._vbo
+
+    @property
+    def scale(self):  # Dynamic
+        yield self._scaleX
+        yield self._scaleY
+
+    @scale.setter
+    def scale(self, value: Union[TYPE_VEC, list, tuple]):
+        self._scaleX = FLOAT32( value[0] )
+        self._scaleY = FLOAT32( value[1] )
+
+    def set_color(self, new_color, vertex=None):
+        """
+        It is not recommended to use this on Instanced objects
+        """
+
+    @property
+    def orientation(self):
+        return self._y_rotation
+
+    @orientation.setter
+    def orientation(self, new_rotation: Union[int, INT64]):
+        if not new_rotation: return
+        assert abs(new_rotation) == 1
+        if self._y_rotation == new_rotation: return
+        self._y_rotation = INT64(new_rotation)
+
 
 class RenderObjectPlaced(RenderObject):
     """Alternative for RenderObjectPhysic
@@ -405,10 +418,10 @@ class RenderObjectPlaced(RenderObject):
 
     def __init__(
             self,
-            group, pos, size=None, rotation=1, tex_offset=(0, 0), drawdata='auto', layer=5, instanced=False
+            group, pos, size=None, orientation=1, drawdata='auto', layer=5, instanced=False
     ):
-        super().__init__(group, size, rotation, tex_offset, drawdata, layer, instanced)
-        self.rect = Rect4f(*pos, *self.__class__.size if not size else size)
+        super().__init__(group, size, orientation, drawdata, layer, instanced)
+        self.rect = Rect4f(*pos, *self.__class__._size if not size else size)
 
     def __repr__(self):
         return f'<ROP: {super().__repr__()}' \
@@ -432,19 +445,21 @@ class RenderObjectPlaced(RenderObject):
 
     def get_transform(self):
         x_, y_ = self.rect.pos
-        return lin.FullTransformMat(x_, y_, camera.get_matrix(), FLOAT32(0), self.y_Rotation)
+        return lin.FullTransformMat(
+            x_, y_, camera.get_matrix(), FLOAT32(0), self._y_rotation, self._scaleX, self._scaleY
+        )
 
 
 class RenderObjectPhysic(RenderObject):
     """Alternative for RenderObjectPlaced
     This object will be rendered in place, taken from its physic body pos (self.body.pos)
-    It will also take rotation from physic body"""
+    It will also take orientation from physic body"""
 
     def __init__(
             self,
-            group, body, size=None, rotation=1, tex_offset=(0, 0), drawdata='auto', layer=5, instanced=False
+            group, body, size=None, orientation=1, drawdata='auto', layer=5, instanced=False
     ):
-        super().__init__(group, size, rotation, tex_offset, drawdata, layer, instanced)
+        super().__init__(group, size, orientation, drawdata, layer, instanced)
         self.body = body
 
     def __repr__(self):
@@ -458,7 +473,9 @@ class RenderObjectPhysic(RenderObject):
 
     def get_transform(self):
         x_, y_ = self.body.pos_FLOAT32
-        return lin.FullTransformMat(x_, y_, camera.get_matrix(), FLOAT32(-self.z_rotation), self.y_Rotation)
+        return lin.FullTransformMat(
+            x_, y_, camera.get_matrix(), FLOAT32(-self.z_rotation), self._y_rotation, self._scaleX, self._scaleY
+        )
 
 
 class AnimatedRenderComponent:
@@ -561,7 +578,7 @@ class RenderObjectComposite:
 
     def rotY(self, rotation):
         for obj in self.objects:
-            obj.set_rotation_y(rotation)
+            obj.orientation(rotation)
 
     def delete(self):
         for obj in self.objects:

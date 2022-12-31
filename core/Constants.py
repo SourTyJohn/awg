@@ -1,38 +1,6 @@
 from utils.files import SETTINGS_FILE
-
 from pymunk.body import Body
-from pymunk.vec2d import Vec2d
-from numpy import ndarray, array, matrix
 from json import load as json_load
-from typing import Union, Generator
-from numpy import float64, float32, int64, uintc, int16, float16
-
-
-# DATA TYPES
-FLOAT64 = float64
-FLOAT32 = float32
-FLOAT16 = float16
-INT64 = int64
-INT16 = int16
-UINT = uintc
-ARRAY = array
-
-ZERO_FLOAT32 = FLOAT32(0)
-ZERO_INT64 = INT64(0)
-
-ONE_FLOAT32 = FLOAT32(1)
-ONE_INT64 = INT64(1)
-
-NEG_ONE_INT64 = INT64(-1)
-
-INF = float('inf')
-
-TYPE_FLOAT = Union[float, FLOAT32, FLOAT64]
-TYPE_INT = Union[int, INT64]
-TYPE_NUM = Union[float, FLOAT32, FLOAT64, int, INT64, uintc]
-TYPE_VEC = Union[Vec2d, ndarray, Generator]
-TYPE_MAT = Union[ndarray, matrix]
-
 
 # TAGS
 # TAG_PHYSIC_THROWABLE = 1

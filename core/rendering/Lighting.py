@@ -1,4 +1,5 @@
-from core.Constants import FLOAT32, MAX_LIGHT_SOURCES, INT64, MAX_TEXTURES_BIND
+from core.Constants import MAX_LIGHT_SOURCES, MAX_TEXTURES_BIND
+from core.Typing import FLOAT32, INT64
 from core.math.linear import FullTransformMat
 from core.rendering.PyOGL_utils import zFromLayer, bufferize, drawDataLightSource
 from core.rendering.Shaders import shaders

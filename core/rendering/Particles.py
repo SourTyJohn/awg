@@ -1,6 +1,7 @@
 from core.rendering.PyOGL import bindEBO, LightingManager
 from core.rendering.Shaders import shaders
-from core.Constants import FLOAT32, ZERO_FLOAT32, MAX_PARTICLES
+from core.Constants import MAX_PARTICLES
+from core.Typing import FLOAT32, ZERO_FLOAT32
 from core.math.linear import FullTransformMat
 from core.math.prandom import randf
 from pymunk import Body, Shape
