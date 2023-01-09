@@ -36,11 +36,11 @@ class Body(pymunk.Body):
     def pos(self, value):
         self._set_position(value)
 
-    @property
-    def pos_FLOAT32(self):
-        p = self.pos
-        yield FLOAT32(p.x)
-        yield FLOAT32(p.y)
+    # @property
+    # def pos_FLOAT32(self):
+    #     p = self._get_position()
+    #     yield FLOAT32(p.x)
+    #     yield FLOAT32(p.y)
 
     @property
     def angle(self):
@@ -101,9 +101,6 @@ class PhysicObject:
 
         # Add to world (Physic simulation)
         MainPhysicSpace.add(self, self.body, self.shape)
-
-        if hasattr(self, '_render_type'):
-            self._render_type = 1
 
     def can_rotate(self, b):
         if b:
@@ -173,10 +170,7 @@ class PhysicObject:
         pass
 
     def update(self, dt) -> bool:
-        if not self.should_update(): return False
-        if self.body_type == "dynamic":
-            pass  # CHECKS CHUNK
-        return True
+        pass
 
 
 class World:
@@ -234,6 +228,9 @@ class World:
             obj = list(objects.values())[0]
             # Physically delete_Mortal object
             obj.__class__.delete_from_physic(obj, )
+
+    def get_geometry(self, camera):
+        pass
 
 
 # MAKE BODY

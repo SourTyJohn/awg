@@ -1,7 +1,7 @@
 import numpy as np
 from math import atan2, pi, sin, cos, radians
 from pymunk.vec2d import Vec2d
-from functools import lru_cache
+from functools import lru_cache, reduce
 from beartype import beartype
 from core.Typing import FLOAT32, INT64, ZERO_FLOAT32, TYPE_VEC, TYPE_FLOAT, ONE_INT64, TYPE_MAT, ONE_FLOAT32
 
@@ -41,7 +41,7 @@ def ortho(l_: INT64, r: INT64, b: INT64, t: INT64, n: INT64 = - 1, f: INT64 = 1)
 
 
 # MOVING
-@lru_cache()
+@beartype
 def translate(x: FLOAT32, y: FLOAT32, z: FLOAT32 = ZERO_FLOAT32):
     return np.asfortranarray([[1, 0, 0, x],
                               [0, 1, 0, y],
@@ -50,13 +50,14 @@ def translate(x: FLOAT32, y: FLOAT32, z: FLOAT32 = ZERO_FLOAT32):
 
 
 # SCALING
+@beartype
 def scale(x, y, z=1):
     return np.asfortranarray([[x, 0, 0, 0], [0, y, 0, 0], [0, 0, z, 0], [0, 0, 0, 1]])
 
 
 # ROTATION
-@lru_cache()
-def rotz(a):
+@beartype
+def rotz(a: FLOAT32):
     s, c = sincos(a)
     return np.asfortranarray([[c, -s, 0, 0],
                               [s,  c, 0, 0],
@@ -65,7 +66,7 @@ def rotz(a):
 
 
 @beartype
-def reflectY(y):
+def reflectY(y: INT64):
     return np.asfortranarray([[y,  0,  0, 0],
                               [0,  1,  0, 0],
                               [0,  0,  1, 0],
@@ -83,9 +84,21 @@ def FullTransformMat(
         scale_x: FLOAT32 = ONE_FLOAT32,
         scale_y: FLOAT32 = ONE_FLOAT32
 ):
+    return np.matmul( camera_matrix, CachedTransform(x, y, z_rotation, y_reflect, scale_x, scale_y) )
+
+
+@lru_cache( maxsize=1024 )
+def CachedTransform(
+        x: FLOAT32,
+        y: FLOAT32,
+        z_rotation: FLOAT32,
+        y_reflect: INT64 = ONE_INT64,
+        scale_x: FLOAT32 = ONE_FLOAT32,
+        scale_y: FLOAT32 = ONE_FLOAT32
+):
     transM = translate(x, y)
-    rot_xM = rotz(z_rotation)
+    rot_xM = rotz( z_rotation )
     rot_yM = reflectY(y_reflect)
     scaleM = scale(scale_x, scale_y)
 
-    return np.matmul( np.matmul( np.matmul( np.matmul( camera_matrix, transM ), rot_xM ), rot_yM ), scaleM )
+    return reduce( np.matmul, (transM, rot_xM, rot_yM, scaleM) )

@@ -127,7 +127,7 @@ class RenderUpdateGroup:
     """Container for in-game Objects"""
 
     def __init__(self, shader="DefaultShader", frame_buffer=None, visible=True, depth_write=True):
-        self.frame_buffer = frameBufferGeometry if frame_buffer is None else frame_buffer
+        self.frame_buffer = FB_Geometry if frame_buffer is None else frame_buffer
         self.objects: dict = {}
         self.updatable = {}
         self.depth_write = depth_write
@@ -378,7 +378,7 @@ class RenderObject:
         if not self.visible: return
 
         glBindBuffer(GL_ARRAY_BUFFER, self._vbo)
-        shader.prepareDraw(camera=camera, transform=self.get_transform(), fbuffer=frameBufferGeometry)
+        shader.prepareDraw(camera=camera, transform=self.get_transform(), fbuffer=FB_Geometry)
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, None)
 
     @property
@@ -665,39 +665,54 @@ class FrameBufferDepth(FrameBuffer):
         glBindTexture(GL_TEXTURE_2D, self.rbo)
 
 
-frameBufferGeometry: FrameBufferDepth
-frameBufferLight: FrameBuffer
+FB_Geometry: FrameBufferDepth
+FB_Lighting: FrameBuffer
 LightingManager: __LightingManager
 
 
 # DISPLAY
 def initDisplay(size=WINDOW_RESOLUTION):
-    global camera, frameBufferGeometry, frameBufferLight, FIRST_EBO, LightingManager
+    global camera, FB_Geometry, FB_Lighting, FIRST_EBO, LightingManager
 
-    # Display flags
+    #  Display flags
     flags = pygame.OPENGL | pygame.DOUBLEBUF | pygame.HWSURFACE | pygame.SRCALPHA
     flags = flags | pygame.FULLSCREEN if FULL_SCREEN else flags
     pygame.display.set_mode(size, flags=flags)
     
-    #  Correct OpenGL Version requirement
+    #  OpenGL Version requirement
     pygame.display.gl_set_attribute(pygame.GL_CONTEXT_MAJOR_VERSION, 4)
     pygame.display.gl_set_attribute(pygame.GL_CONTEXT_MINOR_VERSION, 0)
+    pygame.display.gl_set_attribute(pygame.GL_CONTEXT_PROFILE_MASK, pygame.GL_CONTEXT_PROFILE_CORE)
 
-    # Initialize modules
+    #  Initialize render engine modules
     Shaders.init()
     LightingManager = __LightingManager()
 
-    frameBufferGeometry = FrameBufferDepth()
-    frameBufferLight = FrameBuffer()
+    #  Preparing frame buffers
+    FB_Geometry = FrameBufferDepth()
+    FB_Lighting = FrameBuffer()
     clearDisplay()
+
+    #  Initializing camera
     camera = Camera()
+
+    #  Setting up GL states
     glClearColor(*clear_color)
     glDepthFunc(GL_LEQUAL)
 
-    glEnable(GL_SCISSOR_TEST)
     glScissor(0, 0, *WINDOW_SIZE)
+    glEnable(GL_SCISSOR_TEST)
+
+    setDefaultBlendFunc()
+    glEnable(GL_BLEND)
 
     # Order of vertexes when drawing
+    setupIndices()
+
+
+def setupIndices():
+    global FIRST_EBO
+
     indices = [
         np.array([0, 1, 2, 2, 3, 0], dtype=np.uint32),
         np.array([0, *np.array([[v, v] for v in range(1, 256)]).flatten()], dtype=np.uint32),
@@ -713,11 +728,6 @@ def initDisplay(size=WINDOW_RESOLUTION):
     FIRST_EBO = first_ebo
     bindEBO()
 
-    # Does not allow deprecated gl functions
-    pygame.display.gl_set_attribute(
-        pygame.GL_CONTEXT_PROFILE_MASK, pygame.GL_CONTEXT_PROFILE_CORE
-    )
-
 
 def bindEBO(offset=0):
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, FIRST_EBO + offset)
@@ -726,11 +736,7 @@ def bindEBO(offset=0):
 def preRender(do_depth_test=True):
     # MY FRAME BUFFER
     camera.prepare_matrix()
-    frameBufferGeometry.bind()
-
-    # ENABLE STUFF
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
-    glEnable(GL_BLEND)
+    FB_Geometry.bind()
 
     if do_depth_test:
         glEnable(GL_DEPTH_TEST)
@@ -746,44 +752,47 @@ def drawGroupsFinally(object_ids, *groups):
 
 def renderLights(camera_, ):
     lm = LightingManager
+    if not lm.do_render:
+        return
+
     shader = lm.shader
+    glBlendFunc(GL_ONE, GL_ONE)
+    glDisable(GL_DEPTH_TEST)
 
-    if lm.do_render:
-        glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA)
-        frameBufferLight.bind()
+    FB_Lighting.bind()
+    shader.use()
 
-        light_groups = lm.generate_groups()
-        previous_tex = -1
-        shader.use()
-        for group in light_groups:
-            tex = Ets[ group["texture"] ].key
+    light_groups = lm.generate_groups()
+    previous_tex = -1
+    for group in light_groups:
+        tex = Ets[ group["texture"] ].key
+        if tex != previous_tex:
+            previous_tex = tex
+            glActiveTexture(GL_TEXTURE0)
+            glBindTexture(GL_TEXTURE_2D, tex)
 
-            if tex != previous_tex:
-                previous_tex = tex
-                glActiveTexture(GL_TEXTURE0)
-                glBindTexture(GL_TEXTURE_2D, tex)
+        colors = []
+        scales = []
+        stencils = []
+        transforms = []
 
-            colors = []
-            scales = []
-            stencils = []
-            transforms = []
+        for i, source in enumerate( group["sources"] ):
+            transforms.append(source.get_transform(camera_))
+            colors.append(source.color)
+            scales.append(source.size)
+            stencils.append(0)
 
-            for i, source in enumerate( group["sources"] ):
-                transforms.append(source.get_transform(camera_))
-                colors.append(source.color)
-                scales.append(source.size)
-                stencils.append(0)
+        shader.passMat4V(f"sTransform[0]", np.asfortranarray(transforms, dtype=FLOAT32))
+        shader.passVec4fV(f"sColor[0]", np.asfortranarray(colors, dtype=FLOAT32))
+        shader.passVec2fV(f"sScale[0]", np.asfortranarray(scales, dtype=FLOAT32))
+        shader.passUIntV(f"sStencil[0]", np.asfortranarray(stencils, dtype=UINT))
 
-            shader.passMat4V(f"sTransform[0]", np.asfortranarray(transforms, dtype=FLOAT32))
-            shader.passVec4fV(f"sColor[0]", np.asfortranarray(colors, dtype=FLOAT32))
-            shader.passVec2fV(f"sScale[0]", np.asfortranarray(scales, dtype=FLOAT32))
-            shader.passUIntV(f"sStencil[0]", np.asfortranarray(stencils, dtype=UINT))
+        glBindBuffer(GL_ARRAY_BUFFER, lm.vbo)
+        shader.prepareDraw()
+        glDrawElementsInstanced(GL_TRIANGLES, 6, GL_UNSIGNED_INT, None, len(group["sources"]))
 
-            glBindBuffer(GL_ARRAY_BUFFER, lm.vbo)
-            shader.prepareDraw()
-            glDrawElementsInstanced(GL_TRIANGLES, 6, GL_UNSIGNED_INT, None, len(group["sources"]))
-
-        FrameBuffer.unbind()
+    FrameBuffer.unbind()
+    setDefaultBlendFunc()
 
 
 def postRender(screen_shader):
@@ -791,8 +800,8 @@ def postRender(screen_shader):
     Shader that will be used to render full scene to screen"""
 
     # MY FRAME BUFFER
-    fbuff = frameBufferGeometry
-    lbuff = frameBufferLight
+    fbuff = FB_Geometry
+    lbuff = FB_Lighting
 
     # DEFAULT FRAME BUFFER
     renderLights(camera)
@@ -800,11 +809,7 @@ def postRender(screen_shader):
 
     screen_shader.use()
     glBindBuffer(GL_ARRAY_BUFFER, fbuff.vbo)
-
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
     glDisable(GL_DEPTH_TEST)
-
-    # SHADER
     screen_shader.prepareDraw()
 
     # DRAW SCENE AND GUI
@@ -820,3 +825,7 @@ def clearDisplay():
 
 def clearDepth():
     glClear(GL_DEPTH_BUFFER_BIT)
+
+
+def setDefaultBlendFunc():
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)

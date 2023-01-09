@@ -11,7 +11,8 @@ from beartype import beartype
 
 
 LIGHT_COLOR_PRESETS = {
-    'fire': (1.0, 0.3, 0.0)
+    'fire': (1.0, 0.3, 0.0),
+    'default': (1.0, 1.0, 1.0)
 }
 
 __all__ = [

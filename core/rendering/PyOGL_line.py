@@ -5,7 +5,7 @@ from beartype import beartype
 
 from core.Typing import FLOAT32, ZERO_FLOAT32, TYPE_VEC, TYPE_NUM
 from core.rendering.PyOGL_utils import zFromLayer, bufferize
-from core.rendering.PyOGL import frameBufferGeometry, camera, bindEBO
+from core.rendering.PyOGL import FB_Geometry, camera, bindEBO
 from core.rendering.Shaders import shaders, StraightLineShader
 from core.math.linear import FullTransformMat
 
@@ -42,7 +42,7 @@ def drawLineBackend(vbo_key: TYPE_NUM, pos: TYPE_VEC, color: np.ndarray, width, 
 
     x_, y_ = pos
     mat = FullTransformMat(x_, y_, camera.get_matrix(), ZERO_FLOAT32)
-    Shader.prepareDraw(pos, transform=mat, fbuffer=frameBufferGeometry, color=color, width=width)
+    Shader.prepareDraw(pos, transform=mat, fbuffer=FB_Geometry, color=color, width=width)
 
     glDrawElements(GL_LINES, amount, GL_UNSIGNED_INT, None)
 
