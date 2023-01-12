@@ -2,6 +2,7 @@ from OpenGL.GL import *
 from utils.files import get_full_path
 from utils.debug import dprint
 import core.Constants as Const
+from core.Exceptions import ShaderError
 from core.Typing import TYPE_VEC, TYPE_FLOAT, TYPE_INT
 from beartype import beartype
 from typing import Dict
@@ -198,14 +199,21 @@ class DefaultShader(Shader):
 class DefaultInstancedShader(Shader):
     __instance = None
 
-    def __init__(self):
-        super().__init__('default.vert', 'default.frag')
+    def __init__(self, vert='default.vert', frag='default.frag'):
+        super().__init__(vert, frag)
 
     def prepareDraw(self, **kw):
         stride = 36
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, ctypes.c_void_p(0))
         glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, stride, ctypes.c_void_p(12))
         glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, stride, ctypes.c_void_p(28))
+
+
+class DefaultMaterialShader(DefaultInstancedShader):
+    __instance = None
+
+    def __init__(self):
+        super().__init__('material.vert', 'material.frag')
 
 
 class BackgroundShader(DefaultShader):
@@ -252,7 +260,7 @@ class ScreenShaderGame(Shader):
 
         self.passTexture("lightMap", 1)
         self.passTexture("depthMap", 2)
-        self.passFloat('brightness', Const.BRIGHTNESS)
+        self.passFloat('brightness', Const.STN_BRIGHTNESS)
 
 
 class ScreenShaderMenu(Shader):
@@ -262,7 +270,7 @@ class ScreenShaderMenu(Shader):
 
     def prepareDraw(self, **kw):
         super().prepareDraw(**kw)
-        self.passFloat('brightness', Const.BRIGHTNESS)
+        self.passFloat('brightness', Const.STN_BRIGHTNESS)
 
 
 class GUIShader(Shader):
@@ -341,7 +349,11 @@ def loadGLSL(path):
 
             tags = line.split()
             if tags[0] == '#constant':
-                value = getattr(Const, tags[2])
+                try:
+                    value = getattr(Const, tags[2])
+                except AttributeError:
+                    raise ShaderError( path, f"Error while getting constant {line}" )
+
                 if type(value) in {set, list, tuple, np.ndarray}:
                     code[i] = f'const {tags[1]} {tags[2]} = vec{len(value)}({str(list(value))[1:-1]});\n'
                 else:

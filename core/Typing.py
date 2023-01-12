@@ -1,6 +1,6 @@
 from pymunk.vec2d import Vec2d
 from numpy import ndarray, array, matrix
-from typing import Union, Generator, List
+from typing import Union, Generator, Tuple
 from numpy import float64, float32, int64, uintc, int16, float16
 from beartype import beartype
 
@@ -29,6 +29,8 @@ TYPE_INT = Union[int, INT64]
 TYPE_NUM = Union[float, FLOAT32, FLOAT64, int, INT64, uintc]
 TYPE_VEC = Union[Vec2d, ndarray, Generator]
 TYPE_MAT = Union[ndarray, matrix]
+
+TYPE_MATERIAL = Tuple[ "str", Union["str", "None"] ]
 
 
 class Rect4f:

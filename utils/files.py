@@ -4,8 +4,10 @@ AND ALLOWS EASY ACCESS TO IT
 """
 
 from os.path import join, dirname
-from PIL import Image, ImageFont
-import numpy as np
+from typing import Union
+
+from PIL import ImageFont
+import pygame as pg
 import json
 
 import os
@@ -22,6 +24,7 @@ TEXT_LOC_DIRECTORY = join(MAIN_DIRECTORY, 'data/TextLoc')
 SOUNDS_DIRECTORY = join(MAIN_DIRECTORY, 'data/Sounds')
 SETTINGS_FILE = join(MAIN_DIRECTORY, 'data/settings.json')
 MAPS_DIRECTORY = join(MAIN_DIRECTORY, 'data/Maps')
+MATERIALS_DIRECTORY = join(MAIN_DIRECTORY, 'data/Materials')
 
 
 DIRECTORIES = {'main': MAIN_DIRECTORY,
@@ -31,7 +34,8 @@ DIRECTORIES = {'main': MAIN_DIRECTORY,
                'dll': DLLS_DIRECTORY,
                'font': FONTS_DIRECTORY,
                'snd': SOUNDS_DIRECTORY,
-               'maps': MAPS_DIRECTORY}
+               'maps': MAPS_DIRECTORY,
+               'mat': MATERIALS_DIRECTORY}
 
 
 def get_full_path(*path, file_type='main'):
@@ -66,14 +70,14 @@ def load_image(name, pack):
         fullname = get_full_path(name, file_type='tex')
 
     if os.path.exists(fullname):
-        image: Image.Image = Image.open(fullname).convert("RGBA")
-        data = np.fromstring(image.tobytes(), np.uint8)
-        return data, image.size
+        image = pg.image.load(fullname)
+        data = pg.image.tostring(image, 'RGBA')
+        return data, image.get_size()
     else:
         return None, ()
 
 
-def load_font(name, size, index) -> ImageFont.ImageFont:
+def load_font(name, size, index) -> Union[ImageFont.FreeTypeFont, ImageFont.ImageFont]:
     fullname = get_full_path(name, file_type='font')
 
     if os.path.exists(fullname):
@@ -117,3 +121,30 @@ def load_map(name):
             return file.readlines()
 
     raise FileExistsError(f'Not Found: {fullname}')
+
+
+def load_material_preset(name: str, pack: str = None):
+    if pack:
+        fullname = get_full_path(pack, "presets", name, file_type='mat')
+    else:
+        fullname = get_full_path(name, "presets", file_type='mat')
+
+    if os.path.exists(fullname) and fullname.endswith(".json"):
+        with open(fullname, mode="r") as file:
+            return json.load(file)
+    else:
+        return None
+
+
+def load_material_texture(name: str, pack: str = None):
+    if pack:
+        fullname = get_full_path(pack, "textures", name, file_type='mat')
+    else:
+        fullname = get_full_path(name, "textures", file_type='mat')
+
+    if os.path.exists(fullname):
+        image = pg.image.load(fullname)
+        data = pg.image.tostring(image, 'RGBA')
+        return data, image.get_size()
+    else:
+        return None, ()

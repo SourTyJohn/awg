@@ -1,11 +1,12 @@
 from core.physic.physics import MainPhysicSpace, objects
 from user.KeyMapping import *
 from core.objects.gObjects import *
-from core.rendering.PyOGL import RenderUpdateGroup, camera, preRender,\
-    postRender, Shaders, drawGroupsFinally, LightingManager, RenderUpdateGroup_Instanced
+from core.rendering.PyOGL import camera, preRender, postRender,\
+    Shaders, drawGroupsFinally, LightingManager,\
+    RenderUpdateGroup_Instanced, RenderUpdateGroup_Materials, RenderUpdateGroup
 from core.rendering.PyOGL_line import renderAllLines
 from core.rendering.Particles import ParticleManager
-from core.rendering.TextRender import TextObject, DefaultFont
+# from core.rendering.TextRender import TextObject, DefaultFont
 from core.audio.PyOAL import AudioManagerSingleton
 
 import pygame
@@ -16,7 +17,7 @@ from beartype import beartype
 background_gr = RenderUpdateGroup(shader="BackgroundShader")    # BACKGROUND COLOR
 background_near_gr = RenderUpdateGroup()                        # BACKGROUND OBJECTS
 obstacles_gr = RenderUpdateGroup_Instanced()                    # DYNAMIC OBJECTS
-world_gr = RenderUpdateGroup_Instanced()                        # WORLD GEOMETRY
+world_gr = RenderUpdateGroup_Materials()                        # WORLD GEOMETRY
 character_gr = RenderUpdateGroup()                              # ANIMATED CHARACTERS
 gui_gr = RenderUpdateGroup()                                    # GUI
 
@@ -68,10 +69,10 @@ def update(dt):
 
     # PHYSIC AND UPDATE [!!! PHYSICS UPDATE FIXED AND NOT BASED ON FPS !!!]
     # TODO: JUST WARNING ^
-    updateGroups(dt)
+    dt = MainPhysicSpace.step(dt)
     LightingManager.update(dt)
-    MainPhysicSpace.step(dt)
     ParticleManager.update(dt)
+    updateGroups(dt)
 
     # SOUND
     AudioManagerSingleton.update_listener(hero.pos, hero.body.velocity)
@@ -147,11 +148,11 @@ def initScreen(hero_life=False, first_load=False):
     # #
     # # #
 
-    WorldRectangleRigid(world_gr, pos=[0, 500], size=[8192, 64])
-    WorldRectangleRigidTrue(world_gr, pos=[850, 500], size=[200, 200])
+    WorldRectangleRigid(world_gr, pos=[0, 500], size=[8192, 64], material=("r_pebble_grass_1", None))
+    WorldRectangleRigid(world_gr, pos=[850, 500], size=[200, 200], material=("r_magma_1", None))
 
-    """This VVV is a way to the bright future"""
-    WorldRectangleRigidTrue(world_gr, pos=[-400, 660], size=[512, 256])
+    # """This VVV is a way to the bright future"""
+    WorldRectangleRigidTrue(world_gr, pos=[-400, 660], size=[512, 256], material=("r_magma_1", None))
 
     for r in range(4):
         WoodenCrate(obstacles_gr, pos=[700, 800 + r*20])
@@ -163,12 +164,12 @@ def initScreen(hero_life=False, first_load=False):
     WoodenCrate(obstacles_gr, pos=[600, 800])
     WoodenCrate(obstacles_gr, pos=[650, 980])
 
-    WorldRectangleSensor(world_gr, (1300, 600), (2600, 900), layer=6)
+    # WorldRectangleSensor(world_gr, (1300, 600), (2600, 900), layer=6)
 
     _x = 0
     LightingManager.newSource("Light/light_round", 0, pos=(600 + _x * 20, 700), size=40.0, layer=1,
                               color="default", brightness=0.6)
-    LightingManager.newSource("Light/light_round", 0, pos=(800, 800), size=30.0, layer=1,
+    LightingManager.newSource("Light/light_round", 0, pos=(800, 500), size=30.0, layer=1,
                               color="default", brightness=0.6)
     LightingManager.newSource("Light/light_round", 0, pos=(1000, 800), size=30.0, layer=1,
                               color="default", brightness=0.6)

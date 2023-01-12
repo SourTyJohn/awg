@@ -1,8 +1,8 @@
 import pymunk
 from core.math.linear import degreesFromNormal
 from core.Constants import \
-    GRAVITY_VECTOR, BODY_TYPES, SLEEP_TIME_THRESHOLD
-from core.Typing import FLOAT32, TYPE_VEC
+    GRAVITY_VECTOR, BODY_TYPES, SLEEP_TIME_THRESHOLD, MAX_PHYSIC_STEP
+from core.Typing import TYPE_VEC
 inf = float('inf')
 from beartype import beartype
 from typing import List
@@ -62,7 +62,7 @@ class PhysicObject:
     Must define in subclasses, except WorldRectangle objects"""
 
     _mass: float = 1.0
-    _density: float = 1.0
+    _elasticity: float = 0.0  # 0 - no bounce 1 - perfect bounce
     _friction: float = 1.0
     """Physic body params.
     Can be changed in subclasses."""
@@ -83,18 +83,30 @@ class PhysicObject:
         cls = self.__class__
         points = (cls.points if points is None else points) if not radius else None
         shape_filter = cls.shape_filter if not shape_filter else shape_filter
-        mass = cls._mass if not mass else mass
+
         body_type = cls.body_type
+
+        material_properties = kwargs.get( "material_properties" )
+        if material_properties is not None:  # Support for materials
+            mass = material_properties["mass"]
+            elasticity = material_properties["elasticity"]
+            friction = material_properties["friction"]
+        else:  # Default (non-material way)
+            mass = cls._mass if not mass else mass
+            elasticity = cls._elasticity if "elasticity" not in kwargs.keys() else kwargs["elasticity"]
+            friction = cls._friction if "friction" not in kwargs.keys() else kwargs["friction"]
 
         # Pymunk things. Make Shape and Body
         if radius:  # Circle
             self.body = makeBodyCircle(pos, radius, body_type, mass)
-            self.shape = makeShapeCircle(self.body, radius,
-                                         cls._friction, shape_filter=shape_filter)
-        else:       # Polygon
+            self.shape = makeShapeCircle(
+                self.body, radius, friction, shape_filter=shape_filter, elasticity=elasticity
+            )
+        else:      # Polygon
             self.body = makeBodyPolygon(pos, points, body_type, mass)
-            self.shape = makeShapePolygon(self.body, points,
-                                          cls._friction, shape_filter=shape_filter)
+            self.shape = makeShapePolygon(
+                self.body, points, friction, shape_filter=shape_filter, elasticity=elasticity
+            )
 
         # Collision handler
         pass
@@ -211,9 +223,11 @@ class World:
     def add_joints(self, *joints):
         self.space.add(*joints)
 
-    def step(self, dt):
+    def step(self, dt: float):
+        dt = max( dt, MAX_PHYSIC_STEP )
         self.space.step(dt)
         self.update_triggers(dt)
+        return dt
 
     @staticmethod
     @beartype
@@ -251,11 +265,13 @@ def makeBodyCircle(pos, radius, body_type, mass=0.0, moment=0):
 
 
 # MAKE SHAPE
-def makeShapePolygon(body, points, friction=0.0, sensor=False, shape_filter=None):
+def makeShapePolygon(body, points, friction=0.0, sensor=False, shape_filter=None, elasticity=0):
     shape = pymunk.Poly(body, points)
+
     shape.friction = friction
     shape.sensor = sensor
     shape.collision_type = shape_filter.categories
+    shape.elasticity = elasticity
 
     if shape_filter:
         shape.filter = shape_filter
@@ -263,11 +279,12 @@ def makeShapePolygon(body, points, friction=0.0, sensor=False, shape_filter=None
     return shape
 
 
-def makeShapeCircle(body, radius, friction=0.0, sensor=False, shape_filter=None):
+def makeShapeCircle(body, radius, friction=0.0, sensor=False, shape_filter=None, elasticity=0):
     shape = pymunk.Circle(body, radius)
     shape.friction = friction
     shape.sensor = sensor
     shape.collision_type = shape_filter.categories
+    shape.density = elasticity
 
     if shape_filter:
         shape.filter = shape_filter

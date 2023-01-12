@@ -7,7 +7,7 @@ from core.physic.physics import triggers, reyCastFirst
 from pymunk import PinJoint
 from core.rendering.Textures import EssentialTextureStorage as Ets
 from core.Constants import *
-from core.Typing import FLOAT32
+from core.Typing import FLOAT32, TYPE_MATERIAL
 from core.audio.PyOAL import AudioManagerSingleton
 from core.objects.gItems import InventoryAndItemsManager
 from core.math.linear import projectedMovement, degreesFromNormal
@@ -19,8 +19,8 @@ import numpy as np
 
 
 # DROPPED ITEMS
-class DroppedItem(Composite):
-    class DIF(Static):
+class DroppedItem(RC_Composite):
+    class DIF(RC_Static):
         TEXTURES = [Ets['Item/item_frame'], ]
         texture = 0
         size = (72, 72)
@@ -32,7 +32,7 @@ class DroppedItem(Composite):
             ]
             super().__init__(None, pos, layer=4,)
 
-    class DI(Static):
+    class DI(RC_Static):
         TEXTURES = Ets
         __slots__ = ("item", "item_name")
 
@@ -68,15 +68,16 @@ class DroppedItem(Composite):
 
 
 # WORLD GEOMETRY
-class WorldRectangleRigid(ROPhysic, Static, PhysObject, Direct):
+class WorldRectangleRigid(RO_Physic, RC_Material, PhysObject, Direct):
     # This class represents base level geometry with rigid body
     shape_filter = shapeFilter('level', )
     body_type = 'static'
 
-    def __init__(self, gr, pos, size, texture='Devs/r_devs_1', shape_f=None, layer=4):
+    def __init__(self, gr, pos, size, material: TYPE_MATERIAL, shape_f=None, layer=4):
         # IMAGE
-        self.texture = texture
-        super().__init__(gr, pos, size, layer=layer)
+        self.initialize(*material)
+        super().__init__(gr, pos, (TILE_SIZE, TILE_SIZE), layer=layer, instanced=True)
+        self.scale = [ s / TILE_SIZE for s in size ]
 
         # PHYSIC
         points = rectPoints(*size)
@@ -88,16 +89,16 @@ class WorldRectangleRigid(ROPhysic, Static, PhysObject, Direct):
 class WorldRectangleRigidTrue:
     """Level Rectangle with no friction on side parts"""
 
-    def __init__(self, gr, pos, size, texture='Devs/r_devs_1', shape_f=None, layer=4):
+    def __init__(self, gr, pos, size, material: TYPE_MATERIAL, shape_f=None, layer=4):
         xp, yp = pos
         w, h = size
         main = WorldRectangleRigid(
             gr, pos=[xp, yp - 4], size=[w, h - 8],
-            texture=texture, shape_f=shape_f, layer=layer)
+            material=material, shape_f=shape_f, layer=layer)
         main.friction = 0.0
         top_ = WorldRectangleRigid(
             gr, pos=[xp, yp + h / 2 - 4], size=[w, 8],
-            texture=texture, shape_f=shape_f, layer=layer)
+            material=material, shape_f=shape_f, layer=layer)
         top_.visible = True
 
 
@@ -105,7 +106,7 @@ class WorldRectangleSensor(WorldRectangleRigid):
     shape_filter = shapeFilter('no_collision', collide_with=())
 
 
-class BackgroundColor(Direct, ROPlaced, Static):
+class BackgroundColor(Direct, RO_Placed, RC_Static):
     # BackgroundColor
     color: np.array = [0.35, 0.35, 0.5, 1.0]
     color2: np.array = [1.0, 0.35, 0.5, 1.0]
@@ -243,7 +244,7 @@ class Trigger(PhysObject):
 
 
 #
-class Character(ROPhysic, Static, PhysObject):
+class Character(RO_Physic, RC_Static, PhysObject):
     body_type = 'dynamic'
 
     MAX_JUMPS = 2
@@ -453,7 +454,7 @@ class MainHero(Character, Direct, Mortal):
         return True
 
 
-class WoodenCrate(ROPhysic, Static, PhysObject, Direct, Throwable, Mortal):
+class WoodenCrate(RO_Physic, RC_Static, PhysObject, Direct, Throwable, Mortal):
     body_type = 'dynamic'
     shape_filter = shapeFilter('obstacle', ignore=('enemy', 'particle'))
 

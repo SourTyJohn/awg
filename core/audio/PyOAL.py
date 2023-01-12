@@ -3,7 +3,7 @@ from os import listdir
 from utils.files import get_full_path
 from utils.debug import dprint
 from core.math.prandom import randf
-from core.Constants import MASTER_VOLUME, GAME_VOLUME, MUSIC_VOLUME, SOUND_PACK
+from core.Constants import STN_MASTER_VOLUME, STN_GAME_VOLUME, STN_MUSIC_VOLUME, STN_SOUND_PACK
 from pyogg import VorbisFile
 from os.path import join, splitext
 
@@ -55,7 +55,7 @@ class AudioManager:
                     stream.set_position(self.listener_position)
                     stream.update()
                 elif loop:
-                    gain = stream.gain / MUSIC_VOLUME
+                    gain = stream.gain / STN_MUSIC_VOLUME
                     self.set_stream(key, sound, loop, gain)
 
     def check_fade_for_stream(self, stream_key, stream, dt):
@@ -87,7 +87,7 @@ class AudioManager:
 
     def reset_listener(self):
         self.update_listener([0, 0, 0], [0, 0, 0])
-        alListenerf(AL_GAIN, MASTER_VOLUME)
+        alListenerf(AL_GAIN, STN_MASTER_VOLUME)
 
     # BUFFERS
     def load_sound(self, path: str, name: str):
@@ -114,7 +114,7 @@ class AudioManager:
         alSource3f(source, AL_POSITION, *pos3f)
         alSource3f(source, AL_VELOCITY, *vel3f)
         alSourcef(source, AL_PITCH, randf(*pitch))
-        alSourcef(source, AL_GAIN, volume * GAME_VOLUME)
+        alSourcef(source, AL_GAIN, volume * STN_GAME_VOLUME)
 
         alSourcei(source, AL_BUFFER, self.buffers[sound])
         alSourcePlay(source)
@@ -144,7 +144,7 @@ class AudioManager:
         if stream in self.streams.keys():
             stream_obj = oalStream(self.ambient_paths[sound])
             self.streams[stream] = [stream_obj, sound, looping]
-            volume = volume * MUSIC_VOLUME
+            volume = volume * STN_MUSIC_VOLUME
             stream_obj.set_position(self.listener_position)
             stream_obj.set_gain(volume)
             stream_obj.play()
@@ -191,4 +191,4 @@ def gamePosToSoundPos(pos):
 
 
 AudioManagerSingleton = AudioManager()
-loadSoundPack(SOUND_PACK)
+loadSoundPack(STN_SOUND_PACK)

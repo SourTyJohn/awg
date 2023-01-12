@@ -10,6 +10,7 @@ from core.Constants import *
 from core.Typing import *
 from core.rendering.Textures import GlTexture
 from core.rendering.Textures import EssentialTextureStorage as Ets
+from core.rendering.Materials import EssentialMaterialStorage as Ems
 
 from collections import namedtuple
 from beartype import beartype
@@ -122,12 +123,11 @@ camera: Camera
 # RENDER GROUP
 class RenderUpdateGroup:
     __slots__ = (
-        '_visible', 'objects', 'updatable', 'frame_buffer', 'shader', 'free_ids', 'depth_write'
+        '_visible', 'objects', 'updatable', 'frame_buffer', 'shader', 'depth_write'
     )
     """Container for in-game Objects"""
 
-    def __init__(self, shader="DefaultShader", frame_buffer=None, visible=True, depth_write=True):
-        self.frame_buffer = FB_Geometry if frame_buffer is None else frame_buffer
+    def __init__(self, shader="DefaultShader", visible=True, depth_write=True):
         self.objects: dict = {}
         self.updatable = {}
         self.depth_write = depth_write
@@ -207,9 +207,9 @@ class RenderUpdateGroup:
 
 
 class RenderUpdateGroup_Instanced(RenderUpdateGroup):
-    def __init__(self, shader="DefaultInstancedShader", frame_buffer=None, visible=True, depth_write=True):
+    def __init__(self, shader="DefaultInstancedShader", visible=True, depth_write=True):
         self.changed_vbo_lists = set()
-        super().__init__(shader, frame_buffer, visible, depth_write)
+        super().__init__(shader, visible, depth_write)
 
     @staticmethod
     def _get_object_key(obj):
@@ -255,6 +255,49 @@ class RenderUpdateGroup_Instanced(RenderUpdateGroup):
             glDrawElementsInstanced(GL_TRIANGLES, 6, GL_UNSIGNED_INT, None, objects_added)
 
 
+class RenderUpdateGroup_Materials(RenderUpdateGroup):
+    def __init__(self, shader="DefaultMaterialShader", visible=True, depth_write=True):
+        super().__init__(shader, visible, depth_write)
+
+    def add(self, *objs: [T_RENDER_OBJECT, ]):
+        """You can redefine how objects are added and how they are sorted
+        by changing _get_object_key and _add_one of child classes"""
+        for obj in objs:
+            uid = obj.UID
+            self.objects[uid] = obj
+            if hasattr(obj, "update"): self.updatable[uid] = obj
+
+    def draw_all(self, object_ids=None):
+        if not self.pre_draw(): return
+        Ems.bind()
+
+        Transform = []
+        Scales = []
+        Layers = []
+
+        obj = None
+        for uid, obj in self.objects.items():
+            Transform.append( obj.get_transform() )
+            Scales.append( obj.scale )
+            Layers.append( obj.tex_layer )
+
+        if not obj: return
+        obj_count = len(Transform)
+
+        Transform = np.asfortranarray(Transform, dtype=FLOAT32)
+        self.shader.passMat4V(f"Transform[0]", Transform)
+
+        Scales = np.asfortranarray(Scales, dtype=FLOAT32)
+        self.shader.passVec2fV(f"Scale[0]", Scales)
+
+        Layers = np.asfortranarray(Layers, dtype=FLOAT32)
+        self.shader.passUIntV(f"Layer[0]", Layers)
+
+        glBindBuffer(GL_ARRAY_BUFFER, obj.vbo)
+        self.shader.prepareDraw()
+        glDrawElementsInstanced(GL_TRIANGLES, 6, GL_UNSIGNED_INT, None, obj_count)
+
+
 # ANIMATION
 class Animation:
     frames: tuple = None
@@ -289,6 +332,7 @@ class AttackAnimation(Animation):
             pass
 
 
+# RENDER OBJECT
 class RenderObject:
     """Base render object.
     Provides possibility for drawing given texture: GLTexture within given rect: Rect4f
@@ -387,8 +431,7 @@ class RenderObject:
 
     @property
     def scale(self):  # Dynamic
-        yield self._scaleX
-        yield self._scaleY
+        return [self._scaleX, self._scaleY]
 
     @scale.setter
     def scale(self, value: Union[TYPE_VEC, list, tuple]):
@@ -478,6 +521,7 @@ class RenderObjectPhysic(RenderObject):
         )
 
 
+# RENDER COMPONENT
 class AnimatedRenderComponent:
     ANIMATIONS: [Animation, ] = None
     animation = 0
@@ -551,6 +595,19 @@ class StaticRenderComponent:
         return self._texture
 
 
+class MaterialRenderComponent:
+    _material: INT64
+
+    @property
+    def tex_layer(self):
+        return self._material
+
+    def initialize(self, material_texture, material_preset=None):
+        preset, self._material = Ems.get(material_preset, material_texture)
+        if preset and hasattr( self, "body" ):
+            pass
+
+
 class RenderObjectComposite:
     """Multiple GLObjects drawn, moved and rotated together.
     Little variant of GLObjectGroup"""
@@ -595,7 +652,7 @@ class FrameBuffer:
     shader: Shaders.Shader
 
     def __init__(self):
-        size = WINDOW_RESOLUTION
+        size = STN_WINDOW_RESOLUTION
 
         self.key = glGenFramebuffers(1)
         glBindFramebuffer(GL_FRAMEBUFFER, self.key)
@@ -646,7 +703,7 @@ class FrameBuffer:
 class FrameBufferDepth(FrameBuffer):
     def __init__(self):
         super(FrameBufferDepth, self).__init__()
-        size = WINDOW_RESOLUTION
+        size = STN_WINDOW_RESOLUTION
         self.bind()
 
         self.rbo = glGenTextures(1)
@@ -671,7 +728,7 @@ LightingManager: __LightingManager
 
 
 # DISPLAY
-def initDisplay(size=WINDOW_RESOLUTION):
+def initDisplay(size=STN_WINDOW_RESOLUTION):
     global camera, FB_Geometry, FB_Lighting, FIRST_EBO, LightingManager
 
     #  Display flags
