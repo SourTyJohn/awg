@@ -1,5 +1,5 @@
 #version 410
-#constant vec2 WINDOW_RESOLUTION
+#constant vec2 STN_WINDOW_RESOLUTION
 
 layout (points) in;
 layout (triangle_strip, max_vertices=4) out;
@@ -17,7 +17,7 @@ in VS_OUT {
 
 void main() {
     vec4 pos1 = gl_in[0].gl_Position;
-    vec2 size = gs_in[0].Size / WINDOW_RESOLUTION;
+    vec2 size = gs_in[0].Size / STN_WINDOW_RESOLUTION;
     FragColor = gs_in[0].Color;
 
         gl_Position = pos1 + vec4(0, size.y, 0, 0); EmitVertex();

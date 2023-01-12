@@ -1,11 +1,12 @@
 from core.physic.physics import MainPhysicSpace, objects
 from user.KeyMapping import *
 from core.objects.gObjects import *
-from core.rendering.PyOGL import RenderUpdateGroup, camera, preRender,\
-    postRender, Shaders, drawGroupsFinally, LightingManager, RenderUpdateGroup_Instanced
+from core.rendering.PyOGL import camera, preRender, postRender,\
+    Shaders, drawGroupsFinally, LightingManager,\
+    RenderUpdateGroup_Instanced, RenderUpdateGroup_Materials, RenderUpdateGroup
 from core.rendering.PyOGL_line import renderAllLines
 from core.rendering.Particles import ParticleManager
-from core.rendering.TextRender import TextObject, DefaultFont
+# from core.rendering.TextRender import TextObject, DefaultFont
 from core.audio.PyOAL import AudioManagerSingleton
 
 import pygame
@@ -13,13 +14,12 @@ from beartype import beartype
 
 
 # GROUPS
-background_gr = RenderUpdateGroup(shader="BackgroundShader")  # BACKGROUND COLOR
-background_near_gr = RenderUpdateGroup()    # BACKGROUND OBJECTS
-obstacles_gr = RenderUpdateGroup_Instanced()       # DYNAMIC OBJECTS
-world_gr = RenderUpdateGroup()              # WORLD GEOMETRY
-items_gr = RenderUpdateGroup()             # ITEMS
-character_gr = RenderUpdateGroup()          # ANIMATED CHARACTERS
-gui_gr = RenderUpdateGroup()                # GUI
+background_gr = RenderUpdateGroup(shader="BackgroundShader")    # BACKGROUND COLOR
+background_near_gr = RenderUpdateGroup()                        # BACKGROUND OBJECTS
+obstacles_gr = RenderUpdateGroup_Instanced()                    # DYNAMIC OBJECTS
+world_gr = RenderUpdateGroup_Materials()                        # WORLD GEOMETRY
+character_gr = RenderUpdateGroup()                              # ANIMATED CHARACTERS
+gui_gr = RenderUpdateGroup()                                    # GUI
 
 
 hero_inited = False
@@ -57,7 +57,6 @@ def drawGroups(object_ids: tuple = ()):
         world_gr,
         background_near_gr,
         background_gr,
-        items_gr,
         gui_gr
     )
 
@@ -70,10 +69,10 @@ def update(dt):
 
     # PHYSIC AND UPDATE [!!! PHYSICS UPDATE FIXED AND NOT BASED ON FPS !!!]
     # TODO: JUST WARNING ^
-    updateGroups(dt)
+    dt = MainPhysicSpace.step(dt)
     LightingManager.update(dt)
-    MainPhysicSpace.step(dt)
     ParticleManager.update(dt)
+    updateGroups(dt)
 
     # SOUND
     AudioManagerSingleton.update_listener(hero.pos, hero.body.velocity)
@@ -96,27 +95,10 @@ def userInput():
 
             elif key == pygame.K_q:
                 summon('WoodenCrate', obstacles_gr, hero.pos)
-                # addLight(hero.pos, 12, 'round_smooth')
 
             elif key == pygame.K_p:
-                # ParticleManager.create_simple(0, hero.pos, (10, 24), (600, 1200), (1.0, 2.0),
-                #                        (1.0, 1.0, 0.0, 1.0), (10, 24), None, angle=(80, 100), gravity=1000.0)
-                # ParticleManager.create_physic(0, hero.pos, (10, 24), (600, 1200), (2.0, 8.0),
-                #                                    (1.0, 0, 0, 1.0), (10, 24), None, delete_on_hit=False,
-                #                                    elasticity=0.3)
-                pos = hero.pos + Vec2d(250, 0)
-                LightingManager.newSource_explosion(0, pos, 16, 1.0, 0.1, color=(0.3, 0.1, 0.1))
-                ParticleManager.create_physic_light(
-                    0, pos, (30, 60), (700, 1200),
-                    (0.5, 1.5),
-                    (0.6, 0.4, 0.0, 1.0),
-                    (4, 6), None,
-                    light_params=(0, pos, 0.5, 1, (0.3, 0.15, 0.1), 0.3),
-                    elasticity=0.4,
-                    angles=(30, 150)
-                )
-                ParticleManager.create_simple(0, pos, (24, 24), (80, 240), (1.5, 3.0), (0.1, 0.1, 0.1, 1.0),
-                                              (12, 16), None, angles=(80, 100))
+                LightingManager.newSource("Light/light_round", 0, pos=hero.pos, size=10.0, layer=1,
+                                          color="default", brightness=0.6)
 
             elif key == K_GRAB:
                 hero.grab_nearest_put(objects)
@@ -156,7 +138,6 @@ def updateGroups(dt: float):
     # updating all GLSprite groups
     character_gr.update(dt)
     obstacles_gr.update(dt)
-    items_gr.update(dt)
 
 
 def initScreen(hero_life=False, first_load=False):
@@ -167,11 +148,11 @@ def initScreen(hero_life=False, first_load=False):
     # #
     # # #
 
-    WorldRectangleRigid(world_gr, pos=[0, 500], size=[8192, 64])
-    WorldRectangleRigidTrue(world_gr, pos=[850, 500], size=[200, 200])
+    WorldRectangleRigid(world_gr, pos=[0, 500], size=[8192, 64], material=("r_pebble_grass_1", None))
+    WorldRectangleRigid(world_gr, pos=[850, 500], size=[200, 200], material=("r_magma_1", None))
 
-    """This VVV is a way to the bright future"""
-    WorldRectangleRigidTrue(world_gr, pos=[-400, 660], size=[512, 256])
+    # """This VVV is a way to the bright future"""
+    WorldRectangleRigidTrue(world_gr, pos=[-400, 660], size=[512, 256], material=("r_magma_1", None))
 
     for r in range(4):
         WoodenCrate(obstacles_gr, pos=[700, 800 + r*20])
@@ -183,15 +164,15 @@ def initScreen(hero_life=False, first_load=False):
     WoodenCrate(obstacles_gr, pos=[600, 800])
     WoodenCrate(obstacles_gr, pos=[650, 980])
 
-    WorldRectangleSensor(background_near_gr, (1300, 600), (2600, 900), layer=6)
+    # WorldRectangleSensor(world_gr, (1300, 600), (2600, 900), layer=6)
 
     _x = 0
     LightingManager.newSource("Light/light_round", 0, pos=(600 + _x * 20, 700), size=40.0, layer=1,
-                              color=(0.1, 0.1, 0.1), brightness=0.6)
-    LightingManager.newSource("Light/light_round", 0, pos=(800, 800), size=30.0, layer=1,
-                              color=(0.1, 0.1, 0.1), brightness=0.6)
+                              color="default", brightness=0.6)
+    LightingManager.newSource("Light/light_round", 0, pos=(800, 500), size=30.0, layer=1,
+                              color="default", brightness=0.6)
     LightingManager.newSource("Light/light_round", 0, pos=(1000, 800), size=30.0, layer=1,
-                              color=(0.1, 0.1, 0.1), brightness=0.6)
+                              color="default", brightness=0.6)
 
     # LightingManager.newSource(0, (800, 700), 9, 1, color=(0.1, 0.1, 0.1), brightness=1.0)
     # LightingManager.newSource(0, (600, 900), 9, 1, color=(0.1, 0.1, 0.1), brightness=1.0)
@@ -225,7 +206,6 @@ def close():
     obstacles_gr.delete_all()
     character_gr.delete_all()
     gui_gr.delete_all()
-    items_gr.delete_all()
 
     # Delete physic bodies
     MainPhysicSpace.clear()

@@ -5,9 +5,9 @@
     Metroidvania (side-view adventure)
     Yet another awg, but this time with no mistakes, that were in previous games
     
-    Graphic engine: OpenGL 3.2+ (PyOpenGL), glsl shaders 4.6
+    Graphic engine: OpenGL 4.0+ (PyOpenGL), glsl shaders 400
     Sound engine: OpenAL (PyOpenAL)
-    Physic engine: PyMunk
+    Physic engine: Chipmunk (Pymunk)
     
     
     FILES
@@ -23,4 +23,4 @@
     
     VERSION
     
-    version: 0.21
+    version: 0.29

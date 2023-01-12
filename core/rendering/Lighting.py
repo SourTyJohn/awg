@@ -1,4 +1,5 @@
-from core.Constants import FLOAT32, MAX_LIGHT_SOURCES, INT64, MAX_TEXTURES_BIND
+from core.Constants import MAX_LIGHT_SOURCES, MAX_TEXTURES_BIND
+from core.Typing import FLOAT32, INT64
 from core.math.linear import FullTransformMat
 from core.rendering.PyOGL_utils import zFromLayer, bufferize, drawDataLightSource
 from core.rendering.Shaders import shaders
@@ -10,7 +11,8 @@ from beartype import beartype
 
 
 LIGHT_COLOR_PRESETS = {
-    'fire': (1.0, 0.3, 0.0)
+    'fire': (1.0, 0.3, 0.0),
+    'default': (1.0, 1.0, 1.0)
 }
 
 __all__ = [

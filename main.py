@@ -1,9 +1,10 @@
-from core.Constants import FPS_LOCK, TITLE, FPS_SHOW, WINDOW_RESOLUTION
+from core.Constants import FPS_LOCK, TITLE, FPS_SHOW, STN_WINDOW_RESOLUTION
 import pygame as pg
 from core.rendering.PyOGL import initDisplay
 from core.audio.PyOAL import AudioManagerSingleton
 from core.rendering.TextRender import loadText
 from core.rendering.Textures import loadTextures
+from core.rendering.Materials import loadMaterials
 
 from cProfile import Profile
 Profile = Profile()
@@ -13,9 +14,10 @@ clock: pg.time.Clock
 
 
 def _main():
-    initDisplay(WINDOW_RESOLUTION)
+    initDisplay(STN_WINDOW_RESOLUTION)
     loadText()
     loadTextures()
+    loadMaterials()
 
     global clock
 

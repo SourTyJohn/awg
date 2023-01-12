@@ -1,0 +1,20 @@
+{
+    "physic": {
+        "mass": 20,
+        "friction": 1.0,
+        "elasticity": 0.001
+    },
+
+    "behavior": {
+        "on_hit": {
+            "sound": null,
+            "func": null
+        },
+        "on_step": {
+            "sound": null,
+            "func": null
+        }
+    },
+
+    "transparent": false
+}

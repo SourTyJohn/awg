@@ -1,10 +1,12 @@
 {
+	"Texture Pack": "base_pack",
+	"Sound Pack": "base_pack",
+	"Material Pack": "base_pack",
+
 	"Brightness": 0.9,
-	"Texture Pack": "b_past",
 	"Resolution": "16x10FHD",
 	"Window Mode": "full screen",
 
-	"Sound Pack": "base_pack",
 	"Master Volume": 0.6,
 	"Music Volume": 1.0,
 	"Game Volume": 1.0,

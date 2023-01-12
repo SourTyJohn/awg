@@ -1,9 +1,10 @@
 from pymunk import ShapeFilter, Shape
 from core.physic.physics import PhysicObject, Body
 from core.rendering.PyOGL import \
-    AnimatedRenderComponent, StaticRenderComponent, RenderObjectComposite, RenderObjectPhysic, RenderObjectPlaced
+    AnimatedRenderComponent, StaticRenderComponent, RenderObjectComposite,\
+    RenderObjectPhysic, RenderObjectPlaced, MaterialRenderComponent
 from core.rendering.PyOGL_line import drawLine
-from core.Constants import FLOAT32, TYPE_FLOAT, INT64, TYPE_INT, INF, TYPE_VEC, TYPE_NUM
+from core.Typing import FLOAT32, TYPE_FLOAT, INT64, TYPE_INT, INF, TYPE_VEC, TYPE_NUM
 
 from typing import Tuple
 import dataclasses as dtc
@@ -23,13 +24,15 @@ __all__ = [
     'posFromLeftBottomPoint',
     'drawLine',
 
-    'Animated',
-    'Static',
+    'RC_Animated',
+    'RC_Static',
+    'RC_Composite',
+    'RC_Material',
+
     'PhysObject',
 
-    'Composite',
-    'ROPlaced',
-    'ROPhysic',
+    'RO_Placed',
+    'RO_Physic',
 
     'Direct',
     'Mortal',
@@ -335,12 +338,15 @@ class Projectile(PhysicObject):
         cls.__init__()
 
 
-Animated = AnimatedRenderComponent
-Static = StaticRenderComponent
-Composite = RenderObjectComposite
+#  RENDER COMPONENTS
+RC_Animated = AnimatedRenderComponent
+RC_Static = StaticRenderComponent
+RC_Composite = RenderObjectComposite
+RC_Material = MaterialRenderComponent
 
-ROPlaced = RenderObjectPlaced
-ROPhysic = RenderObjectPhysic
+#  RENDER OBJECTS
+RO_Placed = RenderObjectPlaced
+RO_Physic = RenderObjectPhysic  # requires PhysObject
 
 PhysObject = PhysicObject
 Direct = InGameObject

@@ -22,7 +22,7 @@ def loadTexturePack(_name):
 
         for tex in textures:
             if not tex.endswith(".png"): continue
-            t = GlTexture.load_file(f'{dr}/{tex}', (tex[0] == 'r'))
+            t = GlTexture.load_file(f'{dr}/{tex}')
             pack.append(t)
 
     dprint(f'-- Done.\n')
@@ -39,7 +39,7 @@ class TextureStorage:
             return self.textures[item]
 
         if not self.error_tex:
-            self.error_tex = GlTexture.load_file('Devs/r_error.png', repeat=True)
+            self.error_tex = GlTexture.load_file('Devs/r_error.png')
         return self.error_tex
 
     def __repr__(self):
@@ -59,34 +59,30 @@ class TextureStorage:
 
 
 class GlTexture:
-    __slots__ = ('size', 'key', 'repeat', 'name', 'normals')
+    __slots__ = ('size', 'key', 'name', 'normals')
 
-    def __init__(self, data: np.ndarray, size, tex_name, repeat):
+    def __init__(self, data: np.ndarray, size, tex_name):
         self.size = size  # units
-        self.key = makeGLTexture(data, *self.size, repeat=repeat)
-        self.repeat = repeat
+        self.key = makeGLTexture(data, *self.size)
         self.name = tex_name.replace('.png', '')
-
-        # DEBUG
-        if DEBUG:
-            print(self)
+        dprint( self )
 
     def __repr__(self):
         return f'<GLTexture[{self.key}] \t size: {self.size[0]}x{self.size[1]}px. \t name: "{self.name}">'
 
     @classmethod
-    def load_file(cls, image_name, repeat):
-        data, size = load_image(image_name, TEXTURE_PACK)
+    def load_file(cls, image_name):
+        data, size = load_image(image_name, STN_TEXTURE_PACK)
 
         if data is None:
             print(f'texture: {image_name} error. Not loaded')
-        return GlTexture(data, size, image_name, repeat)
+        return GlTexture(data, size, image_name)
 
     @classmethod
-    def load_image(cls, image_name, image, repeat):
+    def load_image(cls, image_name, image):
         data = np.fromstring(image.tobytes(), np.uint8)
         size = image.size
-        return GlTexture(data, size, image_name, repeat)
+        return GlTexture(data, size, image_name)
 
     def make_draw_data(self, layer, colors=None):
         """Make drawTexture data with size of this texture
@@ -109,5 +105,5 @@ DynamicTextureStorage = TextureStorage()
 
 
 def loadTextures():
-    pack = loadTexturePack(TEXTURE_PACK)
+    pack = loadTexturePack(STN_TEXTURE_PACK)
     EssentialTextureStorage.load(pack)

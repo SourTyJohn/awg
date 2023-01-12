@@ -1,4 +1,5 @@
-from core.Constants import FLOAT32, LIGHT_POWER_UNIT
+from core.Constants import LIGHT_POWER_UNIT
+from core.Typing import FLOAT32
 from typing import Union, List, Tuple
 
 from OpenGL.GL import *
@@ -15,7 +16,7 @@ __all__ = [
 ]
 
 
-def makeGLTexture(image_data: np.ndarray, w: int, h: int, repeat) -> int:
+def makeGLTexture(image_data: np.ndarray, w: int, h: int) -> int:
     """Loading pygame.Surface as OpenGL texture
     :return New Texture key"""
 
@@ -25,9 +26,8 @@ def makeGLTexture(image_data: np.ndarray, w: int, h: int, repeat) -> int:
     key = glGenTextures(1)
     glBindTexture(GL_TEXTURE_2D, key)
 
-    if repeat:
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_BORDER)
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER)
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_BORDER)
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER)
 
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST)  # настройка сжатия
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST)  # настройка растяжения

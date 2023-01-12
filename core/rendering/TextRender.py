@@ -1,5 +1,5 @@
 from utils.files import load_font, load_text_localization
-from core.Constants import FONT_SETTINGS, LANGUAGE
+from core.Constants import FONT_SETTINGS, STN_LANGUAGE
 from core.rendering.PyOGL import StaticRenderComponent, bufferize, drawData
 from core.rendering.Textures import GlTexture, EssentialTextureStorage
 
@@ -54,7 +54,7 @@ LocalizedTextsStorage = {}
 
 def loadText():
     global LocalizedTextsStorage
-    lts = load_text_localization(key=LANGUAGE)
+    lts = load_text_localization(key=STN_LANGUAGE)
     LocalizedTextsStorage = {f'txt_{key}': lts[key] for key in lts.keys()}
 
     buttons_text = [
@@ -117,7 +117,7 @@ class GlText(GlTexture):
         draw.text((0, 0), text, fill=(0, 0, 0, 255), font=font)
         image = image.crop(image.getbbox())
         data = np.fromstring(image.tobytes(), np.uint8)
-        super().__init__(data, image.size, tex_name=name, repeat=False)
+        super().__init__(data, image.size, tex_name=name)
 
 
 TextTextures = {}
