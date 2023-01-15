@@ -604,8 +604,7 @@ class MaterialRenderComponent:
 
     def initialize(self, material_texture, material_preset=None):
         preset, self._material = Ems.get(material_preset, material_texture)
-        if preset and hasattr( self, "body" ):
-            pass
+        return preset
 
 
 class RenderObjectComposite:

@@ -1,3 +1,5 @@
+import pymunk
+
 from core.rendering.PyOGL import bindEBO, LightingManager
 from core.rendering.Shaders import shaders
 from core.Constants import MAX_PARTICLES
@@ -112,7 +114,7 @@ class PhysicParticle:
         ]).flatten()
 
     def delete(self) -> None:
-        MainPhysicSpace.simple_delete(self.body, self.shape)
+        MainPhysicSpace.delete_query(self.body, self.shape)
 
 
 class PhysicLightedParticle(PhysicParticle):
@@ -146,7 +148,7 @@ class __ParticleManager:
     
     Physic Particle: [
         body:       pymunk.Body,
-        shape:      pymunk.Shape (Circle),
+        shapes:      pymunk.Shape (Circle),
         curr_time:  float,
         start_time: float,
         base_color: np.ndarray[4],
@@ -279,12 +281,12 @@ class __ParticleManager:
             sx = rd(*size_x)
             sy = rd(*size_y) if size_y else sx
 
-            body = makeBodyCircle(pos, 2, 'dynamic', mass=1.0)
-            shape = makeShapeCircle(body, 4, friction=0,
+            body = makeBodyCircle(pos, 2, 'dynamic', mass=1)
+            shape = makeShapeCircle(body, 4, mass=1.0, friction=0,
                                     shape_filter=shapeFilter('particle', collide_with=collide_with))
             body.velocity = vel
             shape.elasticity = elasticity
-            MainPhysicSpace.simple_add(body, shape)
+            MainPhysicSpace.add_query(body, shape)
 
             self.particles[ptype][idd] = PhysicParticle(
                 idd,
@@ -335,7 +337,7 @@ class __ParticleManager:
                                     shape_filter=shapeFilter('particle', collide_with=collide_with))
             body.velocity = vel
             shape.elasticity = elasticity
-            MainPhysicSpace.simple_add(body, shape)
+            MainPhysicSpace.add_query(body, shape)
 
             self.particles[ptype][idd] = PhysicLightedParticle(
                 idd,
@@ -357,7 +359,7 @@ class __ParticleManager:
             return self.free_ids.pop()
         return self.particles[shape].popitem()[0]
 
-    def delete_physic_particle(self, shape, space):
+    def delete_physic_particle(self, shape, space: pymunk.Space):
         key = shape.idd
         ptype = shape.ptype
 

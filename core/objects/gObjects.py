@@ -1,6 +1,7 @@
 """
 THIS MODUlE CONTAINS ALL GAME OBJECTS THAT CAN BE USED IN GAME (screens.game)
 """
+import pymunk
 
 from core.objects.gObjectTools import *
 from core.physic.physics import triggers, reyCastFirst
@@ -71,19 +72,24 @@ class DroppedItem(RC_Composite):
 class WorldRectangleRigid(RO_Physic, RC_Material, PhysObject, Direct):
     # This class represents base level geometry with rigid body
     shape_filter = shapeFilter('level', )
-    body_type = 'static'
 
     def __init__(self, gr, pos, size, material: TYPE_MATERIAL, shape_f=None, layer=4):
         # IMAGE
-        self.initialize(*material)
+        mat_properties = self.initialize(*material)
         super().__init__(gr, pos, (TILE_SIZE, TILE_SIZE), layer=layer, instanced=True)
         self.scale = [ s / TILE_SIZE for s in size ]
 
         # PHYSIC
-        points = rectPoints(*size)
-        PhysObject.__init__(self, pos, points=points)
-        if shape_f:
-            self.shape.filter = shape_f
+        shape_f = self.__class__.shape_filter if shape_f is None else shape_f
+
+        shapes = [ {"points": rectPoints(*size), "mass": 0, "shape_filter": shape_f}, ]
+        if mat_properties:
+            for key, value in mat_properties:
+                shapes[0][key] = value
+
+        body_type = "static"
+
+        PhysObject.__init__(self, pos, body_type, shapes)
 
 
 class WorldRectangleRigidTrue:
@@ -95,11 +101,11 @@ class WorldRectangleRigidTrue:
         main = WorldRectangleRigid(
             gr, pos=[xp, yp - 4], size=[w, h - 8],
             material=material, shape_f=shape_f, layer=layer)
-        main.friction = 0.0
+        main.body_friction = 0.0
         top_ = WorldRectangleRigid(
             gr, pos=[xp, yp + h / 2 - 4], size=[w, 8],
             material=material, shape_f=shape_f, layer=layer)
-        top_.visible = True
+        top_.visible = False
 
 
 class WorldRectangleSensor(WorldRectangleRigid):
@@ -137,9 +143,6 @@ class BackgroundColor(Direct, RO_Placed, RC_Static):
 
 # TRIGGERS
 class Trigger(PhysObject):
-    shape_filter = shapeFilter('trigger', )
-    body_type = 'kinematic'
-
     """Area that will call given function if something intersects it and/or leaves it"""
     __slots__ = (
         'function_enter', 'function_leave', 'categories', 'triggers_by',
@@ -148,8 +151,8 @@ class Trigger(PhysObject):
 
     def __init__(self, function_enter, categories, function_leave=None, triggers_by=(), ignore=(),
                  pos=(0, 0), bound_to=None, offset=(0, 0), size=None):
-        super().__init__(pos, points=rectPoints(*size), )
-        self.shape.sensor = True
+        shapes = [ {"points": rectPoints(*size), "sensor": True, "shape_filter": shapeFilter('trigger', ), "mass":0}]
+        super().__init__(pos, 'kinematic', shapes)
 
         """Trigger requires one of provided args: pos, bounded_to.
         If pos, than Trigger static in given position==pos
@@ -217,11 +220,11 @@ class Trigger(PhysObject):
         self.body.pos = self.bound_to.body.pos + self.offset
 
     # ---
-    def enter(self, actor, key, arbiter):
+    def enter(self, actor, key, arbiter: pymunk.Arbiter):
         if actor is self.bound_to or actor in self.ignore:
             return
 
-        if actor.shape.collision_type not in self.categories:
+        if arbiter.shapes[0].collision_type not in self.categories:
             return
 
         if self.triggers_by:
@@ -261,9 +264,9 @@ class Character(RO_Physic, RC_Static, PhysObject):
 
     __previous_pos: np.array
 
-    def __init__(self, group, pos, *args, **kwargs):
-        super().__init__(group, pos, *args, **kwargs)
-        PhysObject.__init__(self, pos, )
+    def __init__(self, group, pos, size, shapes, *args, **kwargs):
+        super().__init__(group, pos, size, *args, **kwargs)
+        PhysObject.__init__(self, pos, 'dynamic', shapes, **kwargs)
 
         # Walking, Running
         self.walk_direction = 0  # may be -1 - move to  the left, 0 - standing, 1 - move to the right
@@ -300,7 +303,7 @@ class Character(RO_Physic, RC_Static, PhysObject):
 
         #
         if not self.on_ground:
-            self.shape.friction = 0.0
+            self.body_friction = 0.0
             self.in_air += dt
 
         go = self.grabbed_object
@@ -317,17 +320,19 @@ class Character(RO_Physic, RC_Static, PhysObject):
     def walk(self, dt):
         direction = self.walk_direction
         if not (direction and self.can_move):
-            self.friction = self._friction
+            self.body_friction = self._friction
             return
 
-        end_for_rey = self.pos - Vec2d(0, self.size[1])
+        # TODO CALCULATE 144
+        end_for_rey = self.pos - Vec2d(0, 144)
+
         arbiter = reyCastFirst(self.pos, end_for_rey, self.shape_filter)
         normal = arbiter.normal if arbiter else Vec2d(0, 1 * direction)
         vec = self.walking_vec * direction * dt
         vecFinal = projectedMovement(vec, normal, 1.0 - (self.in_air > self.IN_AIR_MOVE) * 0.3)
 
         if self.velocity[0] * direction >= 0:
-            self.friction = 0.0
+            self.body_friction = 0.0
 
         body = self.body
         body.apply_force_at_local_point(vecFinal, body.center_of_gravity)
@@ -397,18 +402,13 @@ class Character(RO_Physic, RC_Static, PhysObject):
 # vvv DEFINE YOUR CLASSES HERE vvv #
 
 class MainHero(Character, Direct, Mortal):
-    # RENDER
-    size = (64, 144)
-
     # PHYSIC
-    shape_filter = shapeFilter('player', ignore=('player', 'particle', 'bg_obstacle'))
-    points = rectPoints(*size)
-    _friction = 2
-    _mass = 100.0
+    DEFAULT_FRICTION = 2
+    DEFAULT_MASS = 2
 
     # character
     JUMP_VECTOR = Vec2d(0, 700)
-    WALKING_VEC = Vec2d(100_000 * _mass, 0)
+    WALKING_VEC = Vec2d(100_000 * DEFAULT_MASS, 0)
     MAX_WALKING_SPEED = 800
 
     # unique
@@ -419,9 +419,21 @@ class MainHero(Character, Direct, Mortal):
     lethal_fall_velocity = 256
 
     def __init__(self, gr, pos, layer=4):
+        SIZE = (64, 144)
+
         self.texture = 'LevelOne/r_pebble_grass_1'
+
+        shapes = [
+            {
+                "shape_filter": shapeFilter('player', ignore=('player', 'particle', 'bg_obstacle')),
+                "points": rectPoints(*SIZE),
+                "mass": MainHero.DEFAULT_MASS,
+                "friction": MainHero.DEFAULT_FRICTION
+            }
+        ]
+
         cls = self.__class__
-        Character.__init__(self, gr, pos, cls.size, layer=layer)
+        Character.__init__(self, gr, pos, SIZE, shapes, layer=layer)
         self.init_Mortal(cls, [cls.max_health, ] * 2)
         self.tracer = Tracer(self, 0.17, 10)
 
@@ -446,7 +458,7 @@ class MainHero(Character, Direct, Mortal):
             # Particles when landing
             if arbiter.total_impulse.length > self.mass * 1000:
                 angles = (10, 30, 150, 170)
-                pos = Vec2d( self.pos[0], self.pos[1] - self.size[1] / 2 + 16 )
+                pos = Vec2d( self.pos[0], self.pos[1] - self.get_bb(0).bottom / 2 + 16 )
 
                 ParticleManager.create_physic(
                     0, pos, (16, 24), (200, 600), (1.0, 3.0),
@@ -455,27 +467,27 @@ class MainHero(Character, Direct, Mortal):
 
 
 class WoodenCrate(RO_Physic, RC_Static, PhysObject, Direct, Throwable, Mortal):
-    body_type = 'dynamic'
-    shape_filter = shapeFilter('obstacle', ignore=('enemy', 'particle'))
-
-    # static
-    size = (72, 72)
-    points = rectPoints(*size)
-
-    # dynamic
-    _mass = 40.0
-
-    # mortal
-    max_health = 10
-    lethal_fall_velocity = 64
-
     def __init__(self, gr, pos, texture='LevelOne/crate'):
+        SIZE = (86, 86)
+
         self.texture = texture
+        self.max_health = 10
+        self.lethal_fall_velocity = 64
+
+        super().__init__(gr, pos, size=SIZE, instanced=True)
+
+        shapes = [
+            {
+                "mass": 40,
+                "points": rectPoints(*SIZE),
+                "shape_filter": shapeFilter('obstacle', ignore=('enemy', 'particle'))
+            }
+        ]
+
         cls = self.__class__
-        super().__init__(gr, pos, size=cls.size, instanced=True)
-        PhysObject.__init__(self, pos)
+        PhysObject.__init__(self, pos, 'dynamic', shapes)
         self.init_Throwable(cls)
-        self.init_Mortal(cls, [cls.max_health, ] * 2)
+        self.init_Mortal(cls, [self.max_health, ] * 2)
 
     def post_collision_handle(self, arbiter, space):
         if arbiter.is_first_contact:

@@ -78,7 +78,7 @@ class BlankObject:
 
 
 def objectFromShape(arbiter: pymunk.Arbiter, i=0):
-    # Get physic object by its shape from pymunk.Arbiter
+    # Get physic object by its shapes from pymunk.Arbiter
     # len(Arbiter.shapes) == 2. i must be 0 or 1
     key = arbiter.shapes[i].body.get_hash_key
     if key not in objects.keys():
