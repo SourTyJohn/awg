@@ -1,10 +1,10 @@
-from pymunk import ShapeFilter, Shape
+from pymunk import ShapeFilter
 from core.physic.physics import PhysicObject, Body
 from core.rendering.PyOGL import \
     AnimatedRenderComponent, StaticRenderComponent, RenderObjectComposite,\
     RenderObjectPhysic, RenderObjectPlaced, MaterialRenderComponent
 from core.rendering.PyOGL_line import drawLine
-from core.Typing import FLOAT32, TYPE_FLOAT, INT64, TYPE_INT, INF, TYPE_VEC, TYPE_NUM
+from core.Typing import FLOAT32, TYPE_FLOAT, INT64, TYPE_INT, INF, TYPE_NUM
 
 from typing import Tuple
 import dataclasses as dtc
@@ -30,6 +30,7 @@ __all__ = [
     'RC_Material',
 
     'PhysObject',
+    'PhysThrowable',
 
     'RO_Placed',
     'RO_Physic',
@@ -37,7 +38,7 @@ __all__ = [
     'Direct',
     'Mortal',
     'Tracer',
-    'Throwable'
+    'PhysicObjectThrowable'
 ]
 
 
@@ -206,30 +207,19 @@ class Mortal:
         deleteObject(self)
 
 
-class Throwable:
+class PhysicObjectThrowable(PhysicObject):
     """Additional interface to objects, that can be picked up and thrown
     You can add this only to classes with PhysicObject interface"""
 
     # own
-    __Throwable_default_shapeFilter: ShapeFilter
     __Throwable_default_moment: Body.moment
     __Throwable_is_thrown: bool
     __Throwable_time_since_throw: float
 
-    # physic object
-    body: Body
-    shape: Shape
-    pos: TYPE_VEC
+    def __init__(self, body, shape):
+        super(PhysicObjectThrowable, self).__init__(body, shape)
 
-    @property
-    def shape_filter(self):
-        """Call this from PhysicObject"""
-        return ShapeFilter
-
-    def init_Throwable(self, cls):
-        self.__Throwable_default_shapeFilter = cls.shape_filter
         self.__Throwable_default_moment = self.body.moment
-
         self.__Throwable_time_since_throw = 0.0
         self.__Throwable_is_thrown = False
 
@@ -257,7 +247,7 @@ class Throwable:
         body = self.body
         body.moment = self.__Throwable_default_moment
         body.velocity = by.body.velocity
-        self.shape.filter = self.__Throwable_default_shapeFilter
+        self.shape_filter = self.physic_data["shape_filter"]
 
 
 @dtc.dataclass
@@ -349,4 +339,5 @@ RO_Placed = RenderObjectPlaced
 RO_Physic = RenderObjectPhysic  # requires PhysObject
 
 PhysObject = PhysicObject
+PhysThrowable = PhysicObjectThrowable
 Direct = InGameObject

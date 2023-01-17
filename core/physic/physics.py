@@ -1,11 +1,14 @@
 import pymunk
+from pymunk import Vec2d
+
 from core.math.linear import degreesFromNormal
 from core.Constants import \
     GRAVITY_VECTOR, BODY_TYPES, SLEEP_TIME_THRESHOLD, MAX_PHYSIC_STEP
-from core.Typing import TYPE_VEC
+from core.Typing import TYPE_VEC, FLOAT32, List, PhysicProperties, TYPE_NUM
 inf = float('inf')
 from beartype import beartype
-from typing import List
+
+from pymunk.shapes import cp
 
 
 objects = {}
@@ -30,29 +33,29 @@ class Body(pymunk.Body):
 
     @property
     def pos(self):
-        return self._get_position()
+        v = cp.cpBodyGetPosition(self._body)
+        return Vec2d(v.x, v.y)
 
     @pos.setter
     def pos(self, value):
-        self._set_position(value)
+        cp.cpBodySetPosition(self._body, value)
 
-    # @property
-    # def pos_FLOAT32(self):
-    #     p = self._get_position()
-    #     yield FLOAT32(p.x)
-    #     yield FLOAT32(p.y)
+    @property
+    def pos_FLOAT32(self):
+        v = cp.cpBodyGetPosition(self._body)
+        yield FLOAT32(v.x)
+        yield FLOAT32(v.y)
 
     @property
     def angle(self):
-        return self._get_angle()
+        return cp.cpBodyGetAngle(self._body)
 
     @angle.setter
     def angle(self, value):
-        self._set_angle(value)
+        cp.cpBodySetAngle(self._body, value)
 
 
 class PhysicObject:
-    # __slots__ = ('shape', 'body', )
     """Main class of game object with physic body powered by pymunk
     Recommended to specify object's params in its class attributes.
     """
@@ -61,58 +64,37 @@ class PhysicObject:
     """points of hitbox shape
     Must define in subclasses, except WorldRectangle objects"""
 
-    _mass: float = 1.0
-    _elasticity: float = 0.0  # 0 - no bounce 1 - perfect bounce
-    _friction: float = 1.0
-    """Physic body params.
-    Can be changed in subclasses."""
+    physic_data: PhysicProperties
+    """Must define in subclasses"""
 
-    body_type = 'static'
-    """
-    'static': pymunk.Body.STATIC,       Level geometry
-    'dynamic': pymunk.Body.DYNAMIC,     Moving objects
-    'kinematic': pymunk.Body.KINEMATIC  Level objects, that can be moved by The Power of Code
-    """
-    shape_filter = None
+    def __init__(self, body: "Body", shape: pymunk.Shape):
+        self.body, self.shape = body, shape
+        MainPhysicSpace.add_object(self)
+        MainPhysicSpace.add(self.body, self.shape)
 
-    def __init__(self, pos, points=None, shape_filter=None, radius=None, mass=None, **kwargs):
-        """You can specify points for polygon shape or radius for circle shape
-        Do not specify both of them"""
-        """If no data given, than take it from class. Usually it is not given.
-        Only exception is WorldRectangles"""
-        cls = self.__class__
-        points = (cls.points if points is None else points) if not radius else None
-        shape_filter = cls.shape_filter if not shape_filter else shape_filter
+    @classmethod
+    def Polygon(cls, _inst, pos, points: tuple, physic_props: PhysicProperties = None):
+        if physic_props is None:
+            physic_props = _inst.physic_data
+        mass, body_type, friction, shape_filter, elasticity = physic_props.get()
 
-        body_type = cls.body_type
+        body = makeBodyPolygon(pos, points, body_type, mass)
+        shape = makeShapePolygon(
+            body, points, friction, shape_filter=shape_filter, elasticity=elasticity
+        )
+        return cls.__init__(_inst, body, shape)
 
-        material_properties = kwargs.get( "material_properties" )
-        if material_properties is not None:  # Support for materials
-            mass = material_properties["mass"]
-            elasticity = material_properties["elasticity"]
-            friction = material_properties["friction"]
-        else:  # Default (non-material way)
-            mass = cls._mass if not mass else mass
-            elasticity = cls._elasticity if "elasticity" not in kwargs.keys() else kwargs["elasticity"]
-            friction = cls._friction if "friction" not in kwargs.keys() else kwargs["friction"]
+    @classmethod
+    def Circle(cls, _inst, pos, radius: TYPE_NUM, physic_props: PhysicProperties = None):
+        if physic_props is None:
+            physic_props = _inst.physic_data
+        body_type, shape_filter, mass, friction, elasticity = physic_props.get()
 
-        # Pymunk things. Make Shape and Body
-        if radius:  # Circle
-            self.body = makeBodyCircle(pos, radius, body_type, mass)
-            self.shape = makeShapeCircle(
-                self.body, radius, friction, shape_filter=shape_filter, elasticity=elasticity
-            )
-        else:      # Polygon
-            self.body = makeBodyPolygon(pos, points, body_type, mass)
-            self.shape = makeShapePolygon(
-                self.body, points, friction, shape_filter=shape_filter, elasticity=elasticity
-            )
-
-        # Collision handler
-        pass
-
-        # Add to world (Physic simulation)
-        MainPhysicSpace.add(self, self.body, self.shape)
+        body = makeBodyCircle(pos, radius, body_type, mass)
+        shape = makeShapeCircle(
+            body, radius, friction, shape_filter=shape_filter, elasticity=elasticity
+        )
+        return cls.__init__(_inst, body, shape)
 
     def can_rotate(self, b):
         if b:
@@ -127,6 +109,10 @@ class PhysicObject:
     def delete_from_physic(self):
         # Fully deleting object from physic world
         MainPhysicSpace.vanish(self)
+
+    @property
+    def BB(self) -> pymunk.BB:
+        return self.shape.cache_bb()
 
     # PHYSIC
     @property
@@ -165,10 +151,14 @@ class PhysicObject:
     def velocity(self, value: TYPE_VEC):
         self.body.velocity = value
 
-    def set_shape_filter(self, shape_filter):
-        self.shape_filter = shape_filter
-        self.shape.filter = shape_filter
-        self.shape.collision_type = shape_filter.categories
+    @property
+    def shape_filter(self):
+        return self.shape.filter
+
+    @shape_filter.setter
+    def shape_filter(self, value: pymunk.ShapeFilter):
+        self.shape.filter = value
+        self.shape.collision_type = value.categories
 
     def post_collision_handle(self, arbiter: pymunk.Arbiter, space: pymunk.Space) -> bool:
         # rewrite in child-classes
@@ -192,8 +182,14 @@ class World:
     def __init__(self):
         # setting up space
         self.space = pymunk.Space()
+
         self.space.gravity = GRAVITY_VECTOR
-        self.space.sleep_time_threshold = SLEEP_TIME_THRESHOLD
+        # self.space.sleep_time_threshold = SLEEP_TIME_THRESHOLD
+        self.space.collision_slop = 0.05
+        self.space.iterations = 12
+
+        self.__add_query = []
+        self.__del_query = []
 
         # setting up collision handlers
         from core.physic.collision_handlers import setup
@@ -202,32 +198,33 @@ class World:
     def vanish(self, obj):
         # Delete object from world
         del objects[obj.bhash]
-        self.space.remove(obj.body, obj.shape)
+        self.delete(obj.body, obj.shape)
 
-    def vanish_by_key(self, key):
-        # Same with vanish, but deletion is made by key
-        obj = objects.pop(key)
-        self.space.remove(obj.body, obj.shape)
+    @staticmethod
+    def add_object(obj):
+        objects[obj.body.get_hash_key] = obj
 
-    def add(self, obj, body, *shapes):
-        # Add object to world
-        self.space.add(body, *shapes)
-        objects[body.get_hash_key] = obj
+    def add(self, *args):
+        for f in args:
+            self.__add_query.append(f)
 
-    def simple_add(self, *to_add):
-        self.space.add(*to_add)
-
-    def simple_delete(self, *to_delete):
-        self.space.remove(*to_delete)
-
-    def add_joints(self, *joints):
-        self.space.add(*joints)
+    def delete(self, *args):
+        for f in args:
+            self.__del_query.append(f)
 
     def step(self, dt: float):
-        dt = max( dt, MAX_PHYSIC_STEP )
+        dt = min( dt, MAX_PHYSIC_STEP )
         self.space.step(dt)
         self.update_triggers(dt)
+        self.post_step()
         return dt
+
+    def post_step(self):
+        self.space.add(*self.__add_query)
+        self.__add_query = []
+
+        self.space.remove(*self.__del_query)
+        self.__del_query = []
 
     @staticmethod
     @beartype
@@ -312,7 +309,7 @@ def attachHard(a: "Body", b: "Body", point_a=None, point_b=None):
     point_a = point_a if point_a else a.center_of_gravity
     point_b = point_b if point_b else b.center_of_gravity
     joint = pymunk.PinJoint(a, b, point_a, point_b)
-    MainPhysicSpace.add_joints(joint)
+    MainPhysicSpace.add(joint)
     return joint
 
 
@@ -322,7 +319,7 @@ def attachSoft(a: "Body", b: "Body", rest_length: float, stiffness: float,
     point_b = point_b if point_b else b.center_of_gravity
     joint = pymunk.DampedSpring(
         a, b, point_a, point_b, rest_length, stiffness, damping)
-    MainPhysicSpace.add_joints(joint)
+    MainPhysicSpace.add(joint)
     return joint
 
 

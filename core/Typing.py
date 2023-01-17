@@ -1,8 +1,13 @@
 from pymunk.vec2d import Vec2d
-from numpy import ndarray, array, matrix
-from typing import Union, Generator, Tuple
+from pymunk.shapes import ShapeFilter
+from numpy import ndarray, array, matrix, zeros
+from beartype.typing import *
 from numpy import float64, float32, int64, uintc, int16, float16
 from beartype import beartype
+
+from beartype.roar import BeartypeDecorHintPep585DeprecationWarning
+from warnings import filterwarnings
+filterwarnings("ignore", category=BeartypeDecorHintPep585DeprecationWarning)
 
 
 # DATA TYPES
@@ -13,6 +18,7 @@ INT64 = int64
 INT16 = int16
 UINT = uintc
 ARRAY = array
+UBYTE = zeros((1,), dtype='uint8').dtype
 
 ZERO_FLOAT32 = FLOAT32(0)
 ZERO_INT64 = INT64(0)
@@ -176,3 +182,30 @@ class Color4f:
     @a.setter
     def a(self, value: TYPE_FLOAT):
         self._value[3] = self.clamp_value(value)
+
+
+class PhysicProperties:
+    __slots__ = ("__dict", )
+
+    def __init__(
+            self,
+            body_type: str,
+            shape_filter: ShapeFilter,
+            mass: TYPE_NUM = 0.0,
+            friction: TYPE_NUM = 1.0,
+            elasticity: TYPE_NUM = 0.0
+    ):
+        self.__dict = {
+            "mass": mass,
+            "body_type": body_type,
+            "friction": friction,
+            "shape_filter": shape_filter,
+            "elasticity": elasticity
+        }
+
+    def __getitem__(self, item):
+        return self.__dict[item]
+
+    def get(self):
+        for item in self.__dict.values():
+            yield item

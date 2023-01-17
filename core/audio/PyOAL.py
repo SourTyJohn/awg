@@ -1,15 +1,19 @@
 from openal import *
-from os import listdir
+
 from utils.files import get_full_path
 from utils.debug import dprint
 from core.math.prandom import randf
-from core.Constants import STN_MASTER_VOLUME, STN_GAME_VOLUME, STN_MUSIC_VOLUME, STN_SOUND_PACK
+from core.Constants import \
+    STN_MASTER_VOLUME, STN_GAME_VOLUME, STN_MUSIC_VOLUME, STN_SOUND_PACK, MAX_SOUND_SOURCES
+
 from pyogg import VorbisFile
 from os.path import join, splitext
+from os import listdir
 
 
 class AudioManager:
-    sources: set  # list of sources OpenAl ids
+    sources: list  # list of sources OpenAl ids
+    free_ids: set
     streams: dict
     streams_fade: dict
 
@@ -22,9 +26,12 @@ class AudioManager:
 
     # AUDIO MANAGER
     def __init__(self):
-        print('AudioManager initialized!')
+        device = alcGetString(ALC_DEVICE_SPECIFIER, ALC_DEFAULT_DEVICE_SPECIFIER)
+        oalInit(device)
+        self.reset_listener()
+
         self.buffers = dict()
-        self.sources = set()
+
         self.streams = {   # buffer, sound name, looping,
             'music':        [None,   '',         False],
             'ambient 0':    [None,   '',         False],
@@ -34,9 +41,15 @@ class AudioManager:
         self.streams_fade = {key: [-1,   -1] for key in self.streams.keys()}
         self.ambient_paths = dict()
 
-        device = alcGetString(ALC_DEVICE_SPECIFIER, ALC_DEFAULT_DEVICE_SPECIFIER)
-        oalInit(device)
-        self.reset_listener()
+        self.sources = list( )
+        self.free_ids = set( )
+        for key in range(MAX_SOUND_SOURCES):
+            source = ctypes.c_uint()
+            alGenSources(1, ctypes.pointer( source ))
+            self.sources.append( source.value )
+            self.free_ids.add( source.value )
+
+        print('AudioManager initialized!')
 
     def __new__(cls, *args, **kwargs):
         if cls.__instance is None:
@@ -108,8 +121,10 @@ class AudioManager:
         pos3f = gamePosToSoundPos(pos3f)
         vel3f = gamePosToSoundPos(vel3f)
 
-        source = ctypes.c_uint()
-        alGenSources(1, ctypes.pointer(source))
+        if not self.free_ids:
+            return
+
+        source = self.free_ids.pop()
 
         alSource3f(source, AL_POSITION, *pos3f)
         alSource3f(source, AL_VELOCITY, *vel3f)
@@ -119,25 +134,17 @@ class AudioManager:
         alSourcei(source, AL_BUFFER, self.buffers[sound])
         alSourcePlay(source)
 
-        self.sources.add(source.value)
-
     def delete_source(self, source: int):
         alDeleteSources(1, ctypes.c_ulong(source))
+        self.free_ids.add(source)
         self.sources.remove(source)
 
     def clear_empty_sources(self):
-        to_delete = set()
-
         for s in self.sources:
             pointer = ctypes.pointer(ctypes.c_long())
             alGetSourcei(s, AL_SOURCE_STATE, pointer)
             if pointer.contents != AL_PLAYING:
-                to_delete.add(s)
-
-        while to_delete:
-            s = to_delete.pop()
-            self.sources.remove(s)
-            alDeleteSources(1, ctypes.c_ulong(s))
+                self.free_ids.add(s)
 
     # AMBIENT-MUSIC [STREAM SOUND]
     def set_stream(self, stream: str, sound: str, looping=False, volume: float = 1.0):

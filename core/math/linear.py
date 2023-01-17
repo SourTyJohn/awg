@@ -6,7 +6,7 @@ from beartype import beartype
 from core.Typing import FLOAT32, INT64, ZERO_FLOAT32, TYPE_VEC, TYPE_FLOAT, ONE_INT64, TYPE_MAT, ONE_FLOAT32
 
 
-@lru_cache()
+@lru_cache( maxsize=1024 )
 def sincos(a: float):
     a = radians(a)
     return sin(a), cos(a)
@@ -102,3 +102,8 @@ def CachedTransform(
     scaleM = scale(scale_x, scale_y)
 
     return reduce( np.matmul, (transM, rot_xM, rot_yM, scaleM) )
+
+
+@beartype
+def TransformMatConstant(camera_matrix: TYPE_MAT, cached: TYPE_MAT) -> TYPE_MAT:
+    return np.matmul(camera_matrix, cached)

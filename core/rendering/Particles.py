@@ -112,7 +112,7 @@ class PhysicParticle:
         ]).flatten()
 
     def delete(self) -> None:
-        MainPhysicSpace.simple_delete(self.body, self.shape)
+        MainPhysicSpace.delete(self.body, self.shape)
 
 
 class PhysicLightedParticle(PhysicParticle):
@@ -284,7 +284,7 @@ class __ParticleManager:
                                     shape_filter=shapeFilter('particle', collide_with=collide_with))
             body.velocity = vel
             shape.elasticity = elasticity
-            MainPhysicSpace.simple_add(body, shape)
+            MainPhysicSpace.add(body, shape)
 
             self.particles[ptype][idd] = PhysicParticle(
                 idd,
@@ -335,7 +335,7 @@ class __ParticleManager:
                                     shape_filter=shapeFilter('particle', collide_with=collide_with))
             body.velocity = vel
             shape.elasticity = elasticity
-            MainPhysicSpace.simple_add(body, shape)
+            MainPhysicSpace.add(body, shape)
 
             self.particles[ptype][idd] = PhysicLightedParticle(
                 idd,
