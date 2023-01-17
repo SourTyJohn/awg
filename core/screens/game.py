@@ -70,9 +70,12 @@ def update(dt):
     # PHYSIC AND UPDATE [!!! PHYSICS UPDATE FIXED AND NOT BASED ON FPS !!!]
     # TODO: JUST WARNING ^
     dt = MainPhysicSpace.step(dt)
+
     LightingManager.update(dt)
-    ParticleManager.update(dt)
     updateGroups(dt)
+    ParticleManager.update(dt)
+
+    MainPhysicSpace.post_step()
 
     # SOUND
     AudioManagerSingleton.update_listener(hero.pos, hero.body.velocity)
@@ -152,7 +155,7 @@ def initScreen(hero_life=False, first_load=False):
     WorldRectangleRigid(world_gr, pos=[850, 500], size=[200, 200], material=("r_magma_1", None))
 
     # """This VVV is a way to the bright future"""
-    WorldRectangleRigidTrue(world_gr, pos=[-400, 660], size=[512, 256], material=("r_magma_1", None))
+    WorldRectangleRigidTrue(world_gr, pos=[-400, 660], size=[512, 256], material=("r_devs_1", None))
 
     for r in range(4):
         WoodenCrate(obstacles_gr, pos=[700, 800 + r*20])

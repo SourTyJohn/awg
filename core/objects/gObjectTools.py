@@ -241,7 +241,7 @@ class PhysicObjectThrowable(PhysicObject):
         b.moment = INF
         b.angular_velocity = 0
         b.angle = 0
-        self.shape.filter = filterAddIgnore(self.shape_filter, by.shape.filter.categories)
+        self.shape.filter = filterAddIgnore(self.shape_filter, by.shapes.filter.categories)
 
     def putted_Throwable(self, by):
         body = self.body
