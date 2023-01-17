@@ -16,7 +16,7 @@ __all__ = [
 ]
 
 
-def makeGLTexture(image_data: np.ndarray, w: int, h: int) -> int:
+def makeGLTexture(image_data: bytes, w: int, h: int) -> int:
     """Loading pygame.Surface as OpenGL texture
     :return New Texture key"""
 
@@ -32,7 +32,9 @@ def makeGLTexture(image_data: np.ndarray, w: int, h: int) -> int:
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST)  # настройка сжатия
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST)  # настройка растяжения
 
-    glTexImage2D(GL_TEXTURE_2D, GL_ZERO, GL_RGBA, w, h, GL_ZERO, GL_RGBA, GL_UNSIGNED_BYTE, image_data)
+    glTexImage2D(
+        GL_TEXTURE_2D, GL_ZERO, GL_RGBA, w, h, GL_ZERO, GL_RGBA, GL_UNSIGNED_BYTE, image_data
+    )
     #
 
     # unbind new texture

@@ -48,9 +48,9 @@ def gameLoop():
     exit_code = scr.update(dt)
 
     seconds += dt
-    if seconds >= 10:
+    AudioManagerSingleton.clear_empty_sources()
+    if seconds >= 100:
         seconds = 0.0
-        AudioManagerSingleton.clear_empty_sources()
         Profile.disable()
         Profile.print_stats('cumtime', )
         running = False

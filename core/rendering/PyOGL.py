@@ -1,20 +1,24 @@
-import warnings
+import OpenGL
+from core.Constants import *
 
+OpenGL.ERROR_CHECKING = GL_ERROR_CHECKING
+OpenGL.FORWARD_COMPATIBLE_ONLY = True
+OpenGL.USE_ACCELERATE = GL_USE_ACCELERATE
 from OpenGL.GL import *
 
 import core.rendering.Shaders as Shaders
-import core.math.linear as lin
 from core.rendering.Lighting import __LightingManager
 from core.rendering.PyOGL_utils import *
-from core.Constants import *
 from core.Typing import *
 from core.rendering.Textures import GlTexture
 from core.rendering.Textures import EssentialTextureStorage as Ets
 from core.rendering.Materials import EssentialMaterialStorage as Ems
+import core.math.linear as lin
 
 from collections import namedtuple
 from beartype import beartype
 import numpy as np
+import warnings
 import pygame
 
 
@@ -351,6 +355,7 @@ class RenderObject:
     _scaleY: FLOAT32
 
     _UID: int = 0  # It will be auto set if object is InGameObject's child
+    __cached_Transform: TYPE_MAT = None
 
     def __init__(self, group, size=None, orientation=1, drawdata='auto', layer=5, instanced=False):
         # if False object wont be rendered
@@ -497,18 +502,12 @@ class RenderObjectPhysic(RenderObject):
     """Alternative for RenderObjectPlaced
     This object will be rendered in place, taken from its physic body pos (self.body.pos)
     It will also take orientation from physic body"""
-
-    def __init__(
-            self,
-            group, body, size=None, orientation=1, drawdata='auto', layer=5, instanced=False
-    ):
-        super().__init__(group, size, orientation, drawdata, layer, instanced)
-        self.body = body
+    body: "Body"
 
     def __repr__(self):
-        return f'<ROP: {super().__repr__()}' \
-               f'_vbo:{self._vbo}' \
-               f'_texture:{self.curr_image() if hasattr(self, "curr_image") else None}>'
+        return f'<ROPhysic: {super().__repr__()}' \
+               f'VBO:{self._vbo}' \
+               f'TEX:{self.curr_image() if hasattr(self, "curr_image") else None}>'
 
     @property
     def z_rotation(self):
@@ -604,8 +603,7 @@ class MaterialRenderComponent:
 
     def initialize(self, material_texture, material_preset=None):
         preset, self._material = Ems.get(material_preset, material_texture)
-        if preset and hasattr( self, "body" ):
-            pass
+        return preset
 
 
 class RenderObjectComposite:
