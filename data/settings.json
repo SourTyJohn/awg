@@ -4,8 +4,8 @@
 	"Material Pack": "base_pack",
 
 	"Brightness": 0.9,
-	"Resolution": "16x10low",
-	"Window Mode": "windowed",
+	"Resolution": "16x10FHD",
+	"Window Mode": "full screen",
 
 	"Master Volume": 0.6,
 	"Music Volume": 1.0,

@@ -1,25 +1,20 @@
 from core.physic.physics import MainPhysicSpace, objects
 from user.KeyMapping import *
 from core.objects.gObjects import *
-from core.rendering.PyOGL import camera, preRender, postRender,\
-    Shaders, drawGroupsFinally, LightingManager,\
-    RenderUpdateGroup_Instanced, RenderUpdateGroup_Materials, RenderUpdateGroup
-from core.rendering.PyOGL_line import renderAllLines
+from core.rendering.PyOGL import camera, LightingManager
+
 from core.rendering.Particles import ParticleManager
 # from core.rendering.TextRender import TextObject, DefaultFont
 from core.audio.PyOAL import AudioManagerSingleton
+from core.logic.game_logic import GameContext
+
 
 import pygame
 from beartype import beartype
 
 
 # GROUPS
-background_gr = RenderUpdateGroup(shader="BackgroundShader")    # BACKGROUND COLOR
-background_near_gr = RenderUpdateGroup()                        # BACKGROUND OBJECTS
-obstacles_gr = RenderUpdateGroup_Instanced()                    # DYNAMIC OBJECTS
-world_gr = RenderUpdateGroup_Materials()                        # WORLD GEOMETRY
-character_gr = RenderUpdateGroup()                              # ANIMATED CHARACTERS
-gui_gr = RenderUpdateGroup()                                    # GUI
+game_context = GameContext( )
 
 
 hero_inited = False
@@ -37,28 +32,7 @@ holding_keys = {
 
 
 def render():
-    camera.focus_to(*hero.pos)
-    background_gr.update(1, camera)
-
-    preRender()
-    #
-    drawGroups()
-    renderAllLines()
-    ParticleManager.render(camera)
-    #
-    postRender(Shaders.shaders['ScreenShaderGame'], )
-
-
-def drawGroups(object_ids: tuple = ()):
-    drawGroupsFinally(
-        object_ids,
-        character_gr,
-        obstacles_gr,
-        world_gr,
-        background_near_gr,
-        background_gr,
-        gui_gr
-    )
+    game_context.render(1)
 
 
 def update(dt):
@@ -96,8 +70,8 @@ def userInput():
             elif key == K_MOVE_JUMP:
                 hero.jump()
 
-            elif key == pygame.K_q:
-                summon('WoodenCrate', obstacles_gr, hero.pos)
+            # elif key == pygame.K_q:
+            #     summon('WoodenCrate', obstacles_gr, hero.pos)
 
             elif key == pygame.K_p:
                 LightingManager.newSource("Light/light_round", 0, pos=hero.pos, size=10.0, layer=1,
@@ -138,34 +112,39 @@ def updateHeroMovement():
 
 @beartype
 def updateGroups(dt: float):
-    # updating all GLSprite groups
-    character_gr.update(dt)
-    obstacles_gr.update(dt)
+    game_context.update(dt)
 
 
 def initScreen(hero_life=False, first_load=False):
     global hero, hero_inited, render_zone
-    BackgroundColor(background_gr)
+    game_context.add_single_level_obj( BackgroundColor() )
 
     #
     # #
     # # #
 
-    WorldRectangleRigid(world_gr, pos=[0, 500], size=[8192, 64], material=("r_pebble_grass_1", None))
-    WorldRectangleRigid(world_gr, pos=[850, 500], size=[200, 200], material=("r_magma_1", None))
+    game_context.add_single_level_obj(
+        WorldRectangleRigid(pos=[0, 500], size=[8192, 64], material=("r_pebble_grass_1", None))
+    )
+    game_context.add_single_level_obj(
+        WorldRectangleRigid(pos=[850, 500], size=[200, 200], material=("r_magma_1", None))
+    )
 
     # """This VVV is a way to the bright future"""
-    WorldRectangleRigidTrue(world_gr, pos=[-400, 660], size=[512, 256], material=("r_devs_1", None))
+    game_context.add_single_level_obj(
+        WorldRectangleRigid(pos=[-400, 660], size=[512, 256], material=("r_devs_1", None))
+    )
 
     for r in range(4):
-        WoodenCrate(obstacles_gr, pos=[700, 800 + r*20])
-    WoodenCrate(obstacles_gr, pos=[760, 800], texture="LevelOne/crate_metal")
-    WoodenCrate(obstacles_gr, pos=[760, 800], texture="LevelOne/crate_metal")
-    WoodenCrate(obstacles_gr, pos=[760, 800], texture="LevelOne/crate_metal")
-    WoodenCrate(obstacles_gr, pos=[760, 800], texture="LevelOne/crate_metal")
-    WoodenCrate(obstacles_gr, pos=[760, 800])
-    WoodenCrate(obstacles_gr, pos=[600, 800])
-    WoodenCrate(obstacles_gr, pos=[650, 980])
+        game_context.add_single_game_obj( WoodenCrate( pos=[700, 800 + r*20]) )
+    #
+    # WoodenCrate(obstacles_gr, pos=[760, 800], texture="LevelOne/crate_metal")
+    # WoodenCrate(obstacles_gr, pos=[760, 800], texture="LevelOne/crate_metal")
+    # WoodenCrate(obstacles_gr, pos=[760, 800], texture="LevelOne/crate_metal")
+    # WoodenCrate(obstacles_gr, pos=[760, 800], texture="LevelOne/crate_metal")
+    # WoodenCrate(obstacles_gr, pos=[760, 800])
+    # WoodenCrate(obstacles_gr, pos=[600, 800])
+    # WoodenCrate(obstacles_gr, pos=[650, 980])
 
     # WorldRectangleSensor(world_gr, (1300, 600), (2600, 900), layer=6)
 
@@ -190,7 +169,8 @@ def initScreen(hero_life=False, first_load=False):
     # # #
     # #
 
-    hero = MainHero(character_gr, pos=[256, 800])
+    hero = game_context.add_single_game_obj( MainHero( [256, 800] ) )
+    camera.focused_obj = hero
     # TextObject(background_gr, [256, 800], ['text?', 'text indeed...'], DefaultFont, layer=6, depth_mask=True)
 
     # GUIHeroHealthBar(gui_gr, [256, 800], layer=0)
@@ -204,11 +184,7 @@ def close():
     # audio_manager.stop_all_sounds()
 
     # Delete images
-    background_gr.delete_all()
-    background_near_gr.delete_all()
-    obstacles_gr.delete_all()
-    character_gr.delete_all()
-    gui_gr.delete_all()
+    game_context.clear()
 
     # Delete physic bodies
     MainPhysicSpace.clear()

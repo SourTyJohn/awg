@@ -61,10 +61,14 @@ class Camera:
 
     __instance = None  # Camera object is Singleton
 
-    def __init__(self, fov=FOV):
+    def __init__(self, fov=FOV, focused_obj=None, soften_move: float = 0.2):
         self.set_fov(fov)
-
         self.ortho_params = np.array([0, 1, 0, 1], dtype=INT64)
+        self.focused_obj = focused_obj
+        self.soft_factor = soften_move
+
+        if focused_obj:
+            assert hasattr(focused_obj, "pos")
         self.prepare_matrix()
 
     def __new__(cls, *args, **kwargs):
@@ -103,6 +107,11 @@ class Camera:
         # applying field of view. Called only in draw_begin()
         self.matrix = lin.ortho(*self.ortho_params)
 
+    def update(self):
+        if obj := self.focused_obj:
+            self.focus_to(*obj.pos, self.soft_factor)
+        self.prepare_matrix()
+
     @beartype
     def get_matrix(self) -> TYPE_MAT:
         return self.matrix
@@ -125,15 +134,14 @@ camera: Camera
 
 
 # RENDER GROUP
-class RenderUpdateGroup:
+class RenderGroup:
     __slots__ = (
-        '_visible', 'objects', 'updatable', 'frame_buffer', 'shader', 'depth_write'
+        '_visible', 'objects', 'frame_buffer', 'shader', 'depth_write'
     )
     """Container for in-game Objects"""
 
     def __init__(self, shader="DefaultShader", visible=True, depth_write=True):
         self.objects: dict = {}
-        self.updatable = {}
         self.depth_write = depth_write
 
         self.shader = Shaders.shaders.get(shader)
@@ -149,8 +157,7 @@ class RenderUpdateGroup:
         by changing _get_object_key and _add_one of child classes"""
         for obj in objs:
             key = self._get_object_key(obj)
-            uid = self._add_one(obj, key)
-            if hasattr(obj, "update"): self.updatable[uid] = obj
+            self._add_one(obj, key)
 
     @staticmethod
     def _get_object_key(obj):
@@ -168,10 +175,6 @@ class RenderUpdateGroup:
             self.objects[key] = {}
         self.objects[key][uid] = obj
         return uid
-
-    def update(self, dt, *args):
-        for o in self.updatable.values():
-            o.update(dt, *args)
 
     """drawing all of this group objects"""
     def draw_all(self, object_ids=None):
@@ -210,7 +213,7 @@ class RenderUpdateGroup:
         del self.objects[key][ind]
 
 
-class RenderUpdateGroup_Instanced(RenderUpdateGroup):
+class RenderGroup_Instanced(RenderGroup):
     def __init__(self, shader="DefaultInstancedShader", visible=True, depth_write=True):
         self.changed_vbo_lists = set()
         super().__init__(shader, visible, depth_write)
@@ -242,6 +245,7 @@ class RenderUpdateGroup_Instanced(RenderUpdateGroup):
             objects_added = 0
 
             for tex, objects in objects_by_tex.items():
+
                 glActiveTexture(GL_TEXTURE0 + tex_slot)
                 glBindTexture(GL_TEXTURE_2D, tex)
                 self.shader.passTexture(f"Textures[{tex_slot}]", tex_slot)
@@ -259,7 +263,7 @@ class RenderUpdateGroup_Instanced(RenderUpdateGroup):
             glDrawElementsInstanced(GL_TRIANGLES, 6, GL_UNSIGNED_INT, None, objects_added)
 
 
-class RenderUpdateGroup_Materials(RenderUpdateGroup):
+class RenderGroup_Materials(RenderGroup):
     def __init__(self, shader="DefaultMaterialShader", visible=True, depth_write=True):
         super().__init__(shader, visible, depth_write)
 
@@ -269,7 +273,6 @@ class RenderUpdateGroup_Materials(RenderUpdateGroup):
         for obj in objs:
             uid = obj.UID
             self.objects[uid] = obj
-            if hasattr(obj, "update"): self.updatable[uid] = obj
 
     def draw_all(self, object_ids=None):
         if not self.pre_draw(): return
@@ -344,7 +347,7 @@ class RenderObject:
 
     # public
     visible = True
-    group: Union["RenderUpdateGroup", "RenderUpdateGroup_Instanced"]
+    _target_group = None
 
     _size: tuple = None
     _colors: np.array = [ np.array([1.0, 1.0, 1.0, 1.0], dtype=np.float32) for _ in range(4) ]
@@ -357,13 +360,13 @@ class RenderObject:
     _UID: int = 0  # It will be auto set if object is InGameObject's child
     __cached_Transform: TYPE_MAT = None
 
-    def __init__(self, group, size=None, orientation=1, drawdata='auto', layer=5, instanced=False):
+    def __init__(self, size=None, orientation=1, drawdata=None, layer=5, instanced=False):
         # if False object wont be rendered
         self.visible = True
 
         #  -1 for left   1 for right
         self._y_rotation = INT64( orientation )
-        if drawdata != "auto" and instanced:
+        if drawdata is not None and instanced:
             instanced = False
             warnings.warn("You can not use instanced rending with given drawdata")
         self._instanced = instanced
@@ -376,14 +379,10 @@ class RenderObject:
             self._vbo = self.__class__._vbo
 
         else:
-            if drawdata == "auto":
+            if drawdata is None:
                 self.bufferize()
             else:
                 self.bufferize_given_drawdata(drawdata)
-
-        if group is not None:
-            group.add(self)
-        self.group = group
 
         self._scaleX = FLOAT32( 1.0 )
         self._scaleY = FLOAT32( 1.0 )
@@ -412,11 +411,11 @@ class RenderObject:
 
     # DELETE
     def delete(self):
-        glBindBuffer(GL_ARRAY_BUFFER, self._vbo)
-        glBufferData(GL_ARRAY_BUFFER, 0, None, GL_STATIC_DRAW)
-        glDeleteBuffers(1, np.array(self._vbo, ))
-        if self.group is not None:
-            self.group.remove(self)
+        #  TODO RENAME
+        if not self._instanced:
+            glBindBuffer(GL_ARRAY_BUFFER, self._vbo)
+            glBufferData(GL_ARRAY_BUFFER, 0, None, GL_STATIC_DRAW)
+            glDeleteBuffers(1, np.array(self._vbo, ))
 
     def get_transform(self) -> TYPE_MAT:
         """Redefined in child classes"""
@@ -459,16 +458,19 @@ class RenderObject:
         if self._y_rotation == new_rotation: return
         self._y_rotation = INT64(new_rotation)
 
+    @property
+    def target_group(self):
+        return self.__class__._target_group
+
 
 class RenderObjectPlaced(RenderObject):
     """Alternative for RenderObjectPhysic
     This object will be rendered in place, taken from self.pos"""
 
     def __init__(
-            self,
-            group, pos, size=None, orientation=1, drawdata='auto', layer=5, instanced=False
+            self, pos, size=None, orientation=1, drawdata=None, layer=5, instanced=False
     ):
-        super().__init__(group, size, orientation, drawdata, layer, instanced)
+        super().__init__(size, orientation, drawdata, layer, instanced)
         self.rect = Rect4f(*pos, *self.__class__._size if not size else size)
 
     def __repr__(self):
@@ -610,14 +612,10 @@ class RenderObjectComposite:
     """Multiple GLObjects drawn, moved and rotated together.
     Little variant of GLObjectGroup"""
 
-    def __init__(self, group, *objects):
+    def __init__(self, *objects):
         """None of the objects must not be members of any SpriteGroups"""
         if any(j.group for j in objects):
             raise ValueError(f'One or more of objects are members of GLObjectGroups')
-
-        if group is not None:
-            group.add(self)
-        self.group = group
 
         self.objects = objects
 
@@ -788,21 +786,12 @@ def bindEBO(offset=0):
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, FIRST_EBO + offset)
 
 
-def preRender(do_depth_test=True):
+def preRender():
     # MY FRAME BUFFER
-    camera.prepare_matrix()
+    camera.update()
+
+    glDepthMask(GL_TRUE)
     FB_Geometry.bind()
-
-    if do_depth_test:
-        glEnable(GL_DEPTH_TEST)
-
-
-def drawGroupsFinally(object_ids, *groups):
-    # THE ONLY WAY TO DRAW ON SCREEN
-    # Drawing each object in each group
-
-    for group in groups:
-        group.draw_all(object_ids)
 
 
 def renderLights(camera_, ):
@@ -857,10 +846,6 @@ def postRender(screen_shader):
     # MY FRAME BUFFER
     fbuff = FB_Geometry
     lbuff = FB_Lighting
-
-    # DEFAULT FRAME BUFFER
-    renderLights(camera)
-    clearDisplay()
 
     screen_shader.use()
     glBindBuffer(GL_ARRAY_BUFFER, fbuff.vbo)

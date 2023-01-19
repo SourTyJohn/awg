@@ -49,7 +49,7 @@ def gameLoop():
 
     seconds += dt
     AudioManagerSingleton.clear_empty_sources()
-    if seconds >= 100:
+    if seconds >= 10:
         seconds = 0.0
         Profile.disable()
         Profile.print_stats('cumtime', )

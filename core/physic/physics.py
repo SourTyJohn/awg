@@ -2,8 +2,7 @@ import pymunk
 from pymunk import Vec2d
 
 from core.math.linear import degreesFromNormal
-from core.Constants import \
-    GRAVITY_VECTOR, BODY_TYPES, SLEEP_TIME_THRESHOLD, MAX_PHYSIC_STEP
+from core.Constants import GRAVITY_VECTOR, BODY_TYPES, MAX_PHYSIC_STEP
 from core.Typing import TYPE_VEC, FLOAT32, List, PhysicProperties, TYPE_NUM
 inf = float('inf')
 from beartype import beartype
@@ -195,6 +194,8 @@ class World:
         from core.physic.collision_handlers import setup
         setup(self.space)
 
+        self.light_shape_filter = 1
+
     def vanish(self, obj):
         # Delete object from world
         del objects[obj.bhash]
@@ -239,9 +240,6 @@ class World:
             obj = list(objects.values())[0]
             # Physically delete_Mortal object
             obj.__class__.delete_from_physic(obj, )
-
-    def get_geometry(self, camera):
-        pass
 
 
 # MAKE BODY

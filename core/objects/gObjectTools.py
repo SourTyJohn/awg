@@ -3,8 +3,9 @@ from core.physic.physics import PhysicObject, Body
 from core.rendering.PyOGL import \
     AnimatedRenderComponent, StaticRenderComponent, RenderObjectComposite,\
     RenderObjectPhysic, RenderObjectPlaced, MaterialRenderComponent
-from core.rendering.PyOGL_line import drawLine
 from core.Typing import FLOAT32, TYPE_FLOAT, INT64, TYPE_INT, INF, TYPE_NUM
+from core.rendering.PyOGL_line import drawLine
+
 
 from typing import Tuple
 import dataclasses as dtc
@@ -241,7 +242,7 @@ class PhysicObjectThrowable(PhysicObject):
         b.moment = INF
         b.angular_velocity = 0
         b.angle = 0
-        self.shape.filter = filterAddIgnore(self.shape_filter, by.shapes.filter.categories)
+        self.shape.filter = filterAddIgnore(self.shape_filter, by.shape.filter.categories)
 
     def putted_Throwable(self, by):
         body = self.body
@@ -326,6 +327,9 @@ class Projectile(PhysicObject):
     @classmethod
     def from_angle(cls, speed: TYPE_NUM, angle: TYPE_INT):
         cls.__init__()
+
+
+light_shape_filter = shapeFilter('obstacle', collide_with=('enemy', 'player', ) )
 
 
 #  RENDER COMPONENTS

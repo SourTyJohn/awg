@@ -225,7 +225,9 @@ class BackgroundShader(DefaultShader):
         super().__init__('background.vert', 'background.frag')
 
     def prepareDraw(self, **kw):
-        super().prepareDraw(**kw)
+        stride = 36
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, ctypes.c_void_p(0))
+        glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, stride, ctypes.c_void_p(12))
         self.passFloat('cameraPos', kw['camera'].pos[1] / Const.WINDOW_SIZE[1])
 
 
