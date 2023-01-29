@@ -1,4 +1,4 @@
-#version 410
+#version
 
 in vec4 Color;
 in vec2 TexCoords;
@@ -6,8 +6,10 @@ in vec2 TexCoords;
 uniform sampler2D samplerTex;
 uniform float brightness;
 
+out vec4 FragColor;
+
 
 void main() {
    vec4 color = texture(samplerTex, TexCoords) * Color;
-   gl_FragColor = color * brightness;
+   FragColor = color * brightness;
 }

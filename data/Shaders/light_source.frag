@@ -1,4 +1,4 @@
-#version 460
+#version
 #constant uint MAX_TEXTURES_BIND
 
 in vec2 TexCoords;

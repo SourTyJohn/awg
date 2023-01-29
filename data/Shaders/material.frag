@@ -1,4 +1,4 @@
-#version 460
+#version
 #constant uint MAX_TEXTURES_BIND
 #constant uint MAX_INSTANCES
 

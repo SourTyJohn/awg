@@ -117,7 +117,6 @@ def updateGroups(dt: float):
 
 def initScreen(hero_life=False, first_load=False):
     global hero, hero_inited, render_zone
-    game_context.add_single_level_obj( BackgroundColor() )
 
     #
     # #

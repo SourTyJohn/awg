@@ -1,4 +1,4 @@
-#version 410
+#version
 
 layout(location = 0) in vec3 position;
 

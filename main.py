@@ -1,14 +1,15 @@
 from core.Constants import FPS_LOCK, TITLE, FPS_SHOW, STN_WINDOW_RESOLUTION
-import pygame as pg
 from core.rendering.PyOGL import initDisplay
 from core.audio.PyOAL import AudioManagerSingleton
 from core.rendering.TextRender import loadText
 from core.rendering.Textures import loadTextures
 from core.rendering.Materials import loadMaterials
 
+import pygame as pg
+
+
 from cProfile import Profile
 Profile = Profile()
-
 
 clock: pg.time.Clock
 
@@ -42,6 +43,7 @@ def gameLoop():
 
     # Visualization
     scr.render()
+    pg.display.flip()
 
     # Update screen
     dt = clock.tick(FPS_LOCK) / 1000
@@ -70,7 +72,6 @@ def gameLoop():
             screens[exit_code].initScreen()
 
     # End phase
-    pg.display.flip()
     if FPS_SHOW:
         print(f'\rFPS: {clock.get_fps() // 1}', end='')
 

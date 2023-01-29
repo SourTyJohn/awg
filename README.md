@@ -2,13 +2,13 @@
 
     ABOUT
 
-    Metroidvania (side-view adventure)
-    Yet another awg, but this time with (no) mistakes, that were in previous games
+    2D game engine
     
-    Graphic engine: OpenGL 4.0+ (PyOpenGL), glsl shaders 400
+    Graphic API: OpenGL 4.0+ (PyOpenGL)
+    Shading language: GLSL 400+
     Sound engine: OpenAL (PyOpenAL)
     Physic engine: Chipmunk (Pymunk)
-    
+    Window GUI: Pyglet
     
     FILES
     ____________________________________________

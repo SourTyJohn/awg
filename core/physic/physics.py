@@ -167,12 +167,6 @@ class PhysicObject:
         # rewrite in child-classes
         return True
 
-    def should_update(self) -> bool:
-        pass
-
-    def update(self, dt) -> bool:
-        pass
-
 
 class World:
     __instance = None

@@ -8,15 +8,71 @@ import numpy as np
 __all__ = [
     "makeGLTexture",
     "bufferize",
+    "bufferizeVAO",
     "drawDataFullScreen",
-    "drawData",
+    "DrawData",
     "splitDrawData",
     "zFromLayer",
     "drawDataLightSource"
 ]
 
 
-def makeGLTexture(image_data: bytes, w: int, h: int) -> int:
+class DrawData:
+    __slots__ = (
+        "_vertexes", "_colors", "_uv_map", "_indices", "_layer", "_drawdata"
+    )
+    
+    _vertexes: list
+    _colors: list
+    _uv_map: list
+
+    _indices: list
+    _layer: int
+
+    _drawdata: np.ndarray
+
+    def __init__(self, vertexes, colors, uv_map, indices, layer):
+        assert 0 <= layer <= 10 and isinstance(layer, int), \
+            f'Wrong layer param: {layer}. Should be integer from 1 to 10'
+
+        self._vertexes = vertexes
+        self._colors = colors
+        self._indices = indices
+        self._layer = layer
+        self._uv_map = uv_map
+
+        self.__update()
+
+    @classmethod
+    def Rectangle(cls, w, h, colors: list = None, layer: int = 5):
+        if colors is None:
+            colors = [[1.0, 1.0, 1.0, 1.0], [1.0, 1.0, 1.0, 1.0], [1.0, 1.0, 1.0, 1.0], [1.0, 1.0, 1.0, 1.0]]
+
+        z = zFromLayer(layer)
+        w /= 2
+        h /= 2
+
+        _vertexes = [[-w, -h, z], [+w, -h, z], [+w, +h, z], [-w, +h, z]]
+        _colors = colors
+        _uv_map = [[0, 1], [1, 1], [1, 0], [0, 0]]
+        _indices = [0, 1, 2, 2, 3, 0]
+
+        return DrawData(_vertexes, _colors, _uv_map, _indices, layer)
+
+    def __update(self):
+        _drawdata = []
+        for v in range(4):
+            _drawdata += [*self._vertexes[v], *self._colors[v], *self._uv_map[v]]
+        self._drawdata = np.array( _drawdata, dtype=FLOAT32 )
+
+    # def bufferize(self, shader, vao=None, vbo=None, ibo=None):
+    #     return bufferizeVAO( self._drawdata, self._indices, shader, vao, vbo, ibo )
+
+    def bufferize(self, shader, vbo):
+        return bufferize(self._drawdata, vbo)
+
+
+def makeGLTexture(image_data: np.ndarray, w: int, h: int) -> int:
     """Loading pygame.Surface as OpenGL texture
     :return New Texture key"""
 
@@ -55,37 +111,26 @@ def bufferize(data: np.ndarray, vbo=None) -> int:
     return vbo
 
 
-def drawData(size: tuple, colors: Union[List, Tuple, np.ndarray], rotation=1, layer=5) -> np.ndarray:
-    # ::arg layer - value from 0 to 10
-    # lower it is, nearer object to a camera
-    assert 0 <= layer <= 10 and isinstance(layer, int), f'Wrong layer param: {layer}. ' \
-                                                        f'Should be integer from 1 to 10'
-    z = zFromLayer(layer)
+def bufferizeVAO(vertex_data: np.ndarray, indices, shader, vao: int = None, vbo: int = None, ibo: int = None):
+    if vao is None:
+        vao = glGenVertexArrays(1)
 
-    w_t, h_t = 1, 1
-    w_o, h_o = size[0] / 2, size[1] / 2
+    if vbo is None:
+        vbo = glGenBuffers(1)
 
-    # right (base)
-    if rotation == 1:
-        data = np.array([
-            # obj cords    # color       # tex cords
-            -w_o, -h_o, z, *colors[0],   0.0, h_t,
-            +w_o, -h_o, z, *colors[1],   w_t, h_t,
-            +w_o, +h_o, z, *colors[2],   w_t, 0.0,
-            -w_o, +h_o, z, *colors[3],   0.0, 0.0,
-        ], dtype=FLOAT32)
+    if ibo is None:
+        ibo = glGenBuffers(1)
 
-    # left (mirrored)
-    else:
-        data = np.array([
-            # obj cords    # color       # tex cords
-            -w_o, -h_o, z, *colors[0],   w_t, h_t,
-            +w_o, -h_o, z, *colors[1],   0.0, h_t,
-            +w_o, +h_o, z, *colors[2],   0.0, 0.0,
-            -w_o, +h_o, z, *colors[3],   w_t, 0.0,
-        ], dtype=FLOAT32)
+    glBindVertexArray(vao)
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo)
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices, GL_STATIC_DRAW)
+    glBindBuffer(GL_ARRAY_BUFFER, vbo)
+    glBufferData(GL_ARRAY_BUFFER, vertex_data, GL_STATIC_DRAW)
 
-    return data
+    shader.setupVAO()
+
+    glBindVertexArray(0)
+    return vao, vbo, ibo
 
 
 def drawDataLightSource():

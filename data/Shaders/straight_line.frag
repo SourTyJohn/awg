@@ -1,8 +1,10 @@
-#version 410
+#version
 
 in vec4 FragColor;
 
+out vec4 DiffColor;
+
 
 void main() {
-   gl_FragColor = FragColor;
+   DiffColor = FragColor;
 }

@@ -1,11 +1,14 @@
 from OpenGL.GL import *
+
+from utils.compatibility import get_version_GLSL
 from utils.files import get_full_path
 from utils.debug import dprint
-import core.Constants as Const
-from core.Exceptions import ShaderError
-from core.Typing import TYPE_VEC, TYPE_FLOAT, TYPE_INT, Dict
-from beartype import beartype
 
+import core.Constants as Const
+from core.Typing import TYPE_VEC, TYPE_FLOAT, TYPE_INT, Dict
+from core.Exceptions import ShaderError
+
+from beartype import beartype
 import numpy as np
 
 shaders: Dict[str, "Shader"] = {}
@@ -56,7 +59,10 @@ class Shader:
         glLinkProgram(self.program)
 
         if not glGetProgramiv(self.program, GL_LINK_STATUS):
-            print(f'Shader Program error:')
+            print(
+                f'Shader Program error:\n'
+                f'Class: {self.__class__.__name__}\n'
+            )
             print(glGetProgramInfoLog(self.program))
             raise GLerror('Shader Program error')
 
@@ -228,6 +234,7 @@ class BackgroundShader(DefaultShader):
         stride = 36
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, ctypes.c_void_p(0))
         glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, stride, ctypes.c_void_p(12))
+
         self.passFloat('cameraPos', kw['camera'].pos[1] / Const.WINDOW_SIZE[1])
 
 
@@ -329,7 +336,13 @@ class ParticlePolyShader(Shader):
         self.passMat4('Transform', kw['transform'])
 
 
+GLSL_VERSION = 0
+
+
 def init():
+    global GLSL_VERSION
+    GLSL_VERSION = get_version_GLSL()
+
     def checkRecursive(clss):
         shaders[clss.__name__] = clss()
         dprint(f'Inited: {clss.__name__}')
@@ -345,6 +358,8 @@ def init():
 def loadGLSL(path):
     with open(get_full_path(path, file_type='shd')) as file:
         code = file.readlines()
+        code[0] = f"#version {GLSL_VERSION}\n"
+
         for i, line in enumerate(code):
             if line[0] != '#':
                 break

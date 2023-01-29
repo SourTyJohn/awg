@@ -1,3 +1,5 @@
+from abc import ABC
+
 import OpenGL
 from core.Constants import *
 
@@ -18,7 +20,7 @@ import core.math.linear as lin
 from collections import namedtuple
 from beartype import beartype
 import numpy as np
-import warnings
+import pyglet
 import pygame
 
 
@@ -347,67 +349,53 @@ class RenderObject:
 
     # public
     visible = True
-    _target_group = None
 
-    _size: tuple = None
-    _colors: np.array = [ np.array([1.0, 1.0, 1.0, 1.0], dtype=np.float32) for _ in range(4) ]
+    # private
+    _target_group = None
+    _drawdata: Union[DrawData, None]
+    _instanced: bool = False
+
     _vbo: int = 0
 
     _y_rotation: int
-    _scaleX: FLOAT32
-    _scaleY: FLOAT32
+    _scaleX: FLOAT32 = 1.0
+    _scaleY: FLOAT32 = 1.0
 
     _UID: int = 0  # It will be auto set if object is InGameObject's child
-    __cached_Transform: TYPE_MAT = None
 
-    def __init__(self, size=None, orientation=1, drawdata=None, layer=5, instanced=False):
-        # if False object wont be rendered
-        self.visible = True
+    def __init__(self, drawdata: DrawData = None, orientation: int = 1, visible: bool = True):
+        self.visible = visible
 
-        #  -1 for left   1 for right
         self._y_rotation = INT64( orientation )
-        if drawdata is not None and instanced:
-            instanced = False
-            warnings.warn("You can not use instanced rending with given drawdata")
-        self._instanced = instanced
-        self._size = size if size else self.__class__._size
-        self._layer = layer
+        self._scaleX = FLOAT32(1.0)
+        self._scaleY = FLOAT32(1.0)
 
-        if instanced:  # Instanced rendering
-            if not self.__class__._vbo:  # If there is VBO for this type of objects, this instance will use ready VBO
-                self.__class__._vbo = self.bufferize()
-            self._vbo = self.__class__._vbo
-
+        if self.__class__._instanced:
+            self.__init_Instanced()
+            self._drawdata = None
         else:
-            if drawdata is None:
-                self.bufferize()
-            else:
-                self.bufferize_given_drawdata(drawdata)
+            self._drawdata = drawdata if drawdata else self.__class__._drawdata
+            self.bufferize( )
 
-        self._scaleX = FLOAT32( 1.0 )
-        self._scaleY = FLOAT32( 1.0 )
+    def __init_Instanced(self):
+        if not self.__class__._vbo:
+            self.__class__._vbo = self.bufferize( )
+        self._vbo = self.__class__._vbo
 
     def __repr__(self):
         return f'<{self.__class__.__name__}>'
 
-    def bufferize(self, vbo=None):
-        """
-        y_rotation::if None, then object will be bufferized as it have y_rotation
-        vbo::if given, object won't change, but save its new VBO data to given <vbo>
-        """
-        drawdata = drawData(self._size, self._colors, layer=self._layer)
+    def bufferize(self, vbo=None) -> int:
         if vbo is None:
-            self._vbo = bufferize(drawdata, self._vbo)
+            self._vbo = self._drawdata.bufferize('shader', self._vbo)
             return self._vbo
         else:
-            return bufferize(drawdata, vbo)
+            return self._drawdata.bufferize('shader', vbo)
 
-    def bufferize_given_drawdata(self, drawdata, vbo=None):
-        if vbo is None:
-            self._vbo = bufferize(drawdata, self._vbo)
-            return self._vbo
-        else:
-            return bufferize(drawdata, vbo)
+    # def bufferizeVAO(self, vao=None):
+    #     drawdata = drawData(self._size, self._colors, layer=self._layer)
+    #     if vao is None:
+    #         self._vao = bufferizeVAO(drawdata, indices, shader, )
 
     # DELETE
     def delete(self):
@@ -468,10 +456,10 @@ class RenderObjectPlaced(RenderObject):
     This object will be rendered in place, taken from self.pos"""
 
     def __init__(
-            self, pos, size=None, orientation=1, drawdata=None, layer=5, instanced=False
+            self, pos, drawdata: DrawData = None, orientation: int = 1, visible: bool = True
     ):
-        super().__init__(size, orientation, drawdata, layer, instanced)
-        self.rect = Rect4f(*pos, *self.__class__._size if not size else size)
+        super().__init__(drawdata, orientation, visible)
+        self.__pos = np.array( pos, dtype=FLOAT32 )
 
     def __repr__(self):
         return f'<ROP: {super().__repr__()}' \
@@ -480,21 +468,17 @@ class RenderObjectPlaced(RenderObject):
 
     @property
     def pos(self):
-        return self.rect.pos
+        return self.__pos
 
     @pos.setter
     def pos(self, value):
-        self.rect.pos = value
+        self.__pos = np.array( value, dtype=FLOAT32 )
 
-    def move_to(self, pos):
-        self.rect.x = pos[0]
-        self.rect.y = pos[1]
-
-    def move_by(self, vector):
-        self.rect.move_by(vector)
+    def move_by(self, vector: np.ndarray):
+        self.__pos += vector
 
     def get_transform(self):
-        x_, y_ = self.rect.pos
+        x_, y_ = self.__pos
         return lin.FullTransformMat(
             x_, y_, camera.get_matrix(), FLOAT32(0), self._y_rotation, self._scaleX, self._scaleY
         )
@@ -723,6 +707,23 @@ FB_Lighting: FrameBuffer
 LightingManager: __LightingManager
 
 
+# class GLWindow(pyglet.window.Window, ABC):
+#     def __init__(self):
+#         try:
+#             config = pyglet.gl.Config(
+#                 sample_buffers=1, samples=4, depth_size=16, double_buffer=True
+#             )
+#             super(GLWindow, self).__init__(resizable=True, config=config)
+#
+#         except pyglet.window.NoSuchConfigException:
+#             super(GLWindow, self).__init__(resizable=True)
+#
+#         self._GameContext = None
+#
+#     def on_draw(self, dt):
+#         pass
+
+
 # DISPLAY
 def initDisplay(size=STN_WINDOW_RESOLUTION):
     global camera, FB_Geometry, FB_Lighting, FIRST_EBO, LightingManager
@@ -731,7 +732,7 @@ def initDisplay(size=STN_WINDOW_RESOLUTION):
     flags = pygame.OPENGL | pygame.DOUBLEBUF | pygame.HWSURFACE | pygame.SRCALPHA
     flags = flags | pygame.FULLSCREEN if FULL_SCREEN else flags
     pygame.display.set_mode(size, flags=flags)
-    
+
     #  OpenGL Version requirement
     pygame.display.gl_set_attribute(pygame.GL_CONTEXT_MAJOR_VERSION, 4)
     pygame.display.gl_set_attribute(pygame.GL_CONTEXT_MINOR_VERSION, 0)
@@ -761,6 +762,8 @@ def initDisplay(size=STN_WINDOW_RESOLUTION):
 
     # Order of vertexes when drawing
     setupIndices()
+    #
+    # pyglet.app.run()
 
 
 def setupIndices():

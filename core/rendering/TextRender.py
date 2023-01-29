@@ -1,6 +1,6 @@
 from utils.files import load_font, load_text_localization
 from core.Constants import FONT_SETTINGS, STN_LANGUAGE
-from core.rendering.PyOGL import StaticRenderComponent, bufferize, drawData
+from core.rendering.PyOGL import StaticRenderComponent, bufferize, DrawData
 from core.rendering.Textures import GlTexture, EssentialTextureStorage
 
 from PIL import Image, ImageDraw
@@ -159,6 +159,8 @@ class TextObject(StaticRenderComponent):
         if colors is None:
             colors = [(1.0, 1.0, 1.0, 1.0), (1.0, 1.0, 1.0, 1.0), (1.0, 1.0, 1.0, 1.0), (1.0, 1.0, 1.0, 1.0)]
 
+        dd = DrawData.Rectangle(*texture.size, colors, self._layer)
+        # TODO
         bufferize(
             drawData(texture.size, colors, rotation=rotation, layer=self._layer), self._vbo
         )

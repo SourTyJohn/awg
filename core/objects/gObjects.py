@@ -12,7 +12,7 @@ from core.audio.PyOAL import AudioManagerSingleton
 from core.objects.gItems import InventoryAndItemsManager
 from core.math.linear import projectedMovement, degreesFromNormal
 from core.rendering.Particles import ParticleManager
-from core.rendering.PyOGL_utils import drawDataFullScreen
+from core.rendering.PyOGL_utils import DrawData
 
 from pymunk.vec2d import Vec2d
 from beartype import beartype
@@ -72,12 +72,15 @@ class DroppedItem(RC_Composite):
 class WorldRectangleRigid(RO_Physic, RC_Material, PhysObject, Direct):
     # This class represents base level geometry with rigid body
     physic_data = PhysicProperties('static', shapeFilter('level', ))
+
+    _instanced = True
+    _drawdata = DrawData.Rectangle(TILE_SIZE, TILE_SIZE, layer=4)
     _target_group = "MainLevelGeometry"
 
-    def __init__(self, pos, size, material: TYPE_MATERIAL, shape_f=None, layer=4):
+    def __init__(self, pos, size, material: TYPE_MATERIAL, shape_f=None):
         # IMAGE
         self.initialize(*material)
-        super().__init__((TILE_SIZE, TILE_SIZE), layer=layer, instanced=True)
+        super().__init__()
         self.scale = [ s / TILE_SIZE for s in size ]
 
         # PHYSIC
@@ -106,32 +109,6 @@ class WorldRectangleRigid(RO_Physic, RC_Material, PhysObject, Direct):
 
 class WorldRectangleSensor(WorldRectangleRigid):
     shape_filter = shapeFilter('no_collision', collide_with=())
-
-
-class BackgroundColor(Direct, RO_Placed, RC_Static):
-    # BackgroundColor
-    color: np.array = [0.35, 0.35, 0.5, 1.0]
-    color2: np.array = [1.0, 0.35, 0.5, 1.0]
-
-    # Singleton
-    __instance = None
-
-    shader = 'BackgroundShader'
-    _target_group = "BackgroundColor"
-
-    def __init__(self):
-        self.texture = 'Devs/error'
-        self._colors = [
-            BackgroundColor.color,
-            BackgroundColor.color2,
-            BackgroundColor.color2,
-            BackgroundColor.color
-        ]
-        super().__init__(pos=(0, 0), size=WINDOW_SIZE, drawdata=drawDataFullScreen(self._colors), layer=10)
-
-    def __new__(cls, *args, **kwargs):
-        cls.__instance = super(BackgroundColor, cls).__new__(cls)
-        return cls.__instance
 
 
 # TRIGGERS
@@ -261,8 +238,8 @@ class Character(RO_Physic, RC_Static, PhysObject):
 
     __previous_pos: np.array
 
-    def __init__(self, pos, size, points, *args, **kwargs):
-        super().__init__(size, *args, **kwargs)
+    def __init__(self, pos, points, drawdata: DrawData = None, **kwargs):
+        super().__init__(drawdata, **kwargs)
         PhysObject.Polygon(self, pos, points)
 
         # Walking, Running
@@ -402,9 +379,11 @@ class Character(RO_Physic, RC_Static, PhysObject):
 # vvv DEFINE YOUR CLASSES HERE vvv #
 
 class MainHero(Character, Direct, Mortal):
+    __SIZE = (64, 144)
+
     # RENDER
-    _size = (64, 144)
     _target_group = "GameObjectsSingle"
+    _drawdata = DrawData.Rectangle(*__SIZE, layer=4)
 
     # PHYSIC
     physic_data = PhysicProperties(
@@ -433,12 +412,11 @@ class MainHero(Character, Direct, Mortal):
     max_health = 200
     lethal_fall_velocity = 256
 
-    def __init__(self, pos, size=None, layer=4):
+    def __init__(self, pos, ):
         self.texture = 'LevelOne/r_pebble_grass_1'
 
         cls = self.__class__
-        size = cls._size if size is None else size
-        super(MainHero, self).__init__(pos, size, rectPoints(*size), layer=layer)
+        super(MainHero, self).__init__(pos, rectPoints(*self.__class__.__SIZE), )
         self.init_Mortal(cls, [cls.max_health, ] * 2)
 
         self.tracer = Tracer(self, 0.17, 10)
@@ -463,7 +441,7 @@ class MainHero(Character, Direct, Mortal):
         # Particles when landing
         if arbiter.total_impulse.length > self.mass * 1000:
             angles = (10, 30, 150, 170)
-            pos = Vec2d( self.pos[0], self.pos[1] - self._size[1] / 2 + 16 )
+            pos = Vec2d( self.pos[0], self.BB.bottom )
 
             ParticleManager.create_physic(
                 0, pos, (16, 24), (200, 600), (1.0, 3.0),
@@ -472,17 +450,19 @@ class MainHero(Character, Direct, Mortal):
 
 
 class WoodenCrate(RO_Physic, RC_Static, PhysThrowable, Direct, Mortal):
-    _target_group = "GameObjectsInstanced"
+    SIZE = (72, 72)
 
+    # physic
     physic_data = PhysicProperties(
         'dynamic',
         shapeFilter('obstacle', ignore=('enemy', 'particle')),
         mass=40
     )
+    points = rectPoints(*SIZE)
 
-    # static
-    _size = (72, 72)
-    points = rectPoints(*_size)
+    # render
+    _target_group = "GameObjectsInstanced"
+    _drawdata = DrawData.Rectangle(*SIZE, )
 
     # mortal
     max_health = 10
@@ -492,8 +472,8 @@ class WoodenCrate(RO_Physic, RC_Static, PhysThrowable, Direct, Mortal):
         self.texture = texture
         cls = self.__class__
 
-        super().__init__(instanced=True)
-        PhysThrowable.Polygon(self, pos, WoodenCrate.points)
+        super().__init__()
+        PhysThrowable.Polygon(self, pos, cls.points)
         self.init_Mortal(cls, [cls.max_health, ] * 2)
 
     def post_collision_handle(self, arbiter, space):

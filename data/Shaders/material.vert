@@ -1,4 +1,4 @@
-#version 460
+#version
 #constant uint MAX_INSTANCES
 
 layout(location = 0) in vec3 position;

@@ -17,3 +17,7 @@ class ShaderError( Exception ):
 
 class MaterialRuntimeError( Exception ):
     pass
+
+
+class CompatibilityError ( Exception ):
+    pass

@@ -10,7 +10,6 @@ class GameContext:
         self.__groups_DepthWrite = {
             "MainLevelGeometry":    RenderGroup_Materials(),
             "BackgroundWallsO":     RenderGroup_Instanced(),
-            "BackgroundColor":      RenderGroup(shader="BackgroundShader"),
             "BackgroundImages":     RenderGroup_Instanced(),
             "BackgroundWallsT":     RenderGroup_Instanced(),  # transparent
         }

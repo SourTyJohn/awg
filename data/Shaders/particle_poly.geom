@@ -1,4 +1,4 @@
-#version 410
+#version
 #constant vec2 STN_WINDOW_RESOLUTION
 
 layout (points) in;

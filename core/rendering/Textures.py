@@ -1,6 +1,6 @@
 from OpenGL.GL import *
 
-from core.rendering.PyOGL_utils import makeGLTexture, drawData
+from core.rendering.PyOGL_utils import makeGLTexture
 from core.Constants import *
 
 from utils.files import get_full_path, load_image
@@ -83,16 +83,6 @@ class GlTexture:
         data = np.fromstring(image.tobytes(), np.uint8)
         size = image.size
         return GlTexture(data, size, image_name)
-
-    def make_draw_data(self, layer, colors=None):
-        """Make drawTexture data with size of this texture
-        Usually GlObjects have their own drawData, but you can calculate drawData,
-        which will perfectly match this texture"""
-        if colors is None:
-            colors = ((1.0, 1.0, 1.0, 1.0), ) * 4
-
-        drawData(self.size, colors, layer=layer)
-        return drawData(self.size, colors, layer=layer)
 
     """Deleting texture from memory"""
     def delete(self):
