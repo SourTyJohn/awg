@@ -1,4 +1,4 @@
-from abc import ABC
+# from abc import ABC
 
 import OpenGL
 from core.Constants import *
@@ -20,7 +20,7 @@ import core.math.linear as lin
 from collections import namedtuple
 from beartype import beartype
 import numpy as np
-import pyglet
+# import pyglet
 import pygame
 
 
@@ -138,13 +138,13 @@ camera: Camera
 # RENDER GROUP
 class RenderGroup:
     __slots__ = (
-        '_visible', 'objects', 'frame_buffer', 'shader', 'depth_write'
+        '_visible', 'objects', 'shader', 'UIDs'
     )
     """Container for in-game Objects"""
 
-    def __init__(self, shader="DefaultShader", visible=True, depth_write=True):
+    def __init__(self, shader="DefaultShader", visible=True):
         self.objects: dict = {}
-        self.depth_write = depth_write
+        self.UIDs = set()
 
         self.shader = Shaders.shaders.get(shader)
         if self.shader is None:
@@ -160,6 +160,7 @@ class RenderGroup:
         for obj in objs:
             key = self._get_object_key(obj)
             self._add_one(obj, key)
+            self.UIDs.add( obj.UID )
 
     @staticmethod
     def _get_object_key(obj):
@@ -193,7 +194,7 @@ class RenderGroup:
                 obj.draw_single(self.shader)
 
     def pre_draw(self):
-        if not self._visible:
+        if not self._visible or not self.UIDs:
             return False
 
         self.shader.use()
@@ -216,9 +217,9 @@ class RenderGroup:
 
 
 class RenderGroup_Instanced(RenderGroup):
-    def __init__(self, shader="DefaultInstancedShader", visible=True, depth_write=True):
+    def __init__(self, shader="DefaultInstancedShader", visible=True, ):
         self.changed_vbo_lists = set()
-        super().__init__(shader, visible, depth_write)
+        super().__init__(shader, visible, )
 
     @staticmethod
     def _get_object_key(obj):
@@ -243,6 +244,8 @@ class RenderGroup_Instanced(RenderGroup):
         if not self.pre_draw(): return
 
         for vbo, objects_by_tex in self.objects.items():
+            glBindBuffer(GL_ARRAY_BUFFER, vbo)
+
             tex_slot = 0
             objects_added = 0
 
@@ -260,14 +263,22 @@ class RenderGroup_Instanced(RenderGroup):
                 tex_slot += 1
                 objects_added += len(objects)
 
-            glBindBuffer(GL_ARRAY_BUFFER, vbo)
-            self.shader.prepareDraw()
-            glDrawElementsInstanced(GL_TRIANGLES, 6, GL_UNSIGNED_INT, None, objects_added)
+                if tex_slot == MAX_TEXTURES_BIND - 1:
+                    self.__draw_bound(objects_added)
+                    tex_slot = 0
+                    objects_added = 0
+
+            self.__draw_bound(objects_added)
+
+    def __draw_bound(self, objects_added):
+        if objects_added == 0: return
+        self.shader.prepareDraw()
+        glDrawElementsInstanced(GL_TRIANGLES, 6, GL_UNSIGNED_INT, None, objects_added)
 
 
 class RenderGroup_Materials(RenderGroup):
-    def __init__(self, shader="DefaultMaterialShader", visible=True, depth_write=True):
-        super().__init__(shader, visible, depth_write)
+    def __init__(self, shader="DefaultMaterialShader", visible=True):
+        super().__init__(shader, visible)
 
     def add(self, *objs: [T_RENDER_OBJECT, ]):
         """You can redefine how objects are added and how they are sorted
@@ -275,6 +286,7 @@ class RenderGroup_Materials(RenderGroup):
         for obj in objs:
             uid = obj.UID
             self.objects[uid] = obj
+            self.UIDs.add( obj.UID )
 
     def draw_all(self, object_ids=None):
         if not self.pre_draw(): return
